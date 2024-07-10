@@ -12,7 +12,7 @@ RUN locale-gen en_US en_US.UTF-8 && \
 ENV LANG=en_US.UTF-8
 
 # Create a non-root user
-ARG USERNAME=tam
+ARG USERNAME=tum
 ARG USER_UID=1000
 ARG USER_GID=$USER_UID
 RUN groupadd --gid $USER_GID $USERNAME \
@@ -27,6 +27,7 @@ RUN groupadd --gid $USER_GID $USERNAME \
   && echo "source /usr/share/bash-completion/completions/git" >> /home/$USERNAME/.bashrc
 
 RUN apt-get update && apt-get install -y -q --no-install-recommends \
+    wget \
     curl \
     vim \
     build-essential \
@@ -34,10 +35,26 @@ RUN apt-get update && apt-get install -y -q --no-install-recommends \
     gnupg2 \
     lsb-release \
     python3-pip \
+    python3-tk \
     git \
     cmake \
     make \
-    apt-utils
+    apt-utils \
+    libpcl-dev \
+    libcgal-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# GeographicLib
+RUN bash -c "wget https://github.com/geographiclib/geographiclib/archive/refs/tags/v2.3.tar.gz && \
+    tar xfpz v2.3.tar.gz && \
+    mkdir -p geographiclib-2.3/BUILD &&\
+    cd geographiclib-2.3/BUILD && cmake .. && make && make install && rm -rf /dev_ws/geographiclib-2.3"
+
+# Remove the zip file after download
+RUN rm v2.3.tar.gz
+
+# Get geoid dataset from GeographicLib
+RUN geographiclib-get-geoids good
 
 # ROS 2
 RUN sh -c 'echo "deb [arch=amd64,arm64] http://repo.ros2.org/ubuntu/main `lsb_release -cs` main" > /etc/apt/sources.list.d/ros2-latest.list'
@@ -47,25 +64,19 @@ RUN echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/r
 RUN apt-get update && apt-get install -y -q --no-install-recommends \ 
     python3-colcon-common-extensions \
     ros-${ROS_DISTRO}-desktop \
-    ros-${ROS_DISTRO}-rmw-cyclonedds-cpp
+    ros-${ROS_DISTRO}-rmw-cyclonedds-cpp \
+    ros-${ROS_DISTRO}-pcl-conversions \
+    ros-${ROS_DISTRO}-pcl-ros \
+    ros-${ROS_DISTRO}-rviz2
 
 ENV RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
 
-RUN apt-get remove python3-blinker -y
-
 WORKDIR /ros_ws
 
-COPY . /ros_ws/src/multi_lidar_calibration/
+COPY . /ros_ws/src/flexcloud/
 
-RUN cd /ros_ws/src/multi_lidar_calibration/TEASER-plusplus && \
-    mkdir build && \
-    cd build && \
-    cmake -DTEASERPP_PYTHON_VERSION=3.10 .. && \
-    make teaserpp_python && \
-    cd python && pip install .
-
-RUN pip install --no-cache-dir --upgrade pip && \
-  pip install --no-cache-dir -r src/multi_lidar_calibration/requirements.txt
+# RUN pip install --no-cache-dir --upgrade pip && \
+#   pip install --no-cache-dir -r src/multi_lidar_calibration/requirements.txt
 
 RUN /bin/bash -c '. /opt/ros/$ROS_DISTRO/setup.bash && \
     colcon build --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=Release --packages-up-to flexcloud'
