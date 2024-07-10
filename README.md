@@ -1,12 +1,21 @@
-# FlexCloud
+<div align="center">
+
+<h1>FlexCloud</h1>
+
+Georeferencing of Point Cloud Maps
+
 [![Linux](https://img.shields.io/badge/os-linux-blue.svg)](https://www.linux.org/)
 [![Docker](https://badgen.net/badge/icon/docker?icon=docker&label)](https://www.docker.com/)
 [![ROS2humble](https://img.shields.io/badge/ros2-humble-blue.svg)](https://docs.ros.org/en/humble/index.html)
 
-* georeference the created point cloud map from the previous step using the GNSS-information extracted from the rosbag
-* removes accumulated errors within the point cloud map arising from previous steps and transforms the map
+</div>
 
-## Usage
+<h2>Overview</h2>
+This project enables the georeferencing of an existing point cloud map created only from inertial sensor data (e.g. LiDAR) by the use of the corresponding GNSS data.
+Leveraging the concept of rubber-sheeting from 2D cartography, the tool is also able to account for accumulated errors during map creation and thus rectyfy the map.
+
+
+<h2>Usage</h2>
 
 * check parameters for georeferencing in `/config/pcd_georef.param.yaml`
 
@@ -48,7 +57,7 @@
 
    - Inspect results and modify parameters if desired.
 
-## Content
+<h2>Content</h2>
 
 Detailed documentation of the modules can be found below.
 
