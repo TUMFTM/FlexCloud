@@ -26,7 +26,6 @@ find_package(rclcpp REQUIRED)
 find_package(Eigen3 REQUIRED)
 find_package(PCL REQUIRED)
 find_package(CGAL REQUIRED)
-find_package(track_handler_cpp)
 find_package(GeographicLib REQUIRED)
 
 include_directories(SYSTEM
@@ -94,8 +93,7 @@ ament_target_dependencies(messages
   rclcpp
   geometry_msgs
   visualization_msgs
-  pcl_conversions
-  track_handler_cpp)
+  pcl_conversions)
 target_link_libraries(messages
   ${PCL_LIBRARIES})
 

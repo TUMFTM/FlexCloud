@@ -1,4 +1,4 @@
-# tam_pcd_georeferencing
+# FlexCloud
 
 * georeference the created point cloud map from the previous step using the GNSS-information extracted from the rosbag
 * removes accumulated errors within the point cloud map arising from previous steps and transforms the map
@@ -40,7 +40,6 @@
 | `/tam/traj/traj_rs_markers` | SLAM trajectory after [rubber-sheet](https://www.tandfonline.com/doi/abs/10.1559/152304085783915135)-transformation |
 | `/tam/rs/geom_markers_cps` | control points used for rubber-sheeting |
 | `/tam/rs/geom_markers_triag` | triangulation used for rubber-sheeting |
-| `/tam/rs/track_bounds_markers` | trackbounds for selected track from track_handler |
 | `/clicked_point` | last 2 selected points by user to indicate chosen control point |
 | `/tam/rs/pcd_map` | transformed point cloud map |
 

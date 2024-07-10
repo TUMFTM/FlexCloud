@@ -127,8 +127,6 @@ void pcd_georef::initialize_publisher()
     "tam/rs/geom_markers_triag", durable_qos_pub);
   this->pub_rs_geom_markers_cps = this->create_publisher<visualization_msgs::msg::MarkerArray>(
     "tam/rs/geom_markers_cps", durable_qos_pub);
-  this->pub_track_bounds = this->create_publisher<visualization_msgs::msg::MarkerArray>(
-    "tam/rs/track_bounds_markers", durable_qos_pub);
   this->pub_pcd_map =
     this->create_publisher<sensor_msgs::msg::PointCloud2>("tam/rs/pcd_map", durable_qos_pub);
 }
@@ -258,20 +256,6 @@ void pcd_georef::publish_rs()
     msgs_->pcd_map2msg(this->pcd_map, this->msg_pcd_map);
     this->pub_pcd_map->publish(this->msg_pcd_map);
   }
-
-  // Publish trackbounds
-  auto raceTrackHandler = iac::common::RaceTrackHandler::from_pkg_config();
-  std::unique_ptr<iac::common::Track> track = raceTrackHandler->create_raceline_track();
-  std::unique_ptr<iac::common::Track> pit = raceTrackHandler->create_pitlane();
-  std::cout << "\033[1;36mTrackbounds loaded for track: "
-            << raceTrackHandler->get_track_name().c_str() << "\033[0m" << std::endl;
-
-  std::vector<ProjPoint> track_left, track_right, pit_left, pit_right;
-  msgs_->track2ls(track, track_left, track_right);
-  msgs_->track2ls(pit, pit_left, pit_right);
-  msgs_->trackbounds2marker_msg(
-    {track_left, track_right, pit_left, pit_right}, this->msg_track_bounds, "Black", "bound");
-  this->pub_track_bounds->publish(this->msg_track_bounds);
 }
 /**
  * @brief write pcd map to file

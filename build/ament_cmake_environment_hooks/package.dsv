@@ -1,4 +1,0 @@
-source;share/tam_pcd_georeferencing/local_setup.bash
-source;share/tam_pcd_georeferencing/local_setup.dsv
-source;share/tam_pcd_georeferencing/local_setup.sh
-source;share/tam_pcd_georeferencing/local_setup.zsh

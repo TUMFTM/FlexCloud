@@ -36,7 +36,6 @@
 #include <visualization_msgs/msg/marker.hpp>
 #include <visualization_msgs/msg/marker_array.hpp>
 
-#include "track_handler_cpp/race_track_handler.hpp"
 #include "utility.hpp"
 #include "visualization.hpp"
 namespace tam::mapping
@@ -60,22 +59,6 @@ public:
    */
   void linestring2marker_msg(
     const std::vector<ProjPoint> & ls, visualization_msgs::msg::MarkerArray & msg,
-    const std::string color, const std::string ns);
-
-  /**
-   * @brief add trackbounds to marker msg
-   * 
-   * @param[in] ls                  - std::vector<std::vector<ProjPoint>>:
-   *                                  vector of trackbounds (left, right, pit...)
-   * @param[in] msg                 - visualization_msgs::msg::MarkerArray:
-   *                                  msg of marker array
-   * @param[in] ns                  - std::string:
-   *                                  namespace of markerarray
-   * @param[in] c                   - std_msgs::msg::ColorRGBA:
-   *                                  color of array
-   */
-  void trackbounds2marker_msg(
-    const std::vector<std::vector<ProjPoint>> & ls, visualization_msgs::msg::MarkerArray & msg,
     const std::string color, const std::string ns);
 
   /**
@@ -111,18 +94,5 @@ public:
   void pcd_map2msg(
     const pcl::PointCloud<pcl::PointXYZI>::Ptr & pcd_map, sensor_msgs::msg::PointCloud2 & msg);
 
-  /**
-   * @brief add trackbounds to linestrings
-   * 
-   * @param[in] tr                  - std::unique_ptr<iac::common::Track>:
-   *                                  pointer to trackhandler 
-   * @param[in] ls_left             - std::vector<ProjPoint>:
-   *                                  left track bound
-   * @param[in] ls_right            - std::vector<ProjPoint>:
-   *                                  right track bound
-   */
-  void track2ls(
-    const std::unique_ptr<iac::common::Track> & tr, std::vector<ProjPoint> & ls_left,
-    std::vector<ProjPoint> & ls_right);
 };
 }  // namespace tam::mapping

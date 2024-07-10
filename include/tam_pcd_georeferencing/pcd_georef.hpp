@@ -124,7 +124,6 @@ private:
   visualization_msgs::msg::MarkerArray msg_traj_rs_markers;
   visualization_msgs::msg::MarkerArray msg_rs_geom_markers_tet;
   visualization_msgs::msg::MarkerArray msg_rs_geom_markers_cps;
-  visualization_msgs::msg::MarkerArray msg_track_bounds;
   sensor_msgs::msg::PointCloud2 msg_pcd_map;
 
   // Publisher
@@ -134,7 +133,6 @@ private:
   rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr pub_traj_rs_markers;
   rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr pub_rs_geom_markers_tet;
   rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr pub_rs_geom_markers_cps;
-  rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr pub_track_bounds;
   rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr pub_pcd_map;
 };
 }  // namespace tam::mapping
