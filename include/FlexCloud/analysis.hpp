@@ -32,7 +32,7 @@
 
 #include "triangulation.hpp"
 #include "utility.hpp"
-namespace tam::mapping
+namespace FlexCloud
 {
 class analysis
 {
@@ -171,4 +171,4 @@ private:
     rclcpp::Node & node, const std::vector<ControlPoint> & cps, const std::string & dir_path,
     const std::string & file_name);
 };
-}  // namespace tam::mapping
+}  // namespace FlexCloud

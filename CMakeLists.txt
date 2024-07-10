@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.8)
-project(tam_pcd_georeferencing)
+project(FlexCloud)
 
 # Default to C++17
 if(NOT CMAKE_CXX_STANDARD)
@@ -45,7 +45,7 @@ add_library(file_io SHARED
 
 target_include_directories(file_io
   PUBLIC
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/tam_pcd_georeferencing>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/FlexCloud>
     $<INSTALL_INTERFACE:include>)
 
 ament_target_dependencies(file_io
@@ -65,7 +65,7 @@ add_library(transform SHARED
 
 target_include_directories(transform
   PUBLIC
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/tam_pcd_georeferencing>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/FlexCloud>
     $<INSTALL_INTERFACE:include>)
 
 ament_target_dependencies(transform
@@ -86,7 +86,7 @@ target_link_libraries(transform
 
 target_include_directories(messages
   PUBLIC
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/tam_pcd_georeferencing>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/FlexCloud>
     $<INSTALL_INTERFACE:include>)
 
 ament_target_dependencies(messages
@@ -107,7 +107,7 @@ add_library(analysis SHARED
 
 target_include_directories(analysis
   PUBLIC
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/tam_pcd_georeferencing>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/FlexCloud>
     $<INSTALL_INTERFACE:include>)
 
 ament_target_dependencies(analysis
@@ -125,7 +125,7 @@ add_executable(pcd_georef
 
 target_include_directories(pcd_georef
   PUBLIC
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/tam_pcd_georeferencing>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/FlexCloud>
     $<INSTALL_INTERFACE:include>)
 
 ament_target_dependencies(pcd_georef

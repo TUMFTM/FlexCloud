@@ -30,10 +30,10 @@
 #include "messages.hpp"
 #include "param_pcd_georef.hpp"
 #include "transform.hpp"
-namespace tam::mapping
+namespace FlexCloud
 {
 /**
- * @brief basic class for tam::mapping::pcd_georef package
+ * @brief basic class for FlexCloud::pcd_georef package
  */
 class pcd_georef : public rclcpp::Node
 {
@@ -135,4 +135,4 @@ private:
   rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr pub_rs_geom_markers_cps;
   rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr pub_pcd_map;
 };
-}  // namespace tam::mapping
+}  // namespace FlexCloud

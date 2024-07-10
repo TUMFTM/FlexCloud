@@ -17,7 +17,7 @@
  */
 
 #include "messages.hpp"
-namespace tam::mapping
+namespace FlexCloud
 {
 /**
  * @brief add linestring to marker msg
@@ -85,4 +85,4 @@ void messages::pcd_map2msg(
   pcl::toROSMsg(*cloud_filtered, msg);
   msg.header.frame_id = "map";
 }
-}  // namespace tam::mapping
+}  // namespace FlexCloud

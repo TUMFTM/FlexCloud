@@ -17,7 +17,7 @@
  */
 
 #include "analysis.hpp"
-namespace tam::mapping
+namespace FlexCloud
 {
 /**
  * @brief write all data relevant for evaluation of trajectory matching
@@ -272,4 +272,4 @@ void analysis::write_cp(
     std::cout << "\033[1;31m!! Unable to open " << file_path << " !!\033[0m" << std::endl;
   }
 }
-}  // namespace tam::mapping
+}  // namespace FlexCloud

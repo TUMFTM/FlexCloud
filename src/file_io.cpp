@@ -17,7 +17,7 @@
  */
 
 #include "file_io.hpp"
-namespace tam::mapping
+namespace FlexCloud
 {
 /**
  * @brief read traj from txt file
@@ -197,4 +197,4 @@ bool file_io::write_pcd_to_path(
   }
   return true;
 }
-}  // namespace tam::mapping
+}  // namespace FlexCloud

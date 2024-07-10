@@ -17,7 +17,7 @@
  */
 
 #include "pcd_georef.hpp"
-namespace tam::mapping
+namespace FlexCloud
 {
 // Constructor
 pcd_georef::pcd_georef(const std::string & name) : Node(name)
@@ -292,7 +292,7 @@ void pcd_georef::evaluation()
               << std::endl;
   }
 }
-}  // namespace tam::mapping
+}  // namespace FlexCloud
 /**
  * @brief initialize package
  */
@@ -300,7 +300,7 @@ int main(int argc, char ** argv)
 {
   // Init
   rclcpp::init(argc, argv);
-  rclcpp::spin(std::make_shared<tam::mapping::pcd_georef>("pcd_georef"));
+  rclcpp::spin(std::make_shared<FlexCloud::pcd_georef>("pcd_georef"));
   rclcpp::shutdown();
   return 0;
 }

@@ -30,7 +30,7 @@
 
 #include "triangulation.hpp"
 #include "utility.hpp"
-namespace tam::mapping
+namespace FlexCloud
 {
 /**
  * @brief initialize empty marker as visualization_msgs
@@ -292,4 +292,4 @@ inline visualization_msgs::msg::MarkerArray triag2marker(
   insert_marker_array(&msg, linestrings2marker(edges, ns, col));
   return msg;
 }
-}  // namespace tam::mapping
+}  // namespace FlexCloud

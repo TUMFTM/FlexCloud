@@ -17,7 +17,7 @@
  */
 
 #include "transform.hpp"
-namespace tam::mapping
+namespace FlexCloud
 {
 /**
  * @brief calculate Umeyama transformation from source and target trajectory
@@ -616,4 +616,4 @@ void transform::prepThreading(size_t num_threads)
     this->currentProgress[i] = 0;
   }
 }
-}  // namespace tam::mapping
+}  // namespace FlexCloud

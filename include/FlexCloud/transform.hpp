@@ -36,7 +36,7 @@
 #include "triangulation.hpp"
 #include "umeyama.hpp"
 #include "utility.hpp"
-namespace tam::mapping
+namespace FlexCloud
 {
 /**
  * @brief class to perform all transformations
@@ -213,4 +213,4 @@ private:
    */
   void prepThreading(size_t num_threads);
 };
-}  // namespace tam::mapping
+}  // namespace FlexCloud
