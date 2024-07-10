@@ -1,4 +1,7 @@
-# flexcloud
+# FlexCloud
+[![Linux](https://img.shields.io/badge/os-linux-blue.svg)](https://www.linux.org/)
+[![Docker](https://badgen.net/badge/icon/docker?icon=docker&label)](https://www.docker.com/)
+[![ROS2humble](https://img.shields.io/badge/ros2-humble-blue.svg)](https://docs.ros.org/en/humble/index.html)
 
 * georeference the created point cloud map from the previous step using the GNSS-information extracted from the rosbag
 * removes accumulated errors within the point cloud map arising from previous steps and transforms the map

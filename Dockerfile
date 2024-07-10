@@ -81,6 +81,4 @@ COPY . /ros_ws/src/flexcloud/
 RUN /bin/bash -c '. /opt/ros/$ROS_DISTRO/setup.bash && \
     colcon build --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=Release --packages-up-to flexcloud'
 
-ENV QT_DEBUG_PLUGINS=1
-
 CMD [ "bash" ]
