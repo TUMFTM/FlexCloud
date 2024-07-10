@@ -1,0 +1,115 @@
+{
+	"configurations" : 
+	[
+		{
+			"directories" : 
+			[
+				{
+					"build" : ".",
+					"hasInstallRule" : true,
+					"jsonFile" : "directory-.-Debug-98f5f714e37e84135ef1.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.12"
+					},
+					"projectIndex" : 0,
+					"source" : ".",
+					"targetIndexes" : 
+					[
+						0,
+						1,
+						2,
+						3,
+						4,
+						5,
+						6
+					]
+				}
+			],
+			"name" : "Debug",
+			"projects" : 
+			[
+				{
+					"directoryIndexes" : 
+					[
+						0
+					],
+					"name" : "tam_pcd_georeferencing",
+					"targetIndexes" : 
+					[
+						0,
+						1,
+						2,
+						3,
+						4,
+						5,
+						6
+					]
+				}
+			],
+			"targets" : 
+			[
+				{
+					"directoryIndex" : 0,
+					"id" : "analysis::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-analysis-Debug-92217bb791e0a0c677dc.json",
+					"name" : "analysis",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "file_io::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-file_io-Debug-1b5342b22ced5129e17b.json",
+					"name" : "file_io",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "messages::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-messages-Debug-c2424e18c5db5717ccae.json",
+					"name" : "messages",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "pcd_georef::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-pcd_georef-Debug-6b109f02d4c46eb14d90.json",
+					"name" : "pcd_georef",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "tam_pcd_georeferencing_uninstall::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-tam_pcd_georeferencing_uninstall-Debug-16fa0faf0db413421ca2.json",
+					"name" : "tam_pcd_georeferencing_uninstall",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "transform::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-transform-Debug-eea4c206a9eaf54d0676.json",
+					"name" : "transform",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "uninstall::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-uninstall-Debug-20fd3c35c79068d99491.json",
+					"name" : "uninstall",
+					"projectIndex" : 0
+				}
+			]
+		}
+	],
+	"kind" : "codemodel",
+	"paths" : 
+	{
+		"build" : "/home/maximilian/Documents/github/FlexCloud/build",
+		"source" : "/home/maximilian/Documents/github/FlexCloud"
+	},
+	"version" : 
+	{
+		"major" : 2,
+		"minor" : 3
+	}
+}

@@ -1,0 +1,29 @@
+/**:
+  ros__parameters:
+    # Registration GPS/Poses
+    dim: 2                            # dimension of transformation - 2D or 3D
+    transform_traj: false             # transform reference trajectory (UTM) or not (already cartesian coordinates)
+    rs_num_controlPoints: 200         # Number of control points for rubber-sheeting
+    stddev_threshold: 0.05            # threshold for maximum standard deviation of lat, lon when using automatic control point selection
+    square_size: [0.1, 0.1]      # Size of enclosing square around trajectories -> percentage added to expansion
+    auto_cp: true                     # Automatically set control points (false: manually select control points -> only possible if traj and posese are correlated in time)
+    exclude_ind: [0]                  # Vector of indices in ascending order that may be excluded when automatically selecting control points
+    shift_ind: [0]                    # manually add control point add indices
+    shift_ind_dist: [0.0]             # distance to original point in lateral direction (left is positive)
+
+    # Pointcloud transformation
+    transform_pcd: false              # transform corresponding point cloud map to laneletmap if osm selected as master (align and rubber-sheet, only 2D)
+    save_ascii: false                 # Safe .pcd file as: true - as ASCII file, false - as binary file
+    use_threading: true               # Activate threading for faster processing
+    num_cores: 10                     # Number of cores used for transforming pcd
+
+    # GPS zero coordinate
+    track: AbuDhabi                      # track identifier for track handler
+    customZeroPoint: false            # only used if transform_traj = TRUE -> false - use first GPS data as zero point, true - set custom zero point with zeroLat/zeroLong
+    zeroLat: 45.61989206965495
+    zeroLon: 9.283415137392435
+    zeroEle: 0.0
+
+    # Analysis Output
+    analysis_output_dir: output       # directory to save output data
+    analysis_traj_matching: true      # Visualize Rubber-Sheeting (true => data is saved in directory to be plotted with python script in ~/analysis)

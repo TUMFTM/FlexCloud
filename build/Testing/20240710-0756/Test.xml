@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Site BuildName="(empty)"
+	BuildStamp="20240710-0756-Experimental"
+	Name="dell"
+	Generator="ctest-3.22.1"
+	CompilerName="/usr/bin/c++"
+	CompilerVersion="11.4.0"
+	OSName="Linux"
+	Hostname="dell"
+	OSRelease="6.5.0-41-generic"
+	OSVersion="#41~22.04.2-Ubuntu SMP PREEMPT_DYNAMIC Mon Jun  3 11:32:55 UTC 2"
+	OSPlatform="x86_64"
+	Is64Bits="1"
+	VendorString="GenuineIntel"
+	VendorID="Intel Corporation"
+	FamilyID="6"
+	ModelID="186"
+	ProcessorCacheSize="24576"
+	NumberOfLogicalCPU="20"
+	NumberOfPhysicalCPU="14"
+	TotalVirtualMemory="30516"
+	TotalPhysicalMemory="15667"
+	LogicalProcessorsPerPhysical="1"
+	ProcessorClockFrequency="4138.43"
+	>
+	<Testing>
+		<StartDateTime>Jul 10 09:56 CEST</StartDateTime>
+		<StartTestTime>1720598186</StartTestTime>
+		<TestList/>
+		<EndDateTime>Jul 10 09:56 CEST</EndDateTime>
+		<EndTestTime>1720598186</EndTestTime>
+		<ElapsedMinutes>0</ElapsedMinutes>
+	</Testing>
+</Site>
