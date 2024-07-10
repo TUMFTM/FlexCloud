@@ -32,7 +32,7 @@
 
 #include "triangulation.hpp"
 #include "utility.hpp"
-namespace FlexCloud
+namespace flexcloud
 {
 class analysis
 {
@@ -171,4 +171,4 @@ private:
     rclcpp::Node & node, const std::vector<ControlPoint> & cps, const std::string & dir_path,
     const std::string & file_name);
 };
-}  // namespace FlexCloud
+}  // namespace flexcloud

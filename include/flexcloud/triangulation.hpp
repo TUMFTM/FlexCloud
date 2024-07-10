@@ -24,7 +24,7 @@
 #include <vector>
 
 #include "utility.hpp"
-namespace FlexCloud
+namespace flexcloud
 {
 /**
  * @brief base class for Rubber-sheet transformation
@@ -790,4 +790,4 @@ Eigen::Matrix4d Delaunay_3D::solve_linear_3d(
     ti(12), ti(13), ti(14), ti(15);
   return trans;
 }
-}  // namespace FlexCloud
+}  // namespace flexcloud

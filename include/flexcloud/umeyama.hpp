@@ -24,7 +24,7 @@
 #include <vector>
 
 #include "utility.hpp"
-namespace FlexCloud
+namespace flexcloud
 {
 /**
  * @brief base class for Umeyama transformation
@@ -265,4 +265,4 @@ Eigen::MatrixXd Umeyama_3D::ls2mat(const std::vector<Eigen::Vector3d> & ls)
   }
   return mat;
 }
-}  // namespace FlexCloud
+}  // namespace flexcloud

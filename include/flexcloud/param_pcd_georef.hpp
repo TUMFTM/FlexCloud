@@ -21,7 +21,7 @@
 #include <rclcpp/rclcpp.hpp>
 #include <string>
 #include <vector>
-namespace FlexCloud
+namespace flexcloud
 {
 
 /**
@@ -78,4 +78,4 @@ void get_params(
   node.declare_parameter<std::string>("analysis_output_dir");
   node.declare_parameter<bool>("analysis_traj_matching");
 }
-}  // namespace FlexCloud
+}  // namespace flexcloud

@@ -38,7 +38,7 @@
 
 #include "utility.hpp"
 #include "visualization.hpp"
-namespace FlexCloud
+namespace flexcloud
 {
 class messages
 {
@@ -95,4 +95,4 @@ public:
     const pcl::PointCloud<pcl::PointXYZI>::Ptr & pcd_map, sensor_msgs::msg::PointCloud2 & msg);
 
 };
-}  // namespace FlexCloud
+}  // namespace flexcloud

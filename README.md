@@ -1,4 +1,4 @@
-# FlexCloud
+# flexcloud
 
 * georeference the created point cloud map from the previous step using the GNSS-information extracted from the rosbag
 * removes accumulated errors within the point cloud map arising from previous steps and transforms the map

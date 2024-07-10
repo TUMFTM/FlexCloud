@@ -34,7 +34,7 @@
 #include <vector>
 
 #include "utility.hpp"
-namespace FlexCloud
+namespace flexcloud
 {
 class file_io
 {
@@ -95,4 +95,4 @@ public:
     rclcpp::Node & node, const std::string & pcd_out_path,
     const pcl::PointCloud<pcl::PointXYZI>::Ptr & pcd_map);
 };
-}  // namespace FlexCloud
+}  // namespace flexcloud
