@@ -31,21 +31,8 @@ from launch_ros.actions import Node
 def generate_launch_description():
     # Define path to config folder
     config = os.path.join(
-        get_package_share_directory("tam_pcd_georeferencing"), "config"
+        get_package_share_directory("flexcloud"), "config"
     )
-
-    config_track_handler = os.path.join(
-        get_package_share_directory("track_handler_cpp"), "config_overwrite/config.yml"
-    )
-    # Set track handler
-    with open(config + "/pcd_georef.param.yaml", "r") as f:
-        doc = yaml.load(f, Loader=yaml.FullLoader)
-        track = doc["/**"]["ros__parameters"]["track"]
-    with open(config_track_handler, "r") as f:
-        doc = yaml.load(f, Loader=yaml.FullLoader)
-        doc["track"] = track
-    with open(config_track_handler, "w") as f:
-        yaml.dump(doc, f)
 
     # Define command line args
     traj_path = DeclareLaunchArgument(
@@ -71,7 +58,7 @@ def generate_launch_description():
     )
 
     pcd_georef_node = Node(
-        package="tam_pcd_georeferencing",
+        package="flexcloud",
         namespace="",
         executable="pcd_georef",
         name="pcd_georef",
