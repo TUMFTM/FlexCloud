@@ -14,41 +14,68 @@ Georeferencing of Point Cloud Maps
 This project enables the georeferencing of an existing point cloud map created only from inertial sensor data (e.g. LiDAR) by the use of the corresponding GNSS data.
 Leveraging the concept of rubber-sheeting from 2D cartography, the tool is also able to account for accumulated errors during map creation and thus rectyfy the map.
 
+<h2>🐋 Installation</h2>
+1. Clone the repository by running
+   ```bash
+   git clone git@github.com:TUMFTM/FlexCloud.git
+   ```
+2. Go to the root directory of the repository
+   ```bash
+   cd FlexCloud/
+   ```
+3. Build the docker image
+   ```bash
+   ./docker/build_docker.sh  
+   ```
+4. Run the container and mount your data by appending the directory containing your data:
+   ```bash
+   ./docker/run_docker.sh /your/local/directory/data
+   ```
+
+Although installation with the provided Docker-Container is recommended, you can also install the package locally (e.g. if you have already install ROS2-Humble).
+To do so, you first have to install the required dependencies:
+* PCL
+* CGAL
+* GeographicLib
+* Eigen3
+If you are struggling with their installation, you can have a look at the process within the [Dockerfile](docker/Dockerfile).
 
 <h2>Usage</h2>
 
-* check parameters for georeferencing in `/config/pcd_georef.param.yaml`
+* set parameters in `/config/pcd_georef.param.yaml`
 
 1. Necessary input parameters:
-   - `traj_path` => path to GNSS trajectory of the vehicle (format: txt-file with lat, lon, ele, lat_stddev, lon_stddev, ele_stddev)
-   - `poses_path` => path to SLAM trajectory of the vehicle (KITTI-format, resulting from the previous step)
-   - `pcd_path` => path to exported pcd map corresponding to poses trajectory (resulting from the previous step)
+   - `traj_path` => path to GNSS/reference trajectory of the vehicle (format: txt-file with `lat, lon, ele, lat_stddev, lon_stddev, ele_stddev` or `x, y, z, x_stddev, y_stddev, z_stddev`, if the reference trajectory is already in local coordinates)
+   - `poses_path` => path to SLAM trajectory of the vehicle (KITTI-format)
+   - `pcd_path` => path to point cloud map corresponding to poses trajectory
    - `pcd_out_path` => path to save the final, georeferenced point cloud map (DEFAULT: /pcd_map_georef.pcd)
 
 2. Start the package
    ```bash
-       ros2 launch tam_pcd_georeferencing pcd_georef.launch.py traj_path:=<path-to-GPS-trajectory> poses_path:=<path-to-SLAM-trajectory>  pcd_path:=<path-to-pcd-map> pcd_out_path:=<path-to-save-pcd-map>
+       ros2 launch flexcloud pcd_georef.launch.py traj_path:=<path-to-ref-trajectory> poses_path:=<path-to-SLAM-trajectory>  pcd_path:=<path-to-pcd-map> pcd_out_path:=<path-to-save-pcd-map>
    ```
 
 3. Optional: Select control points
+   - if your reference trajectory and your SLAM trajectory are not time-synchronized, you can set the parameter `auto_cp` to `false` and select the control points for rubber-sheeting manually.
    - after the trajectories are loaded and the target trajectory is roughly aligned to the master trajectory you are asked in the command window to select control points for the rubber-sheet transformation (the amount of points can be configured in the config file).
    - select the desired points using the `Publish Point` button in RVIZ and follow the instructions in the console.
 
 4. Inspect results
-   - results of the rubber-sheet transformation & the resulting, transformed point cloud map are visualized.
+   - results of the rubber-sheet transformation & the resulting, transformed point cloud map are visualized in RVIZ.
    - adjust the parameters if the results are satisfying
    - see table for explanation of single topics
-   - run the script described in [Analysis](doc/analysis.md)
+   - run the script described in [Analysis](doc/analysis.md) to get a quantitative evaluation fo the georeferencing
+   - the results are automatically saved in the current working directory within the folder `output/traj_matching/`
    - Quick usage (the directory output/traj_matching is automatically generated at the current working directory):
    ```bash
-       plot_traj_matching.py /path/to/output/traj_matching/
+       python3 plot_traj_matching.py /path/to/output/traj_matching/
    ```
 
 | Topic | Description |
 | ----------- | ----------- |
-| `/tam/traj/traj_markers` | GNSS Trajectory |
-| `/tam/traj/traj_SLAM_markers` | original SLAM rajectory |
-| `/tam/traj/traj_align_markers` | SLAM trajectory aligned to GPS with [Umeyama](https://web.stanford.edu/class/cs273/refs/umeyama.pdf) transformation |
+| `/tam/traj/traj_markers` | reference trajectory |
+| `/tam/traj/traj_SLAM_markers` | original SLAM trajectory |
+| `/tam/traj/traj_align_markers` | SLAM trajectory aligned to reference with [Umeyama](https://web.stanford.edu/class/cs273/refs/umeyama.pdf) transformation |
 | `/tam/traj/traj_rs_markers` | SLAM trajectory after [rubber-sheet](https://www.tandfonline.com/doi/abs/10.1559/152304085783915135)-transformation |
 | `/tam/rs/geom_markers_cps` | control points used for rubber-sheeting |
 | `/tam/rs/geom_markers_triag` | triangulation used for rubber-sheeting |
@@ -64,3 +91,17 @@ Detailed documentation of the modules can be found below.
 1. [Geometric Alignment](doc/alignment.md)
 
 2. [Analysis](doc/analysis.md)
+
+<h2>📇 Contact Info </h2>
+
+[Maximilian Leitenstern](mailto:maxi.leitenstern@tum.de),
+Institute of Automotive Technology,
+School of Engineering and Design,
+Technical University of Munich,
+85748 Garching,
+Germany
+
+<h2>📃 Additional Information </h2>
+   
+This tool forms a further development of the [FlexMap_Fusion](https://github.com/TUMFTM/FlexMap_Fusion)-package that focuses solely on the georeferencing of pointcloud map in 2D and 3D.
+It follow the concepts presented with the publication [FlexMap Fusion: Georeferencing and Automated Conflation of HD Maps with OpenStreetMap](https://arxiv.org/abs/2404.10879)
