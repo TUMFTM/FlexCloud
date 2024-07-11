@@ -8,6 +8,7 @@ Georeferencing of Point Cloud Maps
 [![Docker](https://badgen.net/badge/icon/docker?icon=docker&label)](https://www.docker.com/)
 [![ROS2humble](https://img.shields.io/badge/ros2-humble-blue.svg)](https://docs.ros.org/en/humble/index.html)
 
+<img src="viz.gif" width="600"/>
 </div>
 
 <h2>Overview</h2>
@@ -37,7 +38,7 @@ To do so, you first have to install the required dependencies:
 * PCL
 * CGAL
 * GeographicLib
-* Eigen3
+* Eigen3 \
 If you are struggling with their installation, you can have a look at the process within the [Dockerfile](docker/Dockerfile).
 
 <h2> 🔨 Usage</h2>
