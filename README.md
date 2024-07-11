@@ -8,7 +8,7 @@ Georeferencing of Point Cloud Maps
 [![Docker](https://badgen.net/badge/icon/docker?icon=docker&label)](https://www.docker.com/)
 [![ROS2humble](https://img.shields.io/badge/ros2-humble-blue.svg)](https://docs.ros.org/en/humble/index.html)
 
-<img src="doc/viz.gif" width="600"/>
+<img src="doc/viz.gif" width="800"/>
 </div>
 
 <h2>Overview</h2>
