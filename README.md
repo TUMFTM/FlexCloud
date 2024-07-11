@@ -13,7 +13,7 @@ Georeferencing of Point Cloud Maps
 
 <h2>Overview</h2>
 This project enables the georeferencing of an existing point cloud map created only from inertial sensor data (e.g. LiDAR) by the use of the corresponding GNSS data.
-Leveraging the concept of rubber-sheeting from 2D cartography, the tool is also able to account for accumulated errors during map creation and thus rectyfy the map.
+Leveraging the concept of rubber-sheeting from cartography, the tool is also able to account for accumulated errors during map creation and thus rectyfy the map.
 
 <h2>🐋 Installation</h2>
 
@@ -140,14 +140,17 @@ Detailed documentation of the modules can be found below.
 </details>
 
 
-<h2>📇 Contact Info </h2>
+<h2>📇 Developers </h2>
 
-[Maximilian Leitenstern](mailto:maxi.leitenstern@tum.de),
+- [Maximilian Leitenstern](mailto:maxi.leitenstern@tum.de),
 Institute of Automotive Technology,
 School of Engineering and Design,
 Technical University of Munich,
 85748 Garching,
 Germany
+\
+- Marko Alten (student research project) \
+- Christian Bolea-Schaser (student research project)
 
 <h2>📃 Additional Information </h2>
    
