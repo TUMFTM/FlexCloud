@@ -17,21 +17,21 @@ Leveraging the concept of rubber-sheeting from 2D cartography, the tool is also 
 
 <h2>🐋 Installation</h2>
 1. Clone the repository by running
-   ```bash
-   git clone git@github.com:TUMFTM/FlexCloud.git
-   ```
+```bash
+git clone git@github.com:TUMFTM/FlexCloud.git
+```
 2. Go to the root directory of the repository
-   ```bash
-   cd FlexCloud/
-   ```
+```bash
+cd FlexCloud/
+```
 3. Build the docker image
-   ```bash
-   ./docker/build_docker.sh  
-   ```
+```bash
+./docker/build_docker.sh  
+```
 4. Run the container and mount your data by appending the directory containing your data:
-   ```bash
-   ./docker/run_docker.sh /your/local/directory/data
-   ```
+```bash
+./docker/run_docker.sh /your/local/directory/data
+```
 
 Although installation with the provided Docker-Container is recommended, you can also install the package locally (e.g. if you have already install ROS2-Humble).
 To do so, you first have to install the required dependencies:
@@ -53,7 +53,7 @@ If you are struggling with their installation, you can have a look at the proces
 
 2. Start the package
    ```bash
-       ros2 launch flexcloud pcd_georef.launch.py traj_path:=<path-to-ref-trajectory> poses_path:=<path-to-SLAM-trajectory>  pcd_path:=<path-to-pcd-map> pcd_out_path:=<path-to-save-pcd-map>
+   ros2 launch flexcloud pcd_georef.launch.py traj_path:=<path-to-ref-trajectory> poses_path:=<path-to-SLAM-trajectory>  pcd_path:=<path-to-pcd-map> pcd_out_path:=<path-to-save-pcd-map>
    ```
    To use the provided test data (only trajectories, no application on point cloud map -> set parameter `transform_pcd` to `false`)
    ```bash
