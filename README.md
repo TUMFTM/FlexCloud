@@ -16,6 +16,7 @@ This project enables the georeferencing of an existing point cloud map created o
 Leveraging the concept of rubber-sheeting from 2D cartography, the tool is also able to account for accumulated errors during map creation and thus rectyfy the map.
 
 <h2>🐋 Installation</h2>
+
 1. Clone the repository by running
 ```bash
 git clone git@github.com:TUMFTM/FlexCloud.git
