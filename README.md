@@ -148,8 +148,7 @@ School of Engineering and Design,
 Technical University of Munich,
 85748 Garching,
 Germany
-\
-- Marko Alten (student research project) \
+- Marko Alten (student research project)
 - Christian Bolea-Schaser (student research project)
 
 <h2>📃 Additional Information </h2>
