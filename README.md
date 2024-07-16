@@ -69,7 +69,7 @@ If you are struggling with their installation, you can have a look at the proces
    To use the provided test data (only trajectories, no application on point cloud map -> set parameter `transform_pcd` to `false`)
 
    ```bash
-   cd FlexCloud/
+   cd flexcloud/
    ros2 launch flexcloud pcd_georef.launch.py traj_path:=test/poseData.txt poses_path:=test/poses_map.txt 
    ```
 
