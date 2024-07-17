@@ -35,12 +35,14 @@ cd FlexCloud/
 ./docker/build_docker.sh  
 ```
 
+You can also download built version of the docker images from [Dockerhub](https://hub.docker.com/repository/docker/mleitenstern/flexcloud/tags).
+
 4. Run the container and mount your data by appending the directory containing your data:
 
 ```bash
 ./docker/run_docker.sh /your/local/directory/data
 ```
-
+Note that you have to change the image name within the script, if you downloaded the docker image from Dockerhub in the previous step.
 Although installation with the provided Docker-Container is recommended, you can also install the package locally (e.g. if you have already install ROS2-Humble).
 To do so, you first have to install the required dependencies:
 
