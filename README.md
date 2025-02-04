@@ -172,7 +172,18 @@ Germany
 * Marko Alten (student research project)
 * Christian Bolea-Schaser (student research project)
 
-<h2>📃 Additional Information </h2>
+<h2>📃 Citation </h2>
 
-This tool forms a further development of the [FlexMap_Fusion](https://github.com/TUMFTM/FlexMap_Fusion)-package that focuses solely on the georeferencing of pointcloud map in 2D and 3D.
-It follow the concepts presented with the publication [FlexMap Fusion: Georeferencing and Automated Conflation of HD Maps with OpenStreetMap](https://arxiv.org/abs/2404.10879)
+If you use this repository for any academic work, please consider citing our paper (preprint):
+
+```bibtex
+@misc{leitenstern2025flexcloud,
+      title={FlexCloud: Direct, Modular Georeferencing and Drift-Correction of Point Cloud Maps}, 
+      author={Maximilian Leitenstern and Marko Alten and Christian Bolea-Schaser and Dominik Kulmer and Marcel Weinmann and Markus Lienkamp},
+      year={2025},
+      eprint={2502.00395},
+      archivePrefix={arXiv},
+      primaryClass={cs.RO},
+      url={https://arxiv.org/abs/2502.00395}, 
+}
+```
