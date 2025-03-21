@@ -11,19 +11,21 @@ if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
 endif()
 
 # find dependencies
-find_package(ament_cmake REQUIRED)
-find_package(yaml-cpp REQUIRED)
-find_package(pcl_conversions REQUIRED)
 find_package(Eigen3 REQUIRED)
 find_package(PCL REQUIRED)
 find_package(CGAL REQUIRED)
 find_package(GeographicLib REQUIRED)
 
-# Fetch rerun_sdk
+# Fetch rerun_sdk and yaml-cpp
 include(FetchContent)
 set(BUILD_SHARED_LIBS ON CACHE BOOL "Build rerun_sdk as a shared library" FORCE)
 FetchContent_Declare(rerun_sdk URL https://github.com/rerun-io/rerun/releases/latest/download/rerun_cpp_sdk.zip)
-FetchContent_MakeAvailable(rerun_sdk)
+FetchContent_Declare(
+  yaml-cpp
+  GIT_REPOSITORY https://github.com/jbeder/yaml-cpp.git
+  GIT_TAG 0.8.0
+)
+FetchContent_MakeAvailable(rerun_sdk yaml-cpp)
 
 include_directories(SYSTEM
   ${PCL_INCLUDE_DIRS}
@@ -43,10 +45,8 @@ target_include_directories(file_io
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/flexcloud>
     $<INSTALL_INTERFACE:include>)
 
-ament_target_dependencies(file_io
-  Eigen3
-  GeographicLib)
 target_link_libraries(file_io
+  Eigen3::Eigen
   ${PCL_LIBRARIES}
   ${GeographicLib_LIBRARIES})
 
@@ -62,9 +62,8 @@ target_include_directories(transform
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/flexcloud>
     $<INSTALL_INTERFACE:include>)
 
-ament_target_dependencies(transform
-  Eigen3)
 target_link_libraries(transform
+  Eigen3::Eigen
   ${PCL_LIBRARIES}
   CGAL::CGAL)
 
@@ -81,8 +80,6 @@ target_include_directories(visualization
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/flexcloud>
     $<INSTALL_INTERFACE:include>)
 
-ament_target_dependencies(visualization
-  pcl_conversions)
 target_link_libraries(visualization
   ${PCL_LIBRARIES}
   rerun_sdk)
@@ -100,8 +97,8 @@ target_include_directories(analysis
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/flexcloud>
     $<INSTALL_INTERFACE:include>)
 
-ament_target_dependencies(analysis
-  Eigen3)
+target_link_libraries(analysis
+  Eigen3::Eigen)
 
 install(
   DIRECTORY config
@@ -141,7 +138,7 @@ target_include_directories(pcd_georef
     $<INSTALL_INTERFACE:include>)
 
 target_link_libraries(pcd_georef
-  ${YAML_CPP_LIBRARIES}
+  yaml-cpp::yaml-cpp
   file_io
   transform
   visualization
@@ -150,5 +147,3 @@ target_link_libraries(pcd_georef
 install(TARGETS
   pcd_georef
   DESTINATION pcd_georef/${PROJECT_NAME})
-  
-ament_package()

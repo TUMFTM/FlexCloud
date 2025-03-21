@@ -6,7 +6,6 @@ Georeferencing of Point Cloud Maps
 
 [![Linux](https://img.shields.io/badge/os-linux-blue.svg)](https://www.linux.org/)
 [![Docker](https://badgen.net/badge/icon/docker?icon=docker&label)](https://www.docker.com/)
-[![ROS2humble](https://img.shields.io/badge/ros2-humble-blue.svg)](https://docs.ros.org/en/humble/index.html)
 
 <img src="doc/viz.gif" width="800"/>
 </div>
@@ -43,7 +42,7 @@ You can also download built version of the docker images from [Dockerhub](https:
 ./docker/run_docker.sh /your/local/directory/data
 ```
 Note that you have to change the image name within the script, if you downloaded the docker image from Dockerhub in the previous step.
-Although installation with the provided Docker-Container is recommended, you can also install the package locally (e.g. if you have already install ROS2-Humble).
+Although installation with the provided Docker-Container is recommended, you can also install the package locally.
 To do so, you first have to install the required dependencies:
 
 * PCL
@@ -54,18 +53,19 @@ If you are struggling with their installation, you can have a look at the proces
 
 <h2> 🔨 Usage</h2>
 
-* set parameters in `/config/pcd_georef.param.yaml`
+* set parameters in `/config/pcd_georef.yaml`
 
 1. Necessary input parameters:
+   * `config_path` => path to [config-file](./config/pcd_georef.yaml)
    * `traj_path` => path to GNSS/reference trajectory of the vehicle (format: txt-file with `lat, lon, ele, lat_stddev, lon_stddev, ele_stddev` or `x, y, z, x_stddev, y_stddev, z_stddev`, if the reference trajectory is already in local coordinates)
    * `poses_path` => path to SLAM trajectory of the vehicle (KITTI-format)
-   * `pcd_path` => path to point cloud map corresponding to poses trajectory
-   * `pcd_out_path` => path to save the final, georeferenced point cloud map (DEFAULT: /pcd_map_georef.pcd)
+   * `pcd_path` => path to point cloud map corresponding to poses trajectory (OPTIONAL - only if `transform_pcd` set)
+   * `pcd_out_path` => path to save the final, georeferenced point cloud map (OPTIONAL - only if `transform_pcd` set - DEFAULT: /pcd_map_georef.pcd)
 
 2. Start the package
 
    ```bash
-   ros2 launch flexcloud pcd_georef.launch.py traj_path:=<path-to-ref-trajectory> poses_path:=<path-to-SLAM-trajectory>  pcd_path:=<path-to-pcd-map> pcd_out_path:=<path-to-save-pcd-map>
+   Usage: ./install/flexcloud/pcd_georef/flexcloud/pcd_georef <config_path> <reference_path> <slam_path> <(optional) pcd_path> <(optional) pcd_out_path>
    ```
 
    To use the provided test data (only trajectories, no application on point cloud map -> set parameter `transform_pcd` to `false`)
@@ -76,7 +76,7 @@ If you are struggling with their installation, you can have a look at the proces
    ```
 
 3. Inspect results
-   * results of the rubber-sheet transformation & the resulting, transformed point cloud map are visualized in Rerun.
+   * results of the rubber-sheet transformation & the resulting, transformed point cloud map are visualized in [Rerun](https://rerun.io/).
    * adjust the parameters if the results are satisfying
    * see table for explanation of single topics
    * follow the instructions below (Content->Analysis) to get a quantitative evaluation fo the georeferencing

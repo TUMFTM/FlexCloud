@@ -21,13 +21,11 @@
 #include <pcl/filters/approximate_voxel_grid.h>
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
-#include <pcl_conversions/pcl_conversions.h>
 
 #include <Eigen/Core>
 #include <algorithm>
 #include <iostream>
 #include <memory>
-#include <rclcpp/rclcpp.hpp>
 #include <rerun.hpp>
 #include <string>
 #include <unordered_set>
