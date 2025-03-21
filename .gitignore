@@ -2,3 +2,5 @@
 install
 build
 log
+output
+*.pcd

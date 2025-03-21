@@ -17,6 +17,7 @@
  */
 
 #include "pcd_georef.hpp"
+
 namespace flexcloud
 {
 // Constructor
@@ -42,9 +43,6 @@ pcd_georef::pcd_georef(const std::string & name) : Node(name)
   // Check if all paths contain data
   if (!paths_valid()) return;
 
-  // Initialize publishers
-  initialize_publisher();
-
   // Load trajectory, SLAM poses, ref map and download osm-data
   load_data();
 
@@ -52,13 +50,13 @@ pcd_georef::pcd_georef(const std::string & name) : Node(name)
   align_traj();
 
   // Publish trajectory to select control Points for Rubber-Sheeting
-  publish_traj();
+  visualize_traj();
 
   // Perform rubber-sheeting to further transform traj and map
   rubber_sheeting();
 
   // Publish rubber-sheeting data
-  publish_rs();
+  visualize_rs();
 
   // Write pcd to file
   write_map();
@@ -106,29 +104,6 @@ bool pcd_georef::paths_valid()
   }
 
   return allValid;
-}
-/**
- * @brief initialize publishers for visualization in RVIZ
- */
-void pcd_georef::initialize_publisher()
-{
-  rclcpp::QoS durable_qos_pub{1};
-  durable_qos_pub.transient_local();
-
-  this->pub_traj_markers = this->create_publisher<visualization_msgs::msg::MarkerArray>(
-    "tam/traj/traj_markers", durable_qos_pub);
-  this->pub_traj_SLAM_markers = this->create_publisher<visualization_msgs::msg::MarkerArray>(
-    "tam/traj/traj_SLAM_markers", durable_qos_pub);
-  this->pub_traj_align_markers = this->create_publisher<visualization_msgs::msg::MarkerArray>(
-    "tam/traj/traj_align_markers", durable_qos_pub);
-  this->pub_traj_rs_markers = this->create_publisher<visualization_msgs::msg::MarkerArray>(
-    "tam/traj/traj_rs_markers", durable_qos_pub);
-  this->pub_rs_geom_markers_tet = this->create_publisher<visualization_msgs::msg::MarkerArray>(
-    "tam/rs/geom_markers_triag", durable_qos_pub);
-  this->pub_rs_geom_markers_cps = this->create_publisher<visualization_msgs::msg::MarkerArray>(
-    "tam/rs/geom_markers_cps", durable_qos_pub);
-  this->pub_pcd_map =
-    this->create_publisher<sensor_msgs::msg::PointCloud2>("tam/rs/pcd_map", durable_qos_pub);
 }
 /**
  * @brief load trajectories and pcd map
@@ -186,19 +161,15 @@ void pcd_georef::align_traj()
 /**
  * @brief publish resulting trajectories from alignment
  */
-void pcd_georef::publish_traj()
+void pcd_georef::visualize_traj()
 {
-  // Trajectory
-  msgs_->linestring2marker_msg(this->traj_proj, this->msg_traj_markers, "WEBGreen", "Trajectory");
-  // Poses
-  msgs_->linestring2marker_msg(this->traj_SLAM, this->msg_traj_SLAM_markers, "Black", "Poses");
-  msgs_->linestring2marker_msg(
-    this->traj_align, this->msg_traj_align_markers, "WEBBlueDark", "Poses_align");
+  // Spawn a rerun stream
+  this->rec_.spawn().exit_on_failure();
 
-  // Publish messages on topics
-  this->pub_traj_markers->publish(this->msg_traj_markers);
-  this->pub_traj_SLAM_markers->publish(this->msg_traj_SLAM_markers);
-  this->pub_traj_align_markers->publish(this->msg_traj_align_markers);
+  // // Trajectory
+  viz_->linestring2rerun(this->traj_proj, this->rec_, "WEBGreen", "Trajectory");
+  viz_->linestring2rerun(this->traj_SLAM, this->rec_, "Black", "Trajectory_SLAM");
+  viz_->linestring2rerun(this->traj_align, this->rec_, "WEBBlueDark", "Trajectory_align");
 }
 /**
  * @brief apply automatic or manual rubber-sheet trafo and transform map
@@ -236,25 +207,15 @@ void pcd_georef::rubber_sheeting()
 /**
  * @brief publish results from rubber-sheeting including transformed map
  */
-void pcd_georef::publish_rs()
+void pcd_georef::visualize_rs()
 {
-  // Create messages
-  // RS Geometry - Tetrahedra
-  msgs_->rs2marker_msg_tet(this->triag_, this->msg_rs_geom_markers_tet);
-  this->pub_rs_geom_markers_tet->publish(this->msg_rs_geom_markers_tet);
-  // RS Geometry - control point shift
-  msgs_->rs2marker_msg_cps(this->control_points, this->msg_rs_geom_markers_cps);
-  this->pub_rs_geom_markers_cps->publish(this->msg_rs_geom_markers_cps);
-
-  // Transformed trajectory
-  msgs_->linestring2marker_msg(
-    this->traj_rs, this->msg_traj_rs_markers, "WEBBlueBright", "traj_rubber_sheeted");
-  this->pub_traj_rs_markers->publish(this->msg_traj_rs_markers);
+  // Visualize in rerun
+  this->viz_->rs2rerun(this->control_points, this->triag_, this->rec_, "Blue");
+  this->viz_->linestring2rerun(this->traj_rs, this->rec_, "Orange", "Trajectory_RS");
 
   // PCD map
   if (this->get_parameter("transform_pcd").as_bool()) {
-    msgs_->pcd_map2msg(this->pcd_map, this->msg_pcd_map);
-    this->pub_pcd_map->publish(this->msg_pcd_map);
+    this->viz_->pc_map2rerun(this->pcd_map, this->rec_);
   }
 }
 /**

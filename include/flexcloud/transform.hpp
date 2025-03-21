@@ -25,11 +25,9 @@
 
 #include <Eigen/Dense>
 #include <algorithm>
-#include <geometry_msgs/msg/point_stamped.hpp>
 #include <iostream>
 #include <memory>
 #include <rclcpp/rclcpp.hpp>
-#include <rclcpp/wait_for_message.hpp>
 #include <string>
 #include <vector>
 

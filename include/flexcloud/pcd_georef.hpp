@@ -24,10 +24,11 @@
 #include <string>
 #include <utility>
 #include <vector>
+#include <rerun.hpp>
 
 #include "analysis.hpp"
 #include "file_io.hpp"
-#include "messages.hpp"
+#include "visualization.hpp"
 #include "param_pcd_georef.hpp"
 #include "transform.hpp"
 namespace flexcloud
@@ -40,14 +41,7 @@ class pcd_georef : public rclcpp::Node
 public:
   // pcd_georef package constructor
   explicit pcd_georef(const std::string & name);
-  // pcd_georef package destructor
-  ~pcd_georef() {}
   // Functions
-  /**
-   * @brief initialize publishers for visualization in RVIZ
-   */
-  void initialize_publisher();
-
   /**
    * @brief check if all necessary paths exist
    */
@@ -66,7 +60,7 @@ public:
   /**
    * @brief publish resulting trajectories from alignment
    */
-  void publish_traj();
+  void visualize_traj();
 
   /**
    * @brief apply automatic or manual rubber-sheet trafo and transform map
@@ -75,9 +69,9 @@ public:
   void rubber_sheeting();
 
   /**
-   * @brief publish results from rubber-sheeting including transformed map
+   * @brief visualize results from rubber-sheeting including transformed map
    */
-  void publish_rs();
+  void visualize_rs();
 
   /**
    * @brief write pcd map to file
@@ -100,7 +94,7 @@ private:
   // Module classes
   std::shared_ptr<file_io> file_io_;
   transform transform_;
-  std::shared_ptr<messages> msgs_;
+  std::shared_ptr<visualization> viz_;
   std::shared_ptr<analysis> analysis_;
 
   // Objects
@@ -117,22 +111,7 @@ private:
   std::shared_ptr<Umeyama> umeyama_;
   std::shared_ptr<Delaunay> triag_;
 
-  // Messages
-  visualization_msgs::msg::MarkerArray msg_traj_markers;
-  visualization_msgs::msg::MarkerArray msg_traj_SLAM_markers;
-  visualization_msgs::msg::MarkerArray msg_traj_align_markers;
-  visualization_msgs::msg::MarkerArray msg_traj_rs_markers;
-  visualization_msgs::msg::MarkerArray msg_rs_geom_markers_tet;
-  visualization_msgs::msg::MarkerArray msg_rs_geom_markers_cps;
-  sensor_msgs::msg::PointCloud2 msg_pcd_map;
-
-  // Publisher
-  rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr pub_traj_markers;
-  rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr pub_traj_SLAM_markers;
-  rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr pub_traj_align_markers;
-  rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr pub_traj_rs_markers;
-  rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr pub_rs_geom_markers_tet;
-  rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr pub_rs_geom_markers_cps;
-  rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr pub_pcd_map;
+  // Visualization
+  rerun::RecordingStream rec_ = rerun::RecordingStream("flexcloud");
 };
 }  // namespace flexcloud

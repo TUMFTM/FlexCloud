@@ -1,39 +1,34 @@
 cmake_minimum_required(VERSION 3.8)
 project(flexcloud)
 
-# Default to C++17
+# Default to C++20
 if(NOT CMAKE_CXX_STANDARD)
-  set(CMAKE_CXX_STANDARD 17)
+  set(CMAKE_CXX_STANDARD 20)
 endif()
 
 if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   add_compile_options(-Wall -Wextra -Wpedantic -Wno-unused-local-typedefs)
 endif()
 
-add_definitions("-DBOOST_ALLOW_DEPRECATED_HEADERS")
-add_definitions("-DBOOST_BIND_GLOBAL_PLACEHOLDERS")
-
-# intermediate triangulation viewer
-add_definitions(-DCGAL_USE_BASIC_VIEWER)
-
 # find dependencies
 find_package(ament_cmake REQUIRED)
-find_package(geometry_msgs REQUIRED)
 find_package(pcl_conversions REQUIRED)
-find_package(visualization_msgs REQUIRED)
-find_package(sensor_msgs REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(Eigen3 REQUIRED)
 find_package(PCL REQUIRED)
 find_package(CGAL REQUIRED)
 find_package(GeographicLib REQUIRED)
 
+# Fetch rerun_sdk
+include(FetchContent)
+set(BUILD_SHARED_LIBS ON CACHE BOOL "Build rerun_sdk as a shared library" FORCE)
+FetchContent_Declare(rerun_sdk URL https://github.com/rerun-io/rerun/releases/latest/download/rerun_cpp_sdk.zip)
+FetchContent_MakeAvailable(rerun_sdk)
+
 include_directories(SYSTEM
   ${PCL_INCLUDE_DIRS}
   ${GeographicLib_INCLUDE_DIRS}
 )
-
-file(MAKE_DIRECTORY lib)
 
 ####################################
 # file_in
@@ -69,7 +64,6 @@ target_include_directories(transform
     $<INSTALL_INTERFACE:include>)
 
 ament_target_dependencies(transform
-  geometry_msgs
   rclcpp
   Eigen3)
 target_link_libraries(transform
@@ -80,22 +74,21 @@ target_link_libraries(transform
 # messages
 ####################################
 
-  add_library(messages SHARED
-  src/messages.cpp
+  add_library(visualization SHARED
+  src/visualization.cpp
 )
 
-target_include_directories(messages
+target_include_directories(visualization
   PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/flexcloud>
     $<INSTALL_INTERFACE:include>)
 
-ament_target_dependencies(messages
+ament_target_dependencies(visualization
   rclcpp
-  geometry_msgs
-  visualization_msgs
   pcl_conversions)
-target_link_libraries(messages
-  ${PCL_LIBRARIES})
+target_link_libraries(visualization
+  ${PCL_LIBRARIES}
+  rerun_sdk)
 
 ####################################
 # analysis
@@ -129,13 +122,11 @@ target_include_directories(pcd_georef
     $<INSTALL_INTERFACE:include>)
 
 ament_target_dependencies(pcd_georef
-  rclcpp
-  geometry_msgs
-  visualization_msgs)
+  rclcpp)
 target_link_libraries(pcd_georef
   file_io
   transform
-  messages
+  visualization
   analysis)
 
 ####################################
@@ -150,7 +141,7 @@ install(
 install(TARGETS
   file_io
   transform
-  messages
+  visualization
   analysis
   DESTINATION lib
 )

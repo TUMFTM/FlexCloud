@@ -61,7 +61,6 @@ void get_params(
   node.declare_parameter<std::vector<double>>("square_size");
   node.declare_parameter<bool>("transform_pcd");
   node.declare_parameter<bool>("save_ascii");
-  node.declare_parameter<bool>("auto_cp");
   node.declare_parameter<std::vector<int64_t>>("exclude_ind");
   node.declare_parameter<std::vector<int64_t>>("shift_ind");
   node.declare_parameter<std::vector<double>>("shift_ind_dist");
