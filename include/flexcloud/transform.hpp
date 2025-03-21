@@ -27,13 +27,13 @@
 #include <algorithm>
 #include <iostream>
 #include <memory>
-#include <rclcpp/rclcpp.hpp>
 #include <string>
 #include <vector>
 
 #include "triangulation.hpp"
 #include "umeyama.hpp"
 #include "utility.hpp"
+#include "param_pcd_georef.hpp"
 namespace flexcloud
 {
 /**
@@ -59,7 +59,7 @@ public:
    *                                  true if function executed
    */
   bool get_umeyama(
-    rclcpp::Node & node, const std::vector<ProjPoint> & src, const std::vector<ProjPoint> & target,
+    FlexCloudConfig & config, const std::vector<ProjPoint> & src, const std::vector<ProjPoint> & target,
     const std::shared_ptr<Umeyama> & umeyama);
 
   /**
@@ -77,7 +77,7 @@ public:
    *                                  true if function executed
    */
   bool select_control_points(
-    rclcpp::Node & node, const std::vector<ProjPoint> & src, const std::vector<ProjPoint> & target,
+    FlexCloudConfig & config, const std::vector<ProjPoint> & src, const std::vector<ProjPoint> & target,
     std::vector<ControlPoint> & cps);
 
   /**
@@ -95,7 +95,7 @@ public:
    *                                  true if function executed
    */
   bool get_rubber_sheeting(
-    rclcpp::Node & node, const std::vector<ProjPoint> & target, std::vector<ControlPoint> & cps,
+    FlexCloudConfig & config, const std::vector<ProjPoint> & target, std::vector<ControlPoint> & cps,
     const std::shared_ptr<Delaunay> triag);
 
   /**
@@ -145,7 +145,7 @@ public:
    *                                  true if function executed
    */
   bool transform_pcd(
-    rclcpp::Node & node, const std::shared_ptr<Umeyama> & umeyama,
+    const std::shared_ptr<Umeyama> & umeyama,
     const std::shared_ptr<Delaunay> & triag, const pcl::PointCloud<pcl::PointXYZI>::Ptr & pcm);
 
   /**
@@ -165,7 +165,7 @@ public:
    *                                  true if function executed
    */
   bool transform_pcd(
-    rclcpp::Node & node, const std::shared_ptr<Umeyama> & umeyama,
+    const std::shared_ptr<Umeyama> & umeyama,
     const std::shared_ptr<Delaunay> & triag, pcl::PointCloud<pcl::PointXYZI>::Ptr & pcm,
     const int num_cores);
 

@@ -25,11 +25,11 @@
 #include <fstream>
 #include <iostream>
 #include <memory>
-#include <rclcpp/rclcpp.hpp>
 #include <string>
 #include <utility>
 #include <vector>
 
+#include "param_pcd_georef.hpp"
 #include "triangulation.hpp"
 #include "utility.hpp"
 namespace flexcloud
@@ -62,10 +62,11 @@ public:
    *                                  difference of rubber-sheeted trajectory to source trajectory
    */
   bool traj_matching(
-    rclcpp::Node & node, const std::vector<ProjPoint> & src, const std::vector<ProjPoint> & target,
-    const std::vector<ProjPoint> & target_al, const std::vector<ProjPoint> & target_rs,
-    const std::shared_ptr<Delaunay> & triag, const std::vector<ControlPoint> & cps,
-    std::vector<double> & diff_al, std::vector<double> & diff_rs);
+    FlexCloudConfig & config, const std::vector<ProjPoint> & src,
+    const std::vector<ProjPoint> & target, const std::vector<ProjPoint> & target_al,
+    const std::vector<ProjPoint> & target_rs, const std::shared_ptr<Delaunay> & triag,
+    const std::vector<ControlPoint> & cps, std::vector<double> & diff_al,
+    std::vector<double> & diff_rs);
 
 private:
   /**
@@ -81,8 +82,8 @@ private:
    *                                  difference between trajectories (euclidean distance)
    */
   void calc_diff(
-    rclcpp::Node & node, const std::vector<ProjPoint> & src, const std::vector<ProjPoint> & target,
-    std::vector<double> & diff);
+    FlexCloudConfig & config, const std::vector<ProjPoint> & src,
+    const std::vector<ProjPoint> & target, std::vector<double> & diff);
 
   /**
    * @brief create directory from name
@@ -92,7 +93,7 @@ private:
    * @param[in] dir_path            - std::string:
    *                                  name of output directory
    */
-  void create_output_dir(rclcpp::Node & node, const std::string & dir_path);
+  void create_output_dir(FlexCloudConfig & config, const std::string & dir_path);
 
   /**
    * @brief write a linestring to .txt file
@@ -107,7 +108,7 @@ private:
    *                                  name of output file
    */
   void write_ls(
-    rclcpp::Node & node, const std::vector<ProjPoint> & ls, const std::string & dir_path,
+    FlexCloudConfig & config, const std::vector<ProjPoint> & ls, const std::string & dir_path,
     const std::string & file_name);
   /**
    * @brief write a linestrings to .txt file
@@ -122,7 +123,7 @@ private:
    *                                  name of output file
    */
   void write_lss(
-    rclcpp::Node & node, const std::vector<std::vector<ProjPoint>> & lss,
+    FlexCloudConfig & config, const std::vector<std::vector<ProjPoint>> & lss,
     const std::string & dir_path, const std::string & file_name);
   /**
    * @brief write a double vector to .txt file
@@ -137,7 +138,7 @@ private:
    *                                  name of output file
    */
   void write_double_vec(
-    rclcpp::Node & node, const std::vector<double> & vec, const std::string & dir_path,
+    FlexCloudConfig & config, const std::vector<double> & vec, const std::string & dir_path,
     const std::string & file_name);
 
   /**
@@ -153,7 +154,7 @@ private:
    *                                  name of output file
    */
   void write_triag(
-    rclcpp::Node & node, const std::shared_ptr<Delaunay> & triag, const std::string & dir_path,
+    FlexCloudConfig & config, const std::shared_ptr<Delaunay> & triag, const std::string & dir_path,
     const std::string & file_name);
   /**
    * @brief write controlpoints to file
@@ -168,7 +169,7 @@ private:
    *                                  name of output file
    */
   void write_cp(
-    rclcpp::Node & node, const std::vector<ControlPoint> & cps, const std::string & dir_path,
+    FlexCloudConfig & config, const std::vector<ControlPoint> & cps, const std::string & dir_path,
     const std::string & file_name);
 };
 }  // namespace flexcloud

@@ -42,11 +42,14 @@ void visualization::linestring2rerun(
     positions.push_back(rerun::Position3D(p.pos_(0), p.pos_(1), p.pos_(2)));
   }
   std::vector<rerun::LineStrip3D> lines;
+  std::vector<rerun::components::Text> labels;
   for (size_t i = 0; i < positions.size() - 1; ++i) {
     lines.emplace_back(rerun::LineStrip3D({positions[i].xyz, positions[i + 1].xyz}));
+    labels.emplace_back(rerun::components::Text(std::to_string(i)));
   }
   stream.log(
-    name.c_str(), rerun::LineStrips3D(lines).with_colors(rerun::Color(col.r, col.g, col.b)));
+    name.c_str(),
+    rerun::LineStrips3D(lines).with_colors(rerun::Color(col.r, col.g, col.b)).with_labels(labels));
 }
 /**
  * @brief visualize rubber-sheeting geometry in rerun
@@ -96,8 +99,9 @@ void visualization::rs2rerun(
     lines.emplace_back(rerun::LineStrip3D({positions_edges[i].xyz, positions_edges[i + 1].xyz}));
   }
   stream.log(
-    "tetrahedra",
-    rerun::LineStrips3D(lines).with_colors(rerun::Color(col_edges.r, col_edges.g, col_edges.b)));
+    "tetrahedra", rerun::LineStrips3D(lines)
+                    .with_colors(rerun::Color(col_edges.r, col_edges.g, col_edges.b))
+                    .with_radii({0.3f}));
 }
 /**
  * @brief visualize point cloud map in rerun

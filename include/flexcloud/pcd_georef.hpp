@@ -20,27 +20,28 @@
 
 #include <iostream>
 #include <memory>
-#include <rclcpp/rclcpp.hpp>
+#include <rerun.hpp>
 #include <string>
 #include <utility>
 #include <vector>
-#include <rerun.hpp>
 
 #include "analysis.hpp"
 #include "file_io.hpp"
-#include "visualization.hpp"
 #include "param_pcd_georef.hpp"
 #include "transform.hpp"
+#include "visualization.hpp"
 namespace flexcloud
 {
 /**
  * @brief basic class for flexcloud::pcd_georef package
  */
-class pcd_georef : public rclcpp::Node
+class pcd_georef
 {
 public:
   // pcd_georef package constructor
-  explicit pcd_georef(const std::string & name);
+  pcd_georef(
+    const std::string & config_path, const std::string & ref_path, const std::string & slam_path,
+    const std::string & pcd_path, const std::string & pcd_out_path);
   // Functions
   /**
    * @brief check if all necessary paths exist
@@ -84,12 +85,8 @@ public:
   void evaluation();
 
 private:
-  std::string node_name;
-  // User parameters
-  std::string traj_path;
-  std::string poses_path;
-  std::string pcd_path;
-  std::string pcd_out_path;
+  // Config
+  FlexCloudConfig config_{};
 
   // Module classes
   std::shared_ptr<file_io> file_io_;

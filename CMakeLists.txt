@@ -12,8 +12,8 @@ endif()
 
 # find dependencies
 find_package(ament_cmake REQUIRED)
+find_package(yaml-cpp REQUIRED)
 find_package(pcl_conversions REQUIRED)
-find_package(rclcpp REQUIRED)
 find_package(Eigen3 REQUIRED)
 find_package(PCL REQUIRED)
 find_package(CGAL REQUIRED)
@@ -44,7 +44,6 @@ target_include_directories(file_io
     $<INSTALL_INTERFACE:include>)
 
 ament_target_dependencies(file_io
-  rclcpp
   Eigen3
   GeographicLib)
 target_link_libraries(file_io
@@ -64,7 +63,6 @@ target_include_directories(transform
     $<INSTALL_INTERFACE:include>)
 
 ament_target_dependencies(transform
-  rclcpp
   Eigen3)
 target_link_libraries(transform
   ${PCL_LIBRARIES}
@@ -84,7 +82,6 @@ target_include_directories(visualization
     $<INSTALL_INTERFACE:include>)
 
 ament_target_dependencies(visualization
-  rclcpp
   pcl_conversions)
 target_link_libraries(visualization
   ${PCL_LIBRARIES}
@@ -104,8 +101,30 @@ target_include_directories(analysis
     $<INSTALL_INTERFACE:include>)
 
 ament_target_dependencies(analysis
-  rclcpp
   Eigen3)
+
+install(
+  DIRECTORY config
+  DESTINATION share/${PROJECT_NAME}
+)
+
+install(
+  DIRECTORY include/
+  DESTINATION include
+)
+
+install(TARGETS
+  file_io
+  transform
+  visualization
+  analysis
+  EXPORT export_${PROJECT_NAME}
+  DESTINATION lib/${PROJECT_NAME}
+  LIBRARY DESTINATION lib
+  ARCHIVE DESTINATION lib
+  RUNTIME DESTINATION bin
+  INCLUDES DESTINATION include
+)
 
 ####################################
 # Main Executable
@@ -121,38 +140,15 @@ target_include_directories(pcd_georef
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/flexcloud>
     $<INSTALL_INTERFACE:include>)
 
-ament_target_dependencies(pcd_georef
-  rclcpp)
 target_link_libraries(pcd_georef
+  ${YAML_CPP_LIBRARIES}
   file_io
   transform
   visualization
   analysis)
 
-####################################
-# Building
-####################################
-
-install(
-  DIRECTORY lib/
-  DESTINATION lib
-)
-
-install(TARGETS
-  file_io
-  transform
-  visualization
-  analysis
-  DESTINATION lib
-)
-
 install(TARGETS
   pcd_georef
-  DESTINATION lib/${PROJECT_NAME})
-
-install(DIRECTORY
-  config
-  launch
-  DESTINATION share/${PROJECT_NAME})
-
+  DESTINATION pcd_georef/${PROJECT_NAME})
+  
 ament_package()

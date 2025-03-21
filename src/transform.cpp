@@ -34,10 +34,10 @@ namespace flexcloud
  *                                  true if function executed
  */
 bool transform::get_umeyama(
-  rclcpp::Node & node, const std::vector<ProjPoint> & src, const std::vector<ProjPoint> & target,
-  const std::shared_ptr<Umeyama> & umeyama)
+  FlexCloudConfig & config, const std::vector<ProjPoint> & src,
+  const std::vector<ProjPoint> & target, const std::shared_ptr<Umeyama> & umeyama)
 {
-  (void)node;
+  (void)config;
   // Convert vector to Eigen format
   std::vector<Eigen::Vector3d> sr, tar;
   sr.clear();
@@ -70,31 +70,20 @@ bool transform::get_umeyama(
  *                                  true if function executed
  */
 bool transform::select_control_points(
-  rclcpp::Node & node, const std::vector<ProjPoint> & src, const std::vector<ProjPoint> & target,
-  std::vector<ControlPoint> & cps)
+  FlexCloudConfig & config, const std::vector<ProjPoint> & src,
+  const std::vector<ProjPoint> & target, std::vector<ControlPoint> & cps)
 {
   // Get node name
-  const std::string node_name = node.get_parameter("node_name").as_string();
   cps.clear();
-
-  // Get amount of control points from user input
-  const int num_control_points = node.get_parameter("rs_num_controlPoints").as_int();
-  // Get threshold for standard deviation of GPS points
-  const double stddev_threshold = node.get_parameter("stddev_threshold").as_double();
 
   std::vector<Eigen::Vector3d> cp_inter;
   int cp_count = 0;
 
-  std::vector<int64_t> exclude_ind = node.get_parameter("exclude_ind").as_integer_array();
-  // Manually shift GPS point from config file
-  std::vector<int64_t> shift_ind = node.get_parameter("shift_ind").as_integer_array();
-  std::vector<double> shift_ind_dist = node.get_parameter("shift_ind_dist").as_double_array();
-  if (shift_ind.size() != shift_ind_dist.size()) {
-    RCLCPP_ERROR(
-      rclcpp::get_logger(node_name), "Sizes of shift_ind and shift_ind_dist do not match!");
+  if (config.shift_ind.size() != config.shift_ind_dist.size()) {
+    std::cout << "Sizes of shift_ind and shift_ind_dist do not match!" << std::endl;
   }
   // Code for when use_gpControlPoints is true
-  int gps_distance = static_cast<int>(target.size()) / num_control_points;
+  int gps_distance = static_cast<int>(target.size()) / config.rs_num_controlPoints;
   int idx = 0;
 
   std::cout << "\033[33m~~~~~> LiDAR got " << target.size() << " poses!\033[0m" << std::endl;
@@ -104,9 +93,9 @@ bool transform::select_control_points(
   while (idx < static_cast<int>(target.size())) {
     // Chech if index is within manually excluded indices
     bool use_ind = true;
-    if (!exclude_ind.empty() || static_cast<int>(exclude_ind.size()) % 2 != 0) {
-      for (int i = 0; i < static_cast<int>(exclude_ind.size()) / 2; ++i) {
-        if (idx >= exclude_ind[2 * i] && idx <= exclude_ind[2 * i + 1]) {
+    if (!config.exclude_ind.empty() || static_cast<int>(config.exclude_ind.size()) % 2 != 0) {
+      for (int i = 0; i < static_cast<int>(config.exclude_ind.size()) / 2; ++i) {
+        if (idx >= config.exclude_ind[2 * i] && idx <= config.exclude_ind[2 * i + 1]) {
           use_ind = false;
         }
       }
@@ -114,13 +103,13 @@ bool transform::select_control_points(
     /* Point in GPS data -check if standard deviations are within threshold, otherwise skip
      * point*/
     if (
-      sqrt(pow(src[idx].stddev_(0), 2) + pow(src[idx].stddev_(1), 2)) <= stddev_threshold &&
+      sqrt(pow(src[idx].stddev_(0), 2) + pow(src[idx].stddev_(1), 2)) <= config.stddev_threshold &&
       use_ind) {
       // Shift reference point if in config file
-      if (std::find(shift_ind.begin(), shift_ind.end(), idx) != shift_ind.end()) {
-        const int dist_ind = std::find(shift_ind.begin(), shift_ind.end(), idx) - shift_ind.begin();
+      if (std::find(config.shift_ind.begin(), config.shift_ind.end(), idx) != config.shift_ind.end()) {
+        const int dist_ind = std::find(config.shift_ind.begin(), config.shift_ind.end(), idx) - config.shift_ind.begin();
         std::cout << "\033[33m~~~~~> Shift reference point at index: " << idx << "with distance "
-                  << shift_ind_dist[dist_ind] << "\033[0m" << std::endl;
+                  << config.shift_ind_dist[dist_ind] << "\033[0m" << std::endl;
         // Create vincinity = pair of preceding and following point on linestring
         std::vector<Eigen::Vector3d> vincinity{};
         Eigen::Vector3d current = src[idx].pos_;
@@ -139,7 +128,7 @@ bool transform::select_control_points(
         }
         // shift point laterally by specified distance
         Eigen::Vector2d perpendicular;
-        double realOffset = shift_ind_dist[dist_ind];
+        double realOffset = config.shift_ind_dist[dist_ind];
         const auto epsilon{1.e-5};
         if (idx == 0) {
           perpendicular = Eigen::Vector2d(vincinity.back()(0), vincinity.back()(1));
@@ -149,7 +138,7 @@ bool transform::select_control_points(
           perpendicular = Eigen::Vector2d(vincinity.back()(0), vincinity.back()(1)).normalized() +
                           Eigen::Vector2d(vincinity.front()(0), vincinity.front()(1)).normalized();
           auto minussin2 = perpendicular.norm() / 2;
-          realOffset = (minussin2 > epsilon) ? shift_ind_dist[dist_ind] / minussin2 : 0;
+          realOffset = (minussin2 > epsilon) ? config.shift_ind_dist[dist_ind] / minussin2 : 0;
         }
 
         Eigen::Vector2d direction(-perpendicular(1), perpendicular(0));
@@ -196,12 +185,10 @@ bool transform::select_control_points(
  *                                  true if function executed
  */
 bool transform::get_rubber_sheeting(
-  rclcpp::Node & node, const std::vector<ProjPoint> & target, std::vector<ControlPoint> & cps,
+  FlexCloudConfig & config, const std::vector<ProjPoint> & target, std::vector<ControlPoint> & cps,
   const std::shared_ptr<Delaunay> triag)
 {
-  // Calculate enclosing rectangle or cube
-  const std::vector<double> size = node.get_parameter("square_size").as_double_array();
-  triag->enclosingControlPoints(size, target, cps);
+  triag->enclosingControlPoints(config.square_size, target, cps);
   // Insertion of control points into triangulation structure
   for (unsigned i = 0; i < cps.size(); i++) {
     triag->insertPoint(cps[i].get_target_point());
@@ -279,10 +266,9 @@ bool transform::transform_ls_rs(
  *                                  true if function executed
  */
 bool transform::transform_pcd(
-  rclcpp::Node & node, const std::shared_ptr<Umeyama> & umeyama,
+  const std::shared_ptr<Umeyama> & umeyama,
   const std::shared_ptr<Delaunay> & triag, const pcl::PointCloud<pcl::PointXYZI>::Ptr & pcm)
 {
-  (void)node;
   // Check if the input pointer is valid
   if (!pcm) {
     return false;
@@ -332,11 +318,10 @@ bool transform::transform_pcd(
  *                                  true if function executed
  */
 bool transform::transform_pcd(
-  rclcpp::Node & node, const std::shared_ptr<Umeyama> & umeyama,
+  const std::shared_ptr<Umeyama> & umeyama,
   const std::shared_ptr<Delaunay> & triag, pcl::PointCloud<pcl::PointXYZI>::Ptr & pcm,
   const int num_cores)
 {
-  (void)node;
   // Let's run threading
   int num_max_cores = std::thread::hardware_concurrency();
   size_t num_threads = 0;

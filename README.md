@@ -75,13 +75,8 @@ If you are struggling with their installation, you can have a look at the proces
    ros2 launch flexcloud pcd_georef.launch.py traj_path:=test/poseData.txt poses_path:=test/poses_map.txt 
    ```
 
-3. Optional: Select control points
-   * if your reference trajectory and your SLAM trajectory are not time-synchronized, you can set the parameter `auto_cp` to `false` and select the control points for rubber-sheeting manually.
-   * after the trajectories are loaded and the target trajectory is roughly aligned to the master trajectory you are asked in the command window to select control points for the rubber-sheet transformation (the amount of points can be configured in the config file).
-   * select the desired points using the `Publish Point` button in RVIZ and follow the instructions in the console.
-
-4. Inspect results
-   * results of the rubber-sheet transformation & the resulting, transformed point cloud map are visualized in RVIZ.
+3. Inspect results
+   * results of the rubber-sheet transformation & the resulting, transformed point cloud map are visualized in Rerun.
    * adjust the parameters if the results are satisfying
    * see table for explanation of single topics
    * follow the instructions below (Content->Analysis) to get a quantitative evaluation fo the georeferencing
@@ -94,14 +89,13 @@ If you are struggling with their installation, you can have a look at the proces
 
 | Topic | Description |
 | ----------- | ----------- |
-| `/tam/traj/traj_markers` | reference trajectory |
-| `/tam/traj/traj_SLAM_markers` | original SLAM trajectory |
-| `/tam/traj/traj_align_markers` | SLAM trajectory aligned to reference with [Umeyama](https://web.stanford.edu/class/cs273/refs/umeyama.pdf) transformation |
-| `/tam/traj/traj_rs_markers` | SLAM trajectory after [rubber-sheet](https://www.tandfonline.com/doi/abs/10.1559/152304085783915135)-transformation |
-| `/tam/rs/geom_markers_cps` | control points used for rubber-sheeting |
-| `/tam/rs/geom_markers_triag` | triangulation used for rubber-sheeting |
-| `/clicked_point` | last 2 selected points by user to indicate chosen control point |
-| `/tam/rs/pcd_map` | transformed point cloud map |
+| `Trajectory` | reference trajectory |
+| `Trajectory_SLAM` | original SLAM trajectory |
+| `Trajectory_align` | SLAM trajectory aligned to reference with [Umeyama](https://web.stanford.edu/class/cs273/refs/umeyama.pdf) transformation |
+| `Trajectory_RS` | SLAM trajectory after [rubber-sheet](https://www.tandfonline.com/doi/abs/10.1559/152304085783915135)-transformation |
+| `control_points` | control points used for rubber-sheeting |
+| `tetrahedra` | triangulation used for rubber-sheeting |
+| `pcd_map` | transformed point cloud map |
 
 * Inspect results and modify parameters if desired.
 

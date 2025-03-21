@@ -15,6 +15,7 @@ RUN apt-get update && apt-get install -y -q --no-install-recommends \
     python3-pip \
     python3-tk \
     git \
+    yaml-cpp \
     cmake \
     make \
     apt-utils \
@@ -23,7 +24,6 @@ RUN apt-get update && apt-get install -y -q --no-install-recommends \
     ros-${ROS_DISTRO}-rmw-cyclonedds-cpp \
     ros-${ROS_DISTRO}-pcl-conversions \
     ros-${ROS_DISTRO}-pcl-ros \
-    ros-${ROS_DISTRO}-rviz2 \
     && rm -rf /var/lib/apt/lists/*
 
 # GeographicLib
