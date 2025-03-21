@@ -1,5 +1,4 @@
-ARG ROS_DISTRO=humble
-FROM ros:${ROS_DISTRO}
+FROM ubuntu:22.04
 
 ENV DEBIAN_FRONTEND=noninteractive
 
@@ -20,11 +19,23 @@ RUN apt-get update && apt-get install -y -q --no-install-recommends \
     apt-utils \
     libpcl-dev \
     libcgal-dev \
-    ros-${ROS_DISTRO}-rmw-cyclonedds-cpp \
-    ros-${ROS_DISTRO}-pcl-conversions \
-    ros-${ROS_DISTRO}-pcl-ros \
-    ros-${ROS_DISTRO}-rviz2 \
+    libclang-dev \
+    libatk-bridge2.0 \
+    libfontconfig1-dev \
+    libfreetype6-dev \
+    libglib2.0-dev \
+    libgtk-3-dev \
+    libssl-dev \
+    libxcb-render0-dev \
+    libxcb-shape0-dev \
+    libxcb-xfixes0-dev \
+    libxkbcommon-dev \
+    patchelf \
+    mesa-vulkan-drivers \
     && rm -rf /var/lib/apt/lists/*
+
+# Rerun viewer
+RUN pip3 install rerun_sdk
 
 # GeographicLib
 RUN bash -c "wget https://github.com/geographiclib/geographiclib/archive/refs/tags/v2.3.tar.gz && \
@@ -38,19 +49,12 @@ RUN rm v2.3.tar.gz
 # Get geoid dataset from GeographicLib
 RUN geographiclib-get-geoids good
 
-ENV RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
+WORKDIR /dev_ws
 
-WORKDIR /ros_ws
-
-COPY . /ros_ws/src/flexcloud/
+COPY . /dev_ws/src/flexcloud/
 
 # Install flexcloud
-RUN /bin/bash -c '. /opt/ros/$ROS_DISTRO/setup.bash && \
-    colcon build --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=Release'
+RUN /bin/bash -c 'cmake -S /dev_ws/src/flexcloud -B /dev_ws/build && \
+    cmake --build /dev_ws/build -j 10'
 
-# Set entrypoint by sourcing overlay workspace
-RUN echo '#!/bin/bash\nset -e\n\n# setup ros environment\nsource "/opt/ros/$ROS_DISTRO/setup.bash"\n. /ros_ws/install/setup.bash\nexec "$@"' > /ros_entrypoint.sh && \
-    chmod +x /ros_entrypoint.sh
-
-ENTRYPOINT ["/ros_entrypoint.sh"]
 CMD [ "bash" ]

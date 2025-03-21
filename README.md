@@ -6,7 +6,6 @@ Georeferencing of Point Cloud Maps
 
 [![Linux](https://img.shields.io/badge/os-linux-blue.svg)](https://www.linux.org/)
 [![Docker](https://badgen.net/badge/icon/docker?icon=docker&label)](https://www.docker.com/)
-[![ROS2humble](https://img.shields.io/badge/ros2-humble-blue.svg)](https://docs.ros.org/en/humble/index.html)
 
 <img src="doc/viz.gif" width="800"/>
 </div>
@@ -14,6 +13,8 @@ Georeferencing of Point Cloud Maps
 <h2>Overview</h2>
 This project enables the georeferencing of an existing point cloud map created only from inertial sensor data (e.g. LiDAR) by the use of the corresponding GNSS data.
 Leveraging the concept of rubber-sheeting from cartography, the tool is also able to account for accumulated errors during map creation and thus rectyfy the map.
+
+![image](doc/flowchart.png)
 
 <h2>🐋 Installation</h2>
 
@@ -43,7 +44,7 @@ You can also download built version of the docker images from [Dockerhub](https:
 ./docker/run_docker.sh /your/local/directory/data
 ```
 Note that you have to change the image name within the script, if you downloaded the docker image from Dockerhub in the previous step.
-Although installation with the provided Docker-Container is recommended, you can also install the package locally (e.g. if you have already install ROS2-Humble).
+Although installation with the provided Docker-Container is recommended, you can also install the package locally.
 To do so, you first have to install the required dependencies:
 
 * PCL
@@ -54,34 +55,37 @@ If you are struggling with their installation, you can have a look at the proces
 
 <h2> 🔨 Usage</h2>
 
-* set parameters in `/config/pcd_georef.param.yaml`
+* set parameters in `/config/pcd_georef.yaml`
 
 1. Necessary input parameters:
+   * `config_path` => path to [config-file](./config/pcd_georef.yaml)
    * `traj_path` => path to GNSS/reference trajectory of the vehicle (format: txt-file with `lat, lon, ele, lat_stddev, lon_stddev, ele_stddev` or `x, y, z, x_stddev, y_stddev, z_stddev`, if the reference trajectory is already in local coordinates)
    * `poses_path` => path to SLAM trajectory of the vehicle (KITTI-format)
-   * `pcd_path` => path to point cloud map corresponding to poses trajectory
-   * `pcd_out_path` => path to save the final, georeferenced point cloud map (DEFAULT: /pcd_map_georef.pcd)
+   * `pcd_path` => path to point cloud map corresponding to poses trajectory (OPTIONAL - only if `transform_pcd` set)
+   * `pcd_out_path` => path to save the final, georeferenced point cloud map (OPTIONAL - only if `transform_pcd` set - DEFAULT: /pcd_map_georef.pcd)
 
 2. Start the package
 
    ```bash
-   ros2 launch flexcloud pcd_georef.launch.py traj_path:=<path-to-ref-trajectory> poses_path:=<path-to-SLAM-trajectory>  pcd_path:=<path-to-pcd-map> pcd_out_path:=<path-to-save-pcd-map>
+   Usage: ./build/pcd_georef <config_path> <reference_path> <slam_path> <(optional) pcd_path> <(optional) pcd_out_path>
    ```
 
    To use the provided test data (only trajectories, no application on point cloud map -> set parameter `transform_pcd` to `false`)
 
    ```bash
    cd flexcloud/
-   ros2 launch flexcloud pcd_georef.launch.py traj_path:=test/poseData.txt poses_path:=test/poses_map.txt 
+   ./build/pcd_georef src/flexcloud/config/pcd_georef.yaml src/flexcloud/test/poseData.txt src/flexcloud/test/poses_map.txt 
    ```
 
-3. Optional: Select control points
-   * if your reference trajectory and your SLAM trajectory are not time-synchronized, you can set the parameter `auto_cp` to `false` and select the control points for rubber-sheeting manually.
-   * after the trajectories are loaded and the target trajectory is roughly aligned to the master trajectory you are asked in the command window to select control points for the rubber-sheet transformation (the amount of points can be configured in the config file).
-   * select the desired points using the `Publish Point` button in RVIZ and follow the instructions in the console.
+3. Inspect results
+   * results of the rubber-sheet transformation & the resulting, transformed point cloud map are visualized in [Rerun](https://rerun.io/).
+   * just launch your own rerun viewer instance and you will be able to see the different geometries (see below)
+   * you can also use the rerun viewer of the docker container:
 
-4. Inspect results
-   * results of the rubber-sheet transformation & the resulting, transformed point cloud map are visualized in RVIZ.
+   ```bash
+   docker exec <container-name> rerun
+   ```
+
    * adjust the parameters if the results are satisfying
    * see table for explanation of single topics
    * follow the instructions below (Content->Analysis) to get a quantitative evaluation fo the georeferencing
@@ -92,16 +96,15 @@ If you are struggling with their installation, you can have a look at the proces
        python3 plot_traj_matching.py /path/to/output/traj_matching/
    ```
 
-| Topic | Description |
+| Type | Description |
 | ----------- | ----------- |
-| `/tam/traj/traj_markers` | reference trajectory |
-| `/tam/traj/traj_SLAM_markers` | original SLAM trajectory |
-| `/tam/traj/traj_align_markers` | SLAM trajectory aligned to reference with [Umeyama](https://web.stanford.edu/class/cs273/refs/umeyama.pdf) transformation |
-| `/tam/traj/traj_rs_markers` | SLAM trajectory after [rubber-sheet](https://www.tandfonline.com/doi/abs/10.1559/152304085783915135)-transformation |
-| `/tam/rs/geom_markers_cps` | control points used for rubber-sheeting |
-| `/tam/rs/geom_markers_triag` | triangulation used for rubber-sheeting |
-| `/clicked_point` | last 2 selected points by user to indicate chosen control point |
-| `/tam/rs/pcd_map` | transformed point cloud map |
+| `Trajectory` | reference trajectory |
+| `Trajectory_SLAM` | original SLAM trajectory |
+| `Trajectory_align` | SLAM trajectory aligned to reference with [Umeyama](https://web.stanford.edu/class/cs273/refs/umeyama.pdf) transformation |
+| `Trajectory_RS` | SLAM trajectory after [rubber-sheet](https://www.tandfonline.com/doi/abs/10.1559/152304085783915135)-transformation |
+| `control_points` | control points used for rubber-sheeting |
+| `tetrahedra` | triangulation used for rubber-sheeting |
+| `pcd_map` | transformed point cloud map |
 
 * Inspect results and modify parameters if desired.
 

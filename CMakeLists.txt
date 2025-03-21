@@ -1,39 +1,37 @@
 cmake_minimum_required(VERSION 3.8)
 project(flexcloud)
 
-# Default to C++17
+# Default to C++20
 if(NOT CMAKE_CXX_STANDARD)
-  set(CMAKE_CXX_STANDARD 17)
+  set(CMAKE_CXX_STANDARD 20)
 endif()
+set(CMAKE_BUILD_TYPE Release)
 
 if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   add_compile_options(-Wall -Wextra -Wpedantic -Wno-unused-local-typedefs)
 endif()
 
-add_definitions("-DBOOST_ALLOW_DEPRECATED_HEADERS")
-add_definitions("-DBOOST_BIND_GLOBAL_PLACEHOLDERS")
-
-# intermediate triangulation viewer
-add_definitions(-DCGAL_USE_BASIC_VIEWER)
-
 # find dependencies
-find_package(ament_cmake REQUIRED)
-find_package(geometry_msgs REQUIRED)
-find_package(pcl_conversions REQUIRED)
-find_package(visualization_msgs REQUIRED)
-find_package(sensor_msgs REQUIRED)
-find_package(rclcpp REQUIRED)
 find_package(Eigen3 REQUIRED)
 find_package(PCL REQUIRED)
 find_package(CGAL REQUIRED)
 find_package(GeographicLib REQUIRED)
 
+# Fetch rerun_sdk and yaml-cpp
+include(FetchContent)
+set(BUILD_SHARED_LIBS ON CACHE BOOL "Build rerun_sdk as a shared library" FORCE)
+FetchContent_Declare(rerun_sdk URL https://github.com/rerun-io/rerun/releases/latest/download/rerun_cpp_sdk.zip)
+FetchContent_Declare(
+  yaml-cpp
+  GIT_REPOSITORY https://github.com/jbeder/yaml-cpp.git
+  GIT_TAG 0.8.0
+)
+FetchContent_MakeAvailable(rerun_sdk yaml-cpp)
+
 include_directories(SYSTEM
   ${PCL_INCLUDE_DIRS}
   ${GeographicLib_INCLUDE_DIRS}
 )
-
-file(MAKE_DIRECTORY lib)
 
 ####################################
 # file_in
@@ -48,11 +46,8 @@ target_include_directories(file_io
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/flexcloud>
     $<INSTALL_INTERFACE:include>)
 
-ament_target_dependencies(file_io
-  rclcpp
-  Eigen3
-  GeographicLib)
 target_link_libraries(file_io
+  Eigen3::Eigen
   ${PCL_LIBRARIES}
   ${GeographicLib_LIBRARIES})
 
@@ -68,11 +63,8 @@ target_include_directories(transform
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/flexcloud>
     $<INSTALL_INTERFACE:include>)
 
-ament_target_dependencies(transform
-  geometry_msgs
-  rclcpp
-  Eigen3)
 target_link_libraries(transform
+  Eigen3::Eigen
   ${PCL_LIBRARIES}
   CGAL::CGAL)
 
@@ -80,22 +72,18 @@ target_link_libraries(transform
 # messages
 ####################################
 
-  add_library(messages SHARED
-  src/messages.cpp
+  add_library(visualization SHARED
+  src/visualization.cpp
 )
 
-target_include_directories(messages
+target_include_directories(visualization
   PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/flexcloud>
     $<INSTALL_INTERFACE:include>)
 
-ament_target_dependencies(messages
-  rclcpp
-  geometry_msgs
-  visualization_msgs
-  pcl_conversions)
-target_link_libraries(messages
-  ${PCL_LIBRARIES})
+target_link_libraries(visualization
+  ${PCL_LIBRARIES}
+  rerun_sdk)
 
 ####################################
 # analysis
@@ -110,9 +98,31 @@ target_include_directories(analysis
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/flexcloud>
     $<INSTALL_INTERFACE:include>)
 
-ament_target_dependencies(analysis
-  rclcpp
-  Eigen3)
+target_link_libraries(analysis
+  Eigen3::Eigen)
+
+install(
+  DIRECTORY config
+  DESTINATION share/${PROJECT_NAME}
+)
+
+install(
+  DIRECTORY include/
+  DESTINATION include
+)
+
+install(TARGETS
+  file_io
+  transform
+  visualization
+  analysis
+  EXPORT export_${PROJECT_NAME}
+  DESTINATION lib/${PROJECT_NAME}
+  LIBRARY DESTINATION lib
+  ARCHIVE DESTINATION lib
+  RUNTIME DESTINATION bin
+  INCLUDES DESTINATION include
+)
 
 ####################################
 # Main Executable
@@ -128,40 +138,13 @@ target_include_directories(pcd_georef
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/flexcloud>
     $<INSTALL_INTERFACE:include>)
 
-ament_target_dependencies(pcd_georef
-  rclcpp
-  geometry_msgs
-  visualization_msgs)
 target_link_libraries(pcd_georef
+  yaml-cpp::yaml-cpp
   file_io
   transform
-  messages
+  visualization
   analysis)
-
-####################################
-# Building
-####################################
-
-install(
-  DIRECTORY lib/
-  DESTINATION lib
-)
-
-install(TARGETS
-  file_io
-  transform
-  messages
-  analysis
-  DESTINATION lib
-)
 
 install(TARGETS
   pcd_georef
-  DESTINATION lib/${PROJECT_NAME})
-
-install(DIRECTORY
-  config
-  launch
-  DESTINATION share/${PROJECT_NAME})
-
-ament_package()
+  DESTINATION pcd_georef/${PROJECT_NAME})

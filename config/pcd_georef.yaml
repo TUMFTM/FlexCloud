@@ -1,0 +1,20 @@
+# Trajectory matching
+dim: 3                            # dimension of transformation - 2 (2D) or 3 (3D)
+transform_traj: false             # transform reference trajectory from lat/lon to local coordinates (ENU) or not (already cartesian coordinates)
+rs_num_controlPoints: 10         # Number of control points for rubber-sheeting
+stddev_threshold: 0.05            # threshold for maximum standard deviation of reference trajectory when using automatic control point selection
+square_size: [0.1, 0.1, 10.0]     # Size of enclosing square around trajectories -> 2D vector for 2D, 3D vector for 3D transformation. Variables define the percentage that's added to the expansion of the reference trajectory (e.g. square_size[1] = 0.1 -> expansion of square in x-direction = 1.1 * (x_max - x_min))
+exclude_ind: [0]                  # Vector of indices in ascending order that may be excluded when automatically selecting control points (e.g. [50, 60] -> indices 50 - 60 are skipped during control point selection; vector length must be dividable by 2)
+shift_ind: [0]                    # shift given control point at index by distance specified in shift_ind_dist
+shift_ind_dist: [0.0]             # distance to shift given control point at index defined in shift_ind (shift applied to reference trajectory coordinates of control point in lateral direction (2D) - left is positive)
+# Pointcloud transformation
+transform_pcd: true              # transform corresponding point cloud map to poses - requires pcd_path as input
+use_threading: true               # Activate threading for faster processing
+num_cores: 10                     # Number of cores used for transforming pcd using multithreading
+# GPS zero coordinate
+customZeroPoint: false            # only used if transform_traj = TRUE -> false - use first GPS data as zero point, true - set custom zero point with zeroLat/zeroLong
+zeroPoint: [0.0, 0.0, 0.0]             # custom zero point in lat/lon/ele
+
+# Analysis Output
+analysis_output_dir: output       # directory to save output data
+analysis_traj_matching: true      # Visualize Rubber-Sheeting (true => data is saved in directory to be plotted with python script in ~/analysis)

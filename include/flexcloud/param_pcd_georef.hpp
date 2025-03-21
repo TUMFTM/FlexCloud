@@ -18,64 +18,34 @@
 
 #pragma once
 
-#include <rclcpp/rclcpp.hpp>
 #include <string>
 #include <vector>
 namespace flexcloud
 {
-
-/**
- * @brief declare ros parameters from yaml file
- * 
- * @param[in] node                  - rclcpp::Node:
- *                                    reference to node 
- * @param[in] traj_path             - std::string:
- *                                    path to GNSS trajectory
- * @param[in] poses_path            - std::string:
- *                                    path to SLAM trajectory
- * @param[in] pcd_path              - std::string:
- *                                    path to pcd
- * @param[in] pcd_out_path          - std::string:
- *                                    path to write resulting pcd
- */
-void get_params(
-  rclcpp::Node & node, std::string & traj_path, std::string & poses_path, std::string & pcd_path,
-  std::string & pcd_out_path)
+struct FlexCloudConfig
 {
-  // Get parameters from command line and param file
-  // Paths => command line arguments (default in launch file)
-  node.declare_parameter<std::string>("traj_path");
-  node.declare_parameter<std::string>("poses_path");
-  node.declare_parameter<std::string>("pcd_path");
-  node.declare_parameter<std::string>("pcd_out_path");
-  node.get_parameter("traj_path", traj_path);
-  node.get_parameter("poses_path", poses_path);
-  node.get_parameter("pcd_path", pcd_path);
-  node.get_parameter("pcd_out_path", pcd_out_path);
-
+  std::string traj_path{};
+  std::string poses_path{};
+  std::string pcd_path{};
+  std::string pcd_out_path{};
   // Transformation GPS - Poses
-  node.declare_parameter<int>("dim");
-  node.declare_parameter<bool>("transform_traj");
-  node.declare_parameter<int>("rs_num_controlPoints");
-  node.declare_parameter<double>("stddev_threshold");
-  node.declare_parameter<std::vector<double>>("square_size");
-  node.declare_parameter<bool>("transform_pcd");
-  node.declare_parameter<bool>("save_ascii");
-  node.declare_parameter<bool>("auto_cp");
-  node.declare_parameter<std::vector<int64_t>>("exclude_ind");
-  node.declare_parameter<std::vector<int64_t>>("shift_ind");
-  node.declare_parameter<std::vector<double>>("shift_ind_dist");
-  node.declare_parameter<bool>("use_threading");
-  node.declare_parameter<int>("num_cores");
-
+  int64_t dim{3};
+  // Trajectory Alignment
+  bool transform_traj{true};
+  int rs_num_controlPoints{10};
+  double stddev_threshold{0.5};
+  std::vector<double> square_size{0.1, 0.1, 10.0};
+  // PCD Georeferencing
+  bool transform_pcd{true};
+  std::vector<int64_t> exclude_ind{};
+  std::vector<int64_t> shift_ind{};
+  std::vector<double> shift_ind_dist{};
+  bool use_threading{true};
+  int num_cores{4};
   // Zero point
-  node.declare_parameter<bool>("customZeroPoint");
-  node.declare_parameter<double>("zeroLat");
-  node.declare_parameter<double>("zeroLon");
-  node.declare_parameter<double>("zeroEle");
-
-  // Analysis Output
-  node.declare_parameter<std::string>("analysis_output_dir");
-  node.declare_parameter<bool>("analysis_traj_matching");
-}
+  bool customZeroPoint{false};
+  std::vector<double> zeroPoint{0.0, 0.0, 0.0};
+  // Output
+  std::string analysis_output_dir{};
+};
 }  // namespace flexcloud

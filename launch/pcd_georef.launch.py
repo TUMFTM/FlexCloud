@@ -48,14 +48,6 @@ def generate_launch_description():
     )
 
     # Start nodes
-    rviz2_node = Node(
-        package="rviz2",
-        namespace="",
-        executable="rviz2",
-        name="rviz2",
-        arguments=["-d" + os.path.join(config, "rviz_conf_pcd_georef.rviz")],
-    )
-
     pcd_georef_node = Node(
         package="flexcloud",
         namespace="",
@@ -74,5 +66,5 @@ def generate_launch_description():
     )
 
     return LaunchDescription(
-        [traj_path, poses_path, pcd_path, pcd_out_path, pcd_georef_node, rviz2_node]
+        [traj_path, poses_path, pcd_path, pcd_out_path, pcd_georef_node]
     )

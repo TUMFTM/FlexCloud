@@ -34,10 +34,10 @@ namespace flexcloud
  *                                  true if function executed
  */
 bool transform::get_umeyama(
-  rclcpp::Node & node, const std::vector<ProjPoint> & src, const std::vector<ProjPoint> & target,
-  const std::shared_ptr<Umeyama> & umeyama)
+  FlexCloudConfig & config, const std::vector<ProjPoint> & src,
+  const std::vector<ProjPoint> & target, const std::shared_ptr<Umeyama> & umeyama)
 {
-  (void)node;
+  (void)config;
   // Convert vector to Eigen format
   std::vector<Eigen::Vector3d> sr, tar;
   sr.clear();
@@ -70,173 +70,102 @@ bool transform::get_umeyama(
  *                                  true if function executed
  */
 bool transform::select_control_points(
-  rclcpp::Node & node, const std::vector<ProjPoint> & src, const std::vector<ProjPoint> & target,
-  std::vector<ControlPoint> & cps)
+  FlexCloudConfig & config, const std::vector<ProjPoint> & src,
+  const std::vector<ProjPoint> & target, std::vector<ControlPoint> & cps)
 {
   // Get node name
-  const std::string node_name = node.get_parameter("node_name").as_string();
   cps.clear();
-
-  // Get amount of control points from user input
-  const int num_control_points = node.get_parameter("rs_num_controlPoints").as_int();
-  // Get threshold for standard deviation of GPS points
-  const double stddev_threshold = node.get_parameter("stddev_threshold").as_double();
-  // Get selection method for setting control points
-  bool use_gps = node.get_parameter("auto_cp").as_bool();
 
   std::vector<Eigen::Vector3d> cp_inter;
   int cp_count = 0;
 
-  if (use_gps) {
-    std::vector<int64_t> exclude_ind = node.get_parameter("exclude_ind").as_integer_array();
-    // Manually shift GPS point from config file
-    std::vector<int64_t> shift_ind = node.get_parameter("shift_ind").as_integer_array();
-    std::vector<double> shift_ind_dist = node.get_parameter("shift_ind_dist").as_double_array();
-    if (shift_ind.size() != shift_ind_dist.size()) {
-      RCLCPP_ERROR(
-        rclcpp::get_logger(node_name), "Sizes of shift_ind and shift_ind_dist do not match!");
-    }
-    // Code for when use_gpControlPoints is true
-    int gps_distance = static_cast<int>(target.size()) / num_control_points;
-    int idx = 0;
+  if (config.shift_ind.size() != config.shift_ind_dist.size()) {
+    std::cout << "Sizes of shift_ind and shift_ind_dist do not match!" << std::endl;
+  }
+  // Code for when use_gpControlPoints is true
+  int gps_distance = static_cast<int>(target.size()) / config.rs_num_controlPoints;
+  int idx = 0;
 
-    std::cout << "\033[33m~~~~~> LiDAR got " << target.size() << " poses!\033[0m" << std::endl;
-    std::cout << "\033[33m~~~~~> Every " << gps_distance
-              << " st/nd/rd/th vertex is selected as control point\033[0m" << std::endl;
+  std::cout << "\033[33m~~~~~> LiDAR got " << target.size() << " poses!\033[0m" << std::endl;
+  std::cout << "\033[33m~~~~~> Every " << gps_distance
+            << " st/nd/rd/th vertex is selected as control point\033[0m" << std::endl;
 
-    while (idx < static_cast<int>(target.size())) {
-      // Chech if index is within manually excluded indices
-      bool use_ind = true;
-      if (!exclude_ind.empty() || static_cast<int>(exclude_ind.size()) % 2 != 0) {
-        for (int i = 0; i < static_cast<int>(exclude_ind.size()) / 2; ++i) {
-          if (idx >= exclude_ind[2 * i] && idx <= exclude_ind[2 * i + 1]) {
-            use_ind = false;
-          }
+  while (idx < static_cast<int>(target.size())) {
+    // Chech if index is within manually excluded indices
+    bool use_ind = true;
+    if (!config.exclude_ind.empty() || static_cast<int>(config.exclude_ind.size()) % 2 != 0) {
+      for (int i = 0; i < static_cast<int>(config.exclude_ind.size()) / 2; ++i) {
+        if (idx >= config.exclude_ind[2 * i] && idx <= config.exclude_ind[2 * i + 1]) {
+          use_ind = false;
         }
       }
-      /* Point in GPS data -check if standard deviations are within threshold, otherwise skip
-       * point*/
-      if (
-        sqrt(pow(src[idx].stddev_(0), 2) + pow(src[idx].stddev_(1), 2)) <= stddev_threshold &&
-        use_ind) {
-        // Shift reference point if in config file
-        if (std::find(shift_ind.begin(), shift_ind.end(), idx) != shift_ind.end()) {
-          const int dist_ind =
-            std::find(shift_ind.begin(), shift_ind.end(), idx) - shift_ind.begin();
-          std::cout << "\033[33m~~~~~> Shift reference point at index: " << idx << "with distance "
-                    << shift_ind_dist[dist_ind] << "\033[0m" << std::endl;
-          // Create vincinity = pair of preceding and following point on linestring
-          std::vector<Eigen::Vector3d> vincinity{};
-          Eigen::Vector3d current = src[idx].pos_;
-          if (idx == 0) {
-            Eigen::Vector3d forward = src[idx + 1].pos_;
-            vincinity =
-              std::vector<Eigen::Vector3d>{Eigen::Vector3d(0.0, 0.0, 0.0), forward - current};
-          } else if (idx + 1 == static_cast<int>(src.size())) {
-            Eigen::Vector3d backward = src[idx - 1].pos_;
-            vincinity =
-              std::vector<Eigen::Vector3d>{current - backward, Eigen::Vector3d(0.0, 0.0, 0.0)};
-          } else {
-            Eigen::Vector3d backward = src[idx - 1].pos_;
-            Eigen::Vector3d forward = src[idx + 1].pos_;
-            vincinity = std::vector<Eigen::Vector3d>{current - backward, forward - current};
-          }
-          // shift point laterally by specified distance
-          Eigen::Vector2d perpendicular;
-          double realOffset = shift_ind_dist[dist_ind];
-          const auto epsilon{1.e-5};
-          if (idx == 0) {
-            perpendicular = Eigen::Vector2d(vincinity.back()(0), vincinity.back()(1));
-          } else if (idx + 1 == static_cast<int>(src.size())) {
-            perpendicular = Eigen::Vector2d(vincinity.front()(0), vincinity.front()(1));
-          } else {
-            perpendicular =
-              Eigen::Vector2d(vincinity.back()(0), vincinity.back()(1)).normalized() +
-              Eigen::Vector2d(vincinity.front()(0), vincinity.front()(1)).normalized();
-            auto minussin2 = perpendicular.norm() / 2;
-            realOffset = (minussin2 > epsilon) ? shift_ind_dist[dist_ind] / minussin2 : 0;
-          }
-
-          Eigen::Vector2d direction(-perpendicular(1), perpendicular(0));
-          Eigen::Vector2d pt_2d_shift = Eigen::Vector2d(src[idx].pos_(0), src[idx].pos_(1)) +
-                                        direction.normalized() * realOffset;
-          // Create control point
-          cp_inter.push_back(Eigen::Vector3d(pt_2d_shift(0), pt_2d_shift(1), src[idx].pos_(2)));
+    }
+    /* Point in GPS data -check if standard deviations are within threshold, otherwise skip
+     * point*/
+    if (
+      sqrt(pow(src[idx].stddev_(0), 2) + pow(src[idx].stddev_(1), 2)) <= config.stddev_threshold &&
+      use_ind) {
+      // Shift reference point if in config file
+      if (std::find(config.shift_ind.begin(), config.shift_ind.end(), idx) != config.shift_ind.end()) {
+        const int dist_ind = std::find(config.shift_ind.begin(), config.shift_ind.end(), idx) - config.shift_ind.begin();
+        std::cout << "\033[33m~~~~~> Shift reference point at index: " << idx << "with distance "
+                  << config.shift_ind_dist[dist_ind] << "\033[0m" << std::endl;
+        // Create vincinity = pair of preceding and following point on linestring
+        std::vector<Eigen::Vector3d> vincinity{};
+        Eigen::Vector3d current = src[idx].pos_;
+        if (idx == 0) {
+          Eigen::Vector3d forward = src[idx + 1].pos_;
+          vincinity =
+            std::vector<Eigen::Vector3d>{Eigen::Vector3d(0.0, 0.0, 0.0), forward - current};
+        } else if (idx + 1 == static_cast<int>(src.size())) {
+          Eigen::Vector3d backward = src[idx - 1].pos_;
+          vincinity =
+            std::vector<Eigen::Vector3d>{current - backward, Eigen::Vector3d(0.0, 0.0, 0.0)};
         } else {
-          // Set unmodified reference point
-          cp_inter.push_back(Eigen::Vector3d(src[idx].pos_(0), src[idx].pos_(1), src[idx].pos_(2)));
+          Eigen::Vector3d backward = src[idx - 1].pos_;
+          Eigen::Vector3d forward = src[idx + 1].pos_;
+          vincinity = std::vector<Eigen::Vector3d>{current - backward, forward - current};
+        }
+        // shift point laterally by specified distance
+        Eigen::Vector2d perpendicular;
+        double realOffset = config.shift_ind_dist[dist_ind];
+        const auto epsilon{1.e-5};
+        if (idx == 0) {
+          perpendicular = Eigen::Vector2d(vincinity.back()(0), vincinity.back()(1));
+        } else if (idx + 1 == static_cast<int>(src.size())) {
+          perpendicular = Eigen::Vector2d(vincinity.front()(0), vincinity.front()(1));
+        } else {
+          perpendicular = Eigen::Vector2d(vincinity.back()(0), vincinity.back()(1)).normalized() +
+                          Eigen::Vector2d(vincinity.front()(0), vincinity.front()(1)).normalized();
+          auto minussin2 = perpendicular.norm() / 2;
+          realOffset = (minussin2 > epsilon) ? config.shift_ind_dist[dist_ind] / minussin2 : 0;
         }
 
-        // Point in LiDAR data
-        Eigen::Vector3d pt_pcd(target[idx].pos_(0), target[idx].pos_(1), target[idx].pos_(2));
-        cp_inter.push_back(pt_pcd);
-
-        ControlPoint P(
-          cp_inter[0](0), cp_inter[0](1), cp_inter[0](2), cp_inter[1](0), cp_inter[1](1),
-          cp_inter[1](2));
-        cps.push_back(P);
-        ++cp_count;
-
-        cp_inter.clear();
+        Eigen::Vector2d direction(-perpendicular(1), perpendicular(0));
+        Eigen::Vector2d pt_2d_shift =
+          Eigen::Vector2d(src[idx].pos_(0), src[idx].pos_(1)) + direction.normalized() * realOffset;
+        // Create control point
+        cp_inter.push_back(Eigen::Vector3d(pt_2d_shift(0), pt_2d_shift(1), src[idx].pos_(2)));
       } else {
-        std::cout << "\033[31m!! Skipped control point !!\033[0m" << std::endl;
+        // Set unmodified reference point
+        cp_inter.push_back(Eigen::Vector3d(src[idx].pos_(0), src[idx].pos_(1), src[idx].pos_(2)));
       }
-      idx += gps_distance;
+
+      // Point in LiDAR data
+      Eigen::Vector3d pt_pcd(target[idx].pos_(0), target[idx].pos_(1), target[idx].pos_(2));
+      cp_inter.push_back(pt_pcd);
+
+      ControlPoint P(
+        cp_inter[0](0), cp_inter[0](1), cp_inter[0](2), cp_inter[1](0), cp_inter[1](1),
+        cp_inter[1](2));
+      cps.push_back(P);
+      ++cp_count;
+
+      cp_inter.clear();
+    } else {
+      std::cout << "\033[31m!! Skipped control point !!\033[0m" << std::endl;
     }
-  } else {
-    // Loop through amount of control points * 2 (source and target coordinates) to get messages
-    // from RVIZ
-    geometry_msgs::msg::PointStamped msg;
-    std::cout << "\033[33m~~~~~> Select " << num_control_points << " control points!\033[0m"
-              << std::endl;
-
-    for (int i = 0; i < num_control_points * 2; ++i) {
-      // Output instruction for user
-      if (cp_inter.size() == 0) {
-        std::cout << "\033[32m~~~~~~~~~~> Publish a point on the master trajectory (green) "
-                  << "in RVIZ!\033[0m" << std::endl;
-      } else {
-        std::cout << "\033[32m~~~~~~~~~~> Publish a point on the aligned target trajectory (blue) "
-                  << "in RVIZ!\033[0m" << std::endl;
-      }
-
-      // Create subscription and wait for point message
-      auto sub = node.create_subscription<geometry_msgs::msg::PointStamped>(
-        "clicked_point", 1, [](const std::shared_ptr<const geometry_msgs::msg::PointStamped>) {});
-      bool received_msg = rclcpp::wait_for_message(msg, sub, node.get_node_options().context());
-
-      // Convert message to lanelet point and write in array
-      ProjPoint pt(msg.point.x, msg.point.y, msg.point.z, 0.0, 0.0, 0.0);
-
-      // Find closest point on corresponding trajectory
-      if (cp_inter.size() == 0) {
-        closest_on_ls(pt, src);
-      } else {
-        closest_on_ls(pt, target);
-      }
-
-      // Add selected point to intermediate vector and output coordinates
-      cp_inter.push_back(pt.pos_);
-      std::cout << "\033[34m~~~~~~~~~~> Selected point: x = " << pt.pos_(0)
-                << "m, y = " << pt.pos_(1) << "m, z = " << pt.pos_(2) << "m!\033[0m" << std::endl;
-
-      // Add to controlpoint if complete otherwise repeat for second point
-      if (received_msg) {
-        if (cp_inter.size() == 2) {
-          ControlPoint P(
-            cp_inter[0](0), cp_inter[0](1), cp_inter[0](2), cp_inter[1](0), cp_inter[1](1),
-            cp_inter[1](2));
-          cps.push_back(P);
-          ++cp_count;
-
-          std::cout << "\033[1;32m~~~~~~~~~~> Controlpoint " << cp_count << " added!\033[0m"
-                    << std::endl;
-          cp_inter.clear();
-        }
-      } else {
-        RCLCPP_ERROR(rclcpp::get_logger(node_name), "You didn't publish a point!");
-      }
-    }
+    idx += gps_distance;
   }
   std::cout << "\033[1;32m~~~~~~~~~~> Set " << cp_count << " controlpoints!\033[0m" << std::endl;
   return true;
@@ -256,12 +185,10 @@ bool transform::select_control_points(
  *                                  true if function executed
  */
 bool transform::get_rubber_sheeting(
-  rclcpp::Node & node, const std::vector<ProjPoint> & target, std::vector<ControlPoint> & cps,
+  FlexCloudConfig & config, const std::vector<ProjPoint> & target, std::vector<ControlPoint> & cps,
   const std::shared_ptr<Delaunay> triag)
 {
-  // Calculate enclosing rectangle or cube
-  const std::vector<double> size = node.get_parameter("square_size").as_double_array();
-  triag->enclosingControlPoints(size, target, cps);
+  triag->enclosingControlPoints(config.square_size, target, cps);
   // Insertion of control points into triangulation structure
   for (unsigned i = 0; i < cps.size(); i++) {
     triag->insertPoint(cps[i].get_target_point());
@@ -339,10 +266,9 @@ bool transform::transform_ls_rs(
  *                                  true if function executed
  */
 bool transform::transform_pcd(
-  rclcpp::Node & node, const std::shared_ptr<Umeyama> & umeyama,
+  const std::shared_ptr<Umeyama> & umeyama,
   const std::shared_ptr<Delaunay> & triag, const pcl::PointCloud<pcl::PointXYZI>::Ptr & pcm)
 {
-  (void)node;
   // Check if the input pointer is valid
   if (!pcm) {
     return false;
@@ -392,11 +318,10 @@ bool transform::transform_pcd(
  *                                  true if function executed
  */
 bool transform::transform_pcd(
-  rclcpp::Node & node, const std::shared_ptr<Umeyama> & umeyama,
+  const std::shared_ptr<Umeyama> & umeyama,
   const std::shared_ptr<Delaunay> & triag, pcl::PointCloud<pcl::PointXYZI>::Ptr & pcm,
   const int num_cores)
 {
-  (void)node;
   // Let's run threading
   int num_max_cores = std::thread::hardware_concurrency();
   size_t num_threads = 0;

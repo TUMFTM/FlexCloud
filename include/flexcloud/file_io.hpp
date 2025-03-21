@@ -28,11 +28,11 @@
 #include <algorithm>
 #include <fstream>
 #include <iostream>
-#include <rclcpp/rclcpp.hpp>
 #include <sstream>
 #include <string>
 #include <vector>
 
+#include "param_pcd_georef.hpp"
 #include "utility.hpp"
 namespace flexcloud
 {
@@ -41,19 +41,18 @@ class file_io
 public:
   // Constructor
   file_io() {}
-
   /**
    * @brief read traj from txt file
    *
    * @param[in] node                - rclcpp::Node:
    *                                  Node reference
    * @param[in] traj_path           - std::string:
-   *                                  absolute path to file 
+   *                                  absolute path to file
    * @param[in] traj_local          - std::vector<ProjPoint>:
    *                                  trajectory as vector of positions with standard dev
    */
   bool read_traj_from_file(
-    rclcpp::Node & node, const std::string & traj_path, std::vector<ProjPoint> & traj_local);
+    FlexCloudConfig & config, const std::string & traj_path, std::vector<ProjPoint> & traj_local);
 
   /**
    * @brief read poses from txt file in KITTI format
@@ -61,12 +60,12 @@ public:
    * @param[in] node                - rclcpp::Node:
    *                                  Node reference
    * @param[in] poses_path          - std::string:
-   *                                  absolute path to file 
+   *                                  absolute path to file
    * @param[in] poses               - std::vector<ProjPoint>:
    *                                  trajectory as vector of positions with standard dev
    */
   bool read_poses_SLAM_from_file(
-    rclcpp::Node & node, const std::string & poses_path, std::vector<ProjPoint> & poses);
+    FlexCloudConfig & config, const std::string & poses_path, std::vector<ProjPoint> & poses);
 
   /**
    * @brief read pcd map from file
@@ -74,12 +73,13 @@ public:
    * @param[in] node                - rclcpp::Node:
    *                                  Node reference
    * @param[in] pcd_path            - std::string:
-   *                                  absolute path to file 
+   *                                  absolute path to file
    * @param[in] pcm                 - pcl::PointCloud<pcl::PointXYZ>::Ptr:
    *                                  pointer on pointcloud map
    */
   bool read_pcd_from_file(
-    rclcpp::Node & node, const std::string & pcd_path, pcl::PointCloud<pcl::PointXYZI>::Ptr & pcm);
+    FlexCloudConfig & config, const std::string & pcd_path,
+    pcl::PointCloud<pcl::PointXYZI>::Ptr & pcm);
 
   /**
    * @brief write pcd map to file
@@ -87,12 +87,11 @@ public:
    * @param[in] node                - rclcpp::Node:
    *                                  Node reference
    * @param[in] pcd_out_path        - std::string:
-   *                                  absolute path to file 
+   *                                  absolute path to file
    * @param[in] pcm                 - pcl::PointCloud<pcl::PointXYZ>::Ptr:
    *                                  pointer on pointcloud map
    */
   bool write_pcd_to_path(
-    rclcpp::Node & node, const std::string & pcd_out_path,
-    const pcl::PointCloud<pcl::PointXYZI>::Ptr & pcd_map);
+    const std::string & pcd_out_path, const pcl::PointCloud<pcl::PointXYZI>::Ptr & pcd_map);
 };
 }  // namespace flexcloud

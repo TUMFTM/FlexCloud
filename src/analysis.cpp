@@ -22,8 +22,8 @@ namespace flexcloud
 /**
  * @brief write all data relevant for evaluation of trajectory matching
  *
- * @param[in] node                - rclcpp::Node:
- *                                  Node reference
+ * @param[in] config              - FlexCloudConfig:
+ *                                  config struct
  * @param[in] src                 - std::vector<ProjPoint>:
  *                                  source trajectory
  * @param[in] target              - std::vector<ProjPoint>:
@@ -42,35 +42,36 @@ namespace flexcloud
  *                                  difference of rubber-sheeted trajectory to source trajectory
  */
 bool analysis::traj_matching(
-  rclcpp::Node & node, const std::vector<ProjPoint> & src, const std::vector<ProjPoint> & target,
-  const std::vector<ProjPoint> & target_al, const std::vector<ProjPoint> & target_rs,
-  const std::shared_ptr<Delaunay> & triag, const std::vector<ControlPoint> & cps,
-  std::vector<double> & diff_al, std::vector<double> & diff_rs)
+  FlexCloudConfig & config, const std::vector<ProjPoint> & src,
+  const std::vector<ProjPoint> & target, const std::vector<ProjPoint> & target_al,
+  const std::vector<ProjPoint> & target_rs, const std::shared_ptr<Delaunay> & triag,
+  const std::vector<ControlPoint> & cps, std::vector<double> & diff_al,
+  std::vector<double> & diff_rs)
 {
   diff_al.clear();
   diff_rs.clear();
 
-  calc_diff(node, src, target_al, diff_al);
-  calc_diff(node, src, target_rs, diff_rs);
+  calc_diff(config, src, target_al, diff_al);
+  calc_diff(config, src, target_rs, diff_rs);
 
   const std::string traj_matching_dir = "/traj_matching";
-  create_output_dir(node, traj_matching_dir);
+  create_output_dir(config, traj_matching_dir);
 
-  write_ls(node, src, traj_matching_dir, "source.txt");
-  write_ls(node, target, traj_matching_dir, "target.txt");
-  write_ls(node, target_al, traj_matching_dir, "target_al.txt");
-  write_ls(node, target_rs, traj_matching_dir, "target_rs.txt");
-  write_triag(node, triag, traj_matching_dir, "triag.txt");
-  write_cp(node, cps, traj_matching_dir, "controlPoints.txt");
-  write_double_vec(node, diff_al, traj_matching_dir, "diff_al.txt");
-  write_double_vec(node, diff_rs, traj_matching_dir, "diff_rs.txt");
+  write_ls(config, src, traj_matching_dir, "source.txt");
+  write_ls(config, target, traj_matching_dir, "target.txt");
+  write_ls(config, target_al, traj_matching_dir, "target_al.txt");
+  write_ls(config, target_rs, traj_matching_dir, "target_rs.txt");
+  write_triag(config, triag, traj_matching_dir, "triag.txt");
+  write_cp(config, cps, traj_matching_dir, "controlPoints.txt");
+  write_double_vec(config, diff_al, traj_matching_dir, "diff_al.txt");
+  write_double_vec(config, diff_rs, traj_matching_dir, "diff_rs.txt");
   return true;
 }
 /**
  * @brief calculate difference of a target trajectory to a source trajectory
  *
- * @param[in] node                - rclcpp::Node:
- *                                  Node reference
+ * @param[in] config              - FlexCloudConfig:
+ *                                  config struct
  * @param[in] src                 - std::vector<ProjPoint>:
  *                                  source trajectory
  * @param[in] target              - std::vector<ProjPoint>:
@@ -79,20 +80,20 @@ bool analysis::traj_matching(
  *                                  difference between trajectories (euclidean distance)
  */
 void analysis::calc_diff(
-  rclcpp::Node & node, const std::vector<ProjPoint> & src, const std::vector<ProjPoint> & target,
-  std::vector<double> & diff)
+  FlexCloudConfig & config, const std::vector<ProjPoint> & src,
+  const std::vector<ProjPoint> & target, std::vector<double> & diff)
 {
   diff.clear();
   int i = 0;
   for (const auto & pt : target) {
-    if (node.get_parameter("dim").as_int() == 2) {
+    if (config.dim == 2) {
       // Only 2D distance
       double dist =
         (Eigen::Vector2d(pt.pos_(0), pt.pos_(1)) - Eigen::Vector2d(src[i].pos_(0), src[i].pos_(1)))
           .norm();
       diff.push_back(dist);
       ++i;
-    } else if (node.get_parameter("dim").as_int() == 3) {
+    } else if (config.dim == 3) {
       double dist = (pt.pos_ - src[i].pos_).norm();
       diff.push_back(dist);
       ++i;
@@ -104,14 +105,14 @@ void analysis::calc_diff(
 /**
  * @brief create directory from name
  *
- * @param[in] node                - rclcpp::Node:
- *                                  Node reference
+ * @param[in] config              - FlexCloudConfig:
+ *                                  config struct
  * @param[in] dir_path            - std::string:
  *                                  name of output directory
  */
-void analysis::create_output_dir(rclcpp::Node & node, const std::string & dir_path)
+void analysis::create_output_dir(FlexCloudConfig & config, const std::string & dir_path)
 {
-  const std::string dir = node.get_parameter("analysis_output_dir").as_string() + dir_path;
+  const std::string dir = config.analysis_output_dir + dir_path;
   // Create if not a directory
   if (!std::filesystem::is_directory(dir)) {
     std::filesystem::create_directories(dir);
@@ -120,8 +121,8 @@ void analysis::create_output_dir(rclcpp::Node & node, const std::string & dir_pa
 /**
  * @brief write a linestring to .txt file
  *
- * @param[in] node                - rclcpp::Node:
- *                                  Node reference
+ * @param[in] config              - FlexCloudConfig:
+ *                                  config struct
  * @param[in] ls                  - std::vector<ProjPoint>:
  *                                  linestring
  * @param[in] dir_path            - std::string:
@@ -130,11 +131,10 @@ void analysis::create_output_dir(rclcpp::Node & node, const std::string & dir_pa
  *                                  name of output file
  */
 void analysis::write_ls(
-  rclcpp::Node & node, const std::vector<ProjPoint> & ls, const std::string & dir_path,
+  FlexCloudConfig & config, const std::vector<ProjPoint> & ls, const std::string & dir_path,
   const std::string & file_name)
 {
-  const std::string file_path =
-    node.get_parameter("analysis_output_dir").as_string() + dir_path + "/" + file_name;
+  const std::string file_path = config.analysis_output_dir + dir_path + "/" + file_name;
   std::ofstream file(file_path);
 
   if (file.is_open()) {
@@ -149,8 +149,8 @@ void analysis::write_ls(
 /**
  * @brief write a linestrings to .txt file
  *
- * @param[in] node                - rclcpp::Node:
- *                                  Node reference
+ * @param[in] config              - FlexCloudConfig:
+ *                                  config struct
  * @param[in] lss                 - std::vector<std::vector<ProjPoint>>:
  *                                  vector of linestrings
  * @param[in] dir_path            - std::string:
@@ -159,11 +159,10 @@ void analysis::write_ls(
  *                                  name of output file
  */
 void analysis::write_lss(
-  rclcpp::Node & node, const std::vector<std::vector<ProjPoint>> & lss,
+  FlexCloudConfig & config, const std::vector<std::vector<ProjPoint>> & lss,
   const std::string & dir_path, const std::string & file_name)
 {
-  const std::string file_path =
-    node.get_parameter("analysis_output_dir").as_string() + dir_path + "/" + file_name;
+  const std::string file_path = config.analysis_output_dir + dir_path + "/" + file_name;
   std::ofstream file(file_path);
 
   if (file.is_open()) {
@@ -182,8 +181,8 @@ void analysis::write_lss(
 /**
  * @brief write a double vector to .txt file
  *
- * @param[in] node                - rclcpp::Node:
- *                                  Node reference
+ * @param[in] config              - FlexCloudConfig:
+ *                                  config struct
  * @param[in] vec                 - std::vector<double>:
  *                                  vector of double values
  * @param[in] dir_path            - std::string:
@@ -192,11 +191,10 @@ void analysis::write_lss(
  *                                  name of output file
  */
 void analysis::write_double_vec(
-  rclcpp::Node & node, const std::vector<double> & vec, const std::string & dir_path,
+  FlexCloudConfig & config, const std::vector<double> & vec, const std::string & dir_path,
   const std::string & file_name)
 {
-  const std::string file_path =
-    node.get_parameter("analysis_output_dir").as_string() + dir_path + "/" + file_name;
+  const std::string file_path = config.analysis_output_dir + dir_path + "/" + file_name;
   std::ofstream file(file_path);
 
   if (file.is_open()) {
@@ -210,8 +208,8 @@ void analysis::write_double_vec(
 /**
  * @brief write triangulation vertices to file
  *
- * @param[in] node                - rclcpp::Node:
- *                                  Node reference
+ * @param[in] config              - FlexCloudConfig:
+ *                                  config struct
  * @param[in] triag               - std::shared_ptr<Delaunay>:
  *                                  pointer to triangulation
  * @param[in] dir_path            - std::string:
@@ -220,11 +218,10 @@ void analysis::write_double_vec(
  *                                  name of output file
  */
 void analysis::write_triag(
-  rclcpp::Node & node, const std::shared_ptr<Delaunay> & triag, const std::string & dir_path,
+  FlexCloudConfig & config, const std::shared_ptr<Delaunay> & triag, const std::string & dir_path,
   const std::string & file_name)
 {
-  const std::string file_path =
-    node.get_parameter("analysis_output_dir").as_string() + dir_path + "/" + file_name;
+  const std::string file_path = config.analysis_output_dir + dir_path + "/" + file_name;
   std::ofstream file(file_path);
 
   std::vector<std::vector<ProjPoint>> vertices = triag->getVertices();
@@ -243,8 +240,8 @@ void analysis::write_triag(
 /**
  * @brief write controlpoints to file
  *
- * @param[in] node                - rclcpp::Node:
- *                                  Node reference
+ * @param[in] config              - FlexCloudConfig:
+ *                                  config struct
  * @param[in] cps                 - std::vector<ControlPoint>:
  *                                  control points
  * @param[in] dir_path            - std::string:
@@ -253,11 +250,10 @@ void analysis::write_triag(
  *                                  name of output file
  */
 void analysis::write_cp(
-  rclcpp::Node & node, const std::vector<ControlPoint> & cps, const std::string & dir_path,
+  FlexCloudConfig & config, const std::vector<ControlPoint> & cps, const std::string & dir_path,
   const std::string & file_name)
 {
-  const std::string file_path =
-    node.get_parameter("analysis_output_dir").as_string() + dir_path + "/" + file_name;
+  const std::string file_path = config.analysis_output_dir + dir_path + "/" + file_name;
   std::ofstream file(file_path);
 
   if (file.is_open()) {
