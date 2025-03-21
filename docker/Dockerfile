@@ -42,6 +42,6 @@ COPY . /dev_ws/src/flexcloud/
 
 # Install flexcloud
 RUN /bin/bash -c 'cmake -S /dev_ws/src/flexcloud -B /dev_ws/build && \
-    cmake --build /dev_ws/build'
+    cmake --build /dev_ws/build -j 10'
 
 CMD [ "bash" ]
