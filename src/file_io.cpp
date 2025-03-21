@@ -22,8 +22,8 @@ namespace flexcloud
 /**
  * @brief read traj from txt file
  *
- * @param[in] node                - rclcpp::Node:
- *                                  Node reference
+ * @param[in] config              - FlexCloudConfig:
+ *                                  config struct
  * @param[in] traj_path           - std::string:
  *                                  absolute path to file
  * @param[in] traj_local          - std::vector<ProjPoint>:
@@ -110,8 +110,8 @@ bool file_io::read_traj_from_file(
 /**
  * @brief read poses from txt file in KITTI format
  *
- * @param[in] node                - rclcpp::Node:
- *                                  Node reference
+ * @param[in] config              - FlexCloudConfig:
+ *                                  config struct
  * @param[in] poses_path          - std::string:
  *                                  absolute path to file
  * @param[in] poses               - std::vector<ProjPoint>:
@@ -143,8 +143,8 @@ bool file_io::read_poses_SLAM_from_file(
 /**
  * @brief read pcd map from file
  *
- * @param[in] node                - rclcpp::Node:
- *                                  Node reference
+ * @param[in] config              - FlexCloudConfig:
+ *                                  config struct
  * @param[in] pcd_path            - std::string:
  *                                  absolute path to file
  * @param[in] pcm                 - pcl::PointCloud<pcl::PointXYZ>::Ptr:
@@ -173,8 +173,8 @@ bool file_io::read_pcd_from_file(
 /**
  * @brief write pcd map to file
  *
- * @param[in] node                - rclcpp::Node:
- *                                  Node reference
+ * @param[in] config              - FlexCloudConfig:
+ *                                  config struct
  * @param[in] pcd_out_path        - std::string:
  *                                  absolute path to file
  * @param[in] pcm                 - pcl::PointCloud<pcl::PointXYZ>::Ptr:

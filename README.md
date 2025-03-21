@@ -14,6 +14,8 @@ Georeferencing of Point Cloud Maps
 This project enables the georeferencing of an existing point cloud map created only from inertial sensor data (e.g. LiDAR) by the use of the corresponding GNSS data.
 Leveraging the concept of rubber-sheeting from cartography, the tool is also able to account for accumulated errors during map creation and thus rectyfy the map.
 
+![image](doc/flowchart.png)
+
 <h2>🐋 Installation</h2>
 
 1. Clone the repository by running
@@ -65,14 +67,14 @@ If you are struggling with their installation, you can have a look at the proces
 2. Start the package
 
    ```bash
-   Usage: ./install/flexcloud/pcd_georef/flexcloud/pcd_georef <config_path> <reference_path> <slam_path> <(optional) pcd_path> <(optional) pcd_out_path>
+   Usage: ./build/pcd_georef <config_path> <reference_path> <slam_path> <(optional) pcd_path> <(optional) pcd_out_path>
    ```
 
    To use the provided test data (only trajectories, no application on point cloud map -> set parameter `transform_pcd` to `false`)
 
    ```bash
    cd flexcloud/
-   ros2 launch flexcloud pcd_georef.launch.py traj_path:=test/poseData.txt poses_path:=test/poses_map.txt 
+   ./build/pcd_georef src/flexcloud/config/pcd_georef.yaml src/flexcloud/test/poseData.txt src/flexcloud/test/poses_map.txt 
    ```
 
 3. Inspect results

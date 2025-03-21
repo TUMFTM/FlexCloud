@@ -22,8 +22,8 @@ namespace flexcloud
 /**
  * @brief write all data relevant for evaluation of trajectory matching
  *
- * @param[in] node                - rclcpp::Node:
- *                                  Node reference
+ * @param[in] config              - FlexCloudConfig:
+ *                                  config struct
  * @param[in] src                 - std::vector<ProjPoint>:
  *                                  source trajectory
  * @param[in] target              - std::vector<ProjPoint>:
@@ -70,8 +70,8 @@ bool analysis::traj_matching(
 /**
  * @brief calculate difference of a target trajectory to a source trajectory
  *
- * @param[in] node                - rclcpp::Node:
- *                                  Node reference
+ * @param[in] config              - FlexCloudConfig:
+ *                                  config struct
  * @param[in] src                 - std::vector<ProjPoint>:
  *                                  source trajectory
  * @param[in] target              - std::vector<ProjPoint>:
@@ -105,8 +105,8 @@ void analysis::calc_diff(
 /**
  * @brief create directory from name
  *
- * @param[in] node                - rclcpp::Node:
- *                                  Node reference
+ * @param[in] config              - FlexCloudConfig:
+ *                                  config struct
  * @param[in] dir_path            - std::string:
  *                                  name of output directory
  */
@@ -121,8 +121,8 @@ void analysis::create_output_dir(FlexCloudConfig & config, const std::string & d
 /**
  * @brief write a linestring to .txt file
  *
- * @param[in] node                - rclcpp::Node:
- *                                  Node reference
+ * @param[in] config              - FlexCloudConfig:
+ *                                  config struct
  * @param[in] ls                  - std::vector<ProjPoint>:
  *                                  linestring
  * @param[in] dir_path            - std::string:
@@ -149,8 +149,8 @@ void analysis::write_ls(
 /**
  * @brief write a linestrings to .txt file
  *
- * @param[in] node                - rclcpp::Node:
- *                                  Node reference
+ * @param[in] config              - FlexCloudConfig:
+ *                                  config struct
  * @param[in] lss                 - std::vector<std::vector<ProjPoint>>:
  *                                  vector of linestrings
  * @param[in] dir_path            - std::string:
@@ -181,8 +181,8 @@ void analysis::write_lss(
 /**
  * @brief write a double vector to .txt file
  *
- * @param[in] node                - rclcpp::Node:
- *                                  Node reference
+ * @param[in] config              - FlexCloudConfig:
+ *                                  config struct
  * @param[in] vec                 - std::vector<double>:
  *                                  vector of double values
  * @param[in] dir_path            - std::string:
@@ -208,8 +208,8 @@ void analysis::write_double_vec(
 /**
  * @brief write triangulation vertices to file
  *
- * @param[in] node                - rclcpp::Node:
- *                                  Node reference
+ * @param[in] config              - FlexCloudConfig:
+ *                                  config struct
  * @param[in] triag               - std::shared_ptr<Delaunay>:
  *                                  pointer to triangulation
  * @param[in] dir_path            - std::string:
@@ -240,8 +240,8 @@ void analysis::write_triag(
 /**
  * @brief write controlpoints to file
  *
- * @param[in] node                - rclcpp::Node:
- *                                  Node reference
+ * @param[in] config              - FlexCloudConfig:
+ *                                  config struct
  * @param[in] cps                 - std::vector<ControlPoint>:
  *                                  control points
  * @param[in] dir_path            - std::string:

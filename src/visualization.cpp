@@ -130,48 +130,4 @@ void visualization::pc_map2rerun(
   }
   stream.log("pcd_map", rerun::Points3D(positions).with_colors(rerun::Color(col.r, col.g, col.b)));
 }
-/**
- * @brief convert indices of linestring elements to marker array
- *
- * @param[in] ls                  - std::vector<ProjPoint>:
- *                                  linestring
- * @param[in] ns                  - std::string:
- *                                  namespace of markerarray
- * @param[in] c                   - std_msgs::msg::ColorRGBA:
- *                                  color of array
- * @param[out]                    - visualization_msgs::msg::MarkerArray:
- *                                  marker array
- */
-// visualization_msgs::msg::MarkerArray visualization::ids2marker(
-//   const std::vector<ProjPoint> & ls, const std::string & ns, const std_msgs::msg::ColorRGBA & c)
-// {
-//   visualization_msgs::msg::MarkerArray id_marker_array;
-
-//   int i = 0;
-//   for (const auto & pt : ls) {
-//     visualization_msgs::msg::Marker marker;
-//     marker.header.frame_id = "map";
-//     marker.header.stamp = rclcpp::Time();
-//     marker.ns = ns;
-//     marker.id = static_cast<int32_t>(i);
-//     marker.type = visualization_msgs::msg::Marker::TEXT_VIEW_FACING;
-//     marker.action = visualization_msgs::msg::Marker::ADD;
-//     marker.pose.position.x = pt.pos_(0);
-//     marker.pose.position.y = pt.pos_(1) + 1;
-//     marker.pose.position.z = pt.pos_(2);
-//     marker.pose.orientation.x = 0.0;
-//     marker.pose.orientation.y = 0.0;
-//     marker.pose.orientation.z = 0.0;
-//     marker.pose.orientation.w = 1.0;
-//     marker.color = c;
-//     marker.scale.z = 1.0;
-//     marker.frame_locked = false;
-//     marker.text = std::to_string(i);
-
-//     id_marker_array.markers.push_back(marker);
-//     ++i;
-//   }
-
-//   return id_marker_array;
-// }
 }  // namespace flexcloud

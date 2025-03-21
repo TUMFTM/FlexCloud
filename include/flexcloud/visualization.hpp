@@ -83,22 +83,5 @@ public:
    */
   void pc_map2rerun(
     const pcl::PointCloud<pcl::PointXYZI>::Ptr & pcd_map, rerun::RecordingStream & stream);
-
-private:
-  // /**
-  //  * @brief convert indices of linestring elements to marker array
-  //  *
-  //  * @param[in] ls                  - std::vector<ProjPoint>:
-  //  *                                  linestring
-  //  * @param[in] ns                  - std::string:
-  //  *                                  namespace of markerarray
-  //  * @param[in] c                   - std_msgs::msg::ColorRGBA:
-  //  *                                  color of array
-  //  * @param[out]                    - visualization_msgs::msg::MarkerArray:
-  //  *                                  marker array
-  //  */
-  // visualization_msgs::msg::MarkerArray ids2marker(
-  //   const std::vector<ProjPoint> & ls, const std::string & ns, const std_msgs::msg::ColorRGBA &
-  //   c);
 };
 }  // namespace flexcloud

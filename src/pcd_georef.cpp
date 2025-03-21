@@ -25,7 +25,7 @@ namespace flexcloud
 // pcd_georef package constructor
 pcd_georef::pcd_georef(
   const std::string & config_path, const std::string & ref_path, const std::string & slam_path,
-  const std::string & pcd_path, const std::string & pcd_out_path)
+  const std::string & pcd_path, const std::string & pcd_out_path = "pcd_georef.pcd")
 {
   // Load config from file
   YAML::Node config = YAML::LoadFile(config_path);
