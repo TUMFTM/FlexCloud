@@ -21,7 +21,7 @@
 
 #include <Eigen/Dense>
 #include <algorithm>
-#include <filesystem>
+#include <filesystem>  // NOLINT
 #include <fstream>
 #include <iostream>
 #include <memory>

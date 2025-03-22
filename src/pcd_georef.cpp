@@ -18,6 +18,11 @@
 
 #include "pcd_georef.hpp"
 
+#include <iostream>
+#include <memory>
+#include <string>
+#include <vector>
+
 #include "yaml-cpp/yaml.h"
 namespace flexcloud
 {

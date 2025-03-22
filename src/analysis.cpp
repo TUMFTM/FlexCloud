@@ -17,6 +17,11 @@
  */
 
 #include "analysis.hpp"
+
+#include <iostream>
+#include <memory>
+#include <string>
+#include <vector>
 namespace flexcloud
 {
 /**

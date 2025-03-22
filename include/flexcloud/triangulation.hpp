@@ -20,6 +20,7 @@
 //
 #include <Eigen/Geometry>
 #include <algorithm>
+#include <iostream>
 #include <string>
 #include <vector>
 

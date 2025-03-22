@@ -17,6 +17,10 @@
  */
 
 #include "visualization.hpp"
+
+#include <memory>
+#include <string>
+#include <vector>
 namespace flexcloud
 {
 /**

@@ -20,6 +20,7 @@
 //
 #include <Eigen/Dense>
 #include <Eigen/Geometry>
+#include <iostream>
 #include <string>
 #include <vector>
 
@@ -54,7 +55,7 @@ public:
   virtual void calcTransform() = 0;
   /**
    * @brief transform point with transformation
-   * 
+   *
    * @param[in] pt                  - Eigen::Vector3d:
    *                                  point to transform
    */
@@ -65,7 +66,6 @@ protected:
   std::vector<Eigen::Vector3d> src_;
   std::vector<Eigen::Vector3d> target_;
 };
-
 /**
  * @brief inherited class for 2D Umeyama transformation
  */
@@ -78,7 +78,7 @@ public:
   void calcTransform() override;
   /**
    * @brief transform point with 2D transformation
-   * 
+   *
    * @param[in] pt                  - Eigen::Vector3d:
    *                                  point to transform
    */
@@ -87,7 +87,7 @@ public:
 private:
   /**
    * @brief convert trajectory to 2xX-matrix
-   * 
+   *
    * @param[in] ls                  - std::vector<Eigen::Vector3d>
    *                                  trajectory
    * @param[out]                    - Eigen::MatrixXd:
@@ -97,7 +97,6 @@ private:
   // 3x3 transformation matrix for 2D transformation
   Eigen::Matrix3d trans_;
 };
-
 /**
  * @brief inherited class for 3D Umeyama transformation
  */
@@ -110,7 +109,7 @@ public:
   void calcTransform() override;
   /**
    * @brief transform point with 3D transformation
-   * 
+   *
    * @param[in] pt                  - Eigen::Vector3d
    *                                  point to transform
    */
@@ -119,7 +118,7 @@ public:
 private:
   /**
    * @brief convert trajectory to 3xX-matrix
-   * 
+   *
    * @param[in] ls                  - std::vector<Eigen::Vector3d>
    *                                  trajectory
    * @param[out]                    - Eigen::MatrixXd:
@@ -129,7 +128,6 @@ private:
   // 4x4 transformation matrix for 3D transformation
   Eigen::Matrix4d trans_;
 };
-
 /**
  * @brief insert source vector of transformation
  *
@@ -137,7 +135,6 @@ private:
  *                                  source trajectory
  */
 void Umeyama::insertSource(const std::vector<Eigen::Vector3d> & src) { this->src_ = src; }
-
 /**
  * @brief insert target vector of transformation
  *
@@ -145,7 +142,6 @@ void Umeyama::insertSource(const std::vector<Eigen::Vector3d> & src) { this->src
  *                                  target trajectory
  */
 void Umeyama::insertTarget(const std::vector<Eigen::Vector3d> & target) { this->target_ = target; }
-
 /**
  * @brief calculate rigid transformation matrix in 2D
  */
@@ -172,7 +168,6 @@ void Umeyama_2D::calcTransform()
   }
   this->trans_ = trans.inverse();
 }
-
 /**
  * @brief calculate rigid transformation matrix in 3D
  */
@@ -199,10 +194,9 @@ void Umeyama_3D::calcTransform()
   }
   this->trans_ = trans.inverse();
 }
-
 /**
  * @brief transform point with 2D transformation
- * 
+ *
  * @param[in] pt                  - Eigen::Vector3d
  *                                  point to transform
  */
@@ -213,10 +207,9 @@ void Umeyama_2D::transformPoint(Eigen::Vector3d & pt) const
   const Eigen::Vector3d pt_al = this->trans_ * point;
   pt = Eigen::Vector3d(pt_al(0), pt_al(1), pt(2));
 }
-
 /**
  * @brief transform point with 3D transformation
- * 
+ *
  * @param[in] pt                  - Eigen::Vector3d
  *                                  point to transform
  */
@@ -227,10 +220,9 @@ void Umeyama_3D::transformPoint(Eigen::Vector3d & pt) const
   const Eigen::Vector4d pt_al = this->trans_ * point;
   pt = Eigen::Vector3d(pt_al(0), pt_al(1), pt_al(2));
 }
-
 /**
  * @brief convert trajectory to 2xX-matrix
- * 
+ *
  * @param[in] ls                  - std::vector<Eigen::Vector3d>
  *                                  trajectory
  * @param[out]                    - Eigen::MatrixXd:
@@ -246,10 +238,9 @@ Eigen::MatrixXd Umeyama_2D::ls2mat(const std::vector<Eigen::Vector3d> & ls)
   }
   return mat;
 }
-
 /**
  * @brief convert trajectory to 3xX-matrix
- * 
+ *
  * @param[in] ls                  - std::vector<Eigen::Vector3d>
  *                                  trajectory
  * @param[out]                    - Eigen::MatrixXd:

@@ -17,6 +17,11 @@
  */
 
 #include "transform.hpp"
+
+#include <algorithm>
+#include <iostream>
+#include <memory>
+#include <vector>
 namespace flexcloud
 {
 /**
