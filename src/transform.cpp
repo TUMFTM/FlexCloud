@@ -106,8 +106,11 @@ bool transform::select_control_points(
       sqrt(pow(src[idx].stddev_(0), 2) + pow(src[idx].stddev_(1), 2)) <= config.stddev_threshold &&
       use_ind) {
       // Shift reference point if in config file
-      if (std::find(config.shift_ind.begin(), config.shift_ind.end(), idx) != config.shift_ind.end()) {
-        const int dist_ind = std::find(config.shift_ind.begin(), config.shift_ind.end(), idx) - config.shift_ind.begin();
+      if (
+        std::find(config.shift_ind.begin(), config.shift_ind.end(), idx) !=
+        config.shift_ind.end()) {
+        const int dist_ind = std::find(config.shift_ind.begin(), config.shift_ind.end(), idx) -
+                             config.shift_ind.begin();
         std::cout << "\033[33m~~~~~> Shift reference point at index: " << idx << "with distance "
                   << config.shift_ind_dist[dist_ind] << "\033[0m" << std::endl;
         // Create vincinity = pair of preceding and following point on linestring
@@ -266,8 +269,8 @@ bool transform::transform_ls_rs(
  *                                  true if function executed
  */
 bool transform::transform_pcd(
-  const std::shared_ptr<Umeyama> & umeyama,
-  const std::shared_ptr<Delaunay> & triag, const pcl::PointCloud<pcl::PointXYZI>::Ptr & pcm)
+  const std::shared_ptr<Umeyama> & umeyama, const std::shared_ptr<Delaunay> & triag,
+  const pcl::PointCloud<pcl::PointXYZI>::Ptr & pcm)
 {
   // Check if the input pointer is valid
   if (!pcm) {
@@ -318,9 +321,8 @@ bool transform::transform_pcd(
  *                                  true if function executed
  */
 bool transform::transform_pcd(
-  const std::shared_ptr<Umeyama> & umeyama,
-  const std::shared_ptr<Delaunay> & triag, pcl::PointCloud<pcl::PointXYZI>::Ptr & pcm,
-  const int num_cores)
+  const std::shared_ptr<Umeyama> & umeyama, const std::shared_ptr<Delaunay> & triag,
+  pcl::PointCloud<pcl::PointXYZI>::Ptr & pcm, const int num_cores)
 {
   // Let's run threading
   int num_max_cores = std::thread::hardware_concurrency();
