@@ -36,7 +36,12 @@ cd FlexCloud/
 ./docker/build_docker.sh  
 ```
 
-You can also download built version of the docker images from [Dockerhub](https://hub.docker.com/repository/docker/mleitenstern/flexcloud/tags).
+You can also download built versions of the docker images from the github container registry.
+E.g. to download the latest container, run:
+
+```bash
+docker pull ghcr.io/tumftm/flexcloud:latest
+```
 
 4. Run the container and mount your data by appending the directory containing your data:
 
@@ -79,13 +84,7 @@ If you are struggling with their installation, you can have a look at the proces
 
 3. Inspect results
    * results of the rubber-sheet transformation & the resulting, transformed point cloud map are visualized in [Rerun](https://rerun.io/).
-   * just launch your own rerun viewer instance and you will be able to see the different geometries (see below)
-   * you can also use the rerun viewer of the docker container:
-
-   ```bash
-   docker exec <container-name> rerun
-   ```
-
+   * by default, the rerun viewer instance of the docker container is spawned. However, if you have problems with the viewer and your graphics drivers, you can also launch your viewer locally
    * adjust the parameters if the results are satisfying
    * see table for explanation of single topics
    * follow the instructions below (Content->Analysis) to get a quantitative evaluation fo the georeferencing

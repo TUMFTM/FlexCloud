@@ -1,0 +1,41 @@
+name: Docker
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  build-and-push-image:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+      attestations: write
+      id-token: write
+    strategy:
+      matrix:
+        DISTRO: [jammy]
+        TOOLCHAIN: [gcc]
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      
+      - name: Login to Container Registry
+        uses: docker/login-action@v1
+        with:
+          registry: ${{env.REGISTRY}}
+          username: ${{github.actor}}
+          password: ${{secrets.GITHUB_TOKEN}}
+
+      - name: Build and deploy docker
+        run: |
+          ./docker/build_docker.sh
+          docker push ghcr.io/tumftm/flexcloud:latest
