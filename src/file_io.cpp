@@ -24,6 +24,115 @@
 namespace flexcloud
 {
 /**
+ * @brief Load position frames from a directory
+ */
+std::vector<PosFrame> file_io::load_pos_frames(const std::string & directory, const float stddev_threshold)
+{
+  std::vector<PosFrame> pos_frames{};
+  std::cout << "Loading position frames from " << directory << std::endl;
+  boost::filesystem::directory_iterator dir_itr(directory);
+  boost::filesystem::directory_iterator end;
+
+  // Count number of files
+  int count = 0;
+  boost::filesystem::path dirPath(directory);
+  try {
+    for (const auto & entry : boost::filesystem::directory_iterator(dirPath)) {
+      if (boost::filesystem::is_regular_file(entry) && entry.path().extension() == ".txt") {
+        ++count;
+      }
+    }
+  } catch (const boost::filesystem::filesystem_error & ex) {
+    std::cerr << "Error accessing directory: " << ex.what() << std::endl;
+  }
+
+  for (dir_itr; dir_itr != end; dir_itr++) {
+    if (dir_itr->path().extension() != ".txt") {
+      continue;
+    }
+
+    std::string filePath = directory + "/" + dir_itr->path().stem().string() + ".txt";
+    std::ifstream inputFile(filePath);
+    if (!inputFile.is_open()) {
+      std::cerr << "Unable to open file" << std::endl;
+      return pos_frames;
+    }
+
+    std::string line;
+    double x_pos, y_pos, z_pos, x_stddev, y_stddev, z_stddev;
+    if (std::getline(inputFile, line)) {
+      std::istringstream iss(line);
+
+      if (!(iss >> x_pos >> y_pos >> z_pos >> x_stddev >> y_stddev >> z_stddev)) {
+        std::cerr << "Error during extraction of x, y, z, x_stdded, y_stddev and z_stddev values"
+                  << std::endl;
+      }
+    } else {
+      std::cerr << "File is empty" << std::endl;
+    }
+    inputFile.close();
+
+    std::int64_t stamp_sec = 0;
+    std::int64_t stamp_usec = 0;
+    char underscore;
+    std::stringstream sst(boost::filesystem::path(filePath).filename().string());
+    sst >> stamp_sec >> underscore >> stamp_usec;
+
+    // Check of stddev of lat and lon too high. If yes don't add frame to vector
+    if (std::sqrt(std::pow(x_stddev, 2) + std::pow(y_stddev, 2)) > stddev_threshold) {
+      std::cout << "\033[31m!! Skipped frame due to standard deviation exceeding limits !!\033[0m"
+                << std::endl;
+      continue;
+    }
+
+    PosFrame frame(stamp_sec, stamp_usec, x_pos, y_pos, z_pos, x_stddev, y_stddev, z_stddev);
+    pos_frames.push_back(frame);
+  }
+
+  // Sort frames based on timestamps (smallest TS first)
+  std::sort(pos_frames.begin(), pos_frames.end(), [](const PosFrame & a, const PosFrame & b) {
+    return a.get_timestamp() < b.get_timestamp();
+  });
+
+  std::cout << "Loaded " << pos_frames.size() << " global position frames" << std::endl;
+  return pos_frames;
+}
+/**
+ * @brief Load kitti odometry from a file
+ */
+std::vector<Eigen::Isometry3d> file_io::load_kitti_odom(const std::string & file_path)
+{
+  std::vector<Eigen::Isometry3d> poses;
+  std::ifstream input_file(file_path);
+  if (!input_file.is_open()) {
+    std::cerr << "Unable to open file" << std::endl;
+    return poses;
+  }
+
+  std::string line;
+  // Read poses
+  double x, y, z;
+  float r1, r2, r3, r4, r5, r6, r7, r8, r9;
+
+  while (std::getline(input_file, line)) {
+    std::istringstream iss(line);
+
+    if (!(iss >> r1 >> r2 >> r3 >> x >> r4 >> r5 >> r6 >> y >> r7 >> r8 >> r9 >> z)) {
+      std::cerr << "Error during extraction of odometry pose" << std::endl;
+    }
+    Eigen::Matrix3d rotation;
+    rotation << r1, r2, r3, r4, r5, r6, r7, r8, r9;
+
+    Eigen::Isometry3d pose = Eigen::Isometry3d::Identity();
+    pose.linear() = rotation;
+    pose.translation() << x, y, z;
+
+    poses.push_back(pose);
+  }
+  input_file.close();
+  return poses;
+}
+/**
  * @brief read traj from txt file
  *
  * @param[in] config              - FlexCloudConfig:
@@ -145,6 +254,39 @@ bool file_io::read_poses_SLAM_from_file(
   return true;
 }
 /**
+ * @brief Load pcd point clouds from a directory
+ */
+std::vector<std::string> file_io::load_clouds(const std::string & directory)
+{
+  std::vector<std::string> pcd_filenames{};
+  // Load filenames from directory
+  boost::filesystem::directory_iterator dir_itr(directory);
+  boost::filesystem::directory_iterator end;
+  // Count number of files
+  int count = 0;
+  boost::filesystem::path dirPath(directory);
+  try {
+    for (const auto & entry : boost::filesystem::directory_iterator(dirPath)) {
+      if (boost::filesystem::is_regular_file(entry) && entry.path().extension() == ".pcd") {
+        ++count;
+      }
+    }
+  } catch (const boost::filesystem::filesystem_error & ex) {
+    std::cerr << "Error accessing directory: " << ex.what() << std::endl;
+  }
+
+  for (dir_itr; dir_itr != end; dir_itr++) {
+    if (dir_itr->path().extension() != ".pcd") {
+      continue;
+    }
+
+    std::string file_path = directory + "/" + dir_itr->path().stem().string() + ".pcd";
+    pcd_filenames.push_back(file_path);
+  }
+  std::sort(pcd_filenames.begin(), pcd_filenames.end());
+  return pcd_filenames;
+}
+/**
  * @brief read pcd map from file
  *
  * @param[in] config              - FlexCloudConfig:
@@ -172,6 +314,118 @@ bool file_io::read_pcd_from_file(
     return -1;
   }
   pcm = cloud;
+  return true;
+}
+bool file_io::save_graph(
+  const std::string & filename, const std::vector<std::shared_ptr<OdometryFrame>> & keyframes)
+{
+  std::ofstream ofs(filename);
+  if (!ofs) {
+    return false;
+  }
+
+  // Write vertices
+  for (size_t i = 0; i < keyframes.size(); i++) {
+    ofs << "VERTEX_SE3:QUAT " << i << " ";
+    const Eigen::Vector3d translation = keyframes[i]->pose.translation();
+    const Eigen::Quaterniond quaternion(keyframes[i]->pose.rotation());
+
+    ofs << translation.x() << " " << translation.y() << " " << translation.z() << " "
+        << quaternion.x() << " " << quaternion.y() << " " << quaternion.z() << " "
+        << quaternion.w();
+    ofs << std::endl;
+  }
+  // Fix first vertex
+  ofs << "FIX 0" << std::endl;
+
+  // Write edges
+  for (size_t i = 0; i < keyframes.size() - 1; i++) {
+    const auto & delta_pose = keyframes[i]->pose.inverse() * keyframes[i + 1]->pose;
+    const Eigen::Vector3d translation = delta_pose.translation();
+    const Eigen::Quaterniond quaternion(delta_pose.rotation());
+
+    Eigen::MatrixXd inf = Eigen::MatrixXd::Identity(6, 6);
+    inf.block<3, 3>(0, 0) *= 10.0;
+    inf.block<3, 3>(3, 3) *= 20.0;
+
+    ofs << "EDGE_SE3:QUAT " << i << " " << i + 1 << " ";
+    // Write delta pose
+    ofs << translation.x() << " " << translation.y() << " " << translation.z() << " "
+        << quaternion.x() << " " << quaternion.y() << " " << quaternion.z() << " " << quaternion.w()
+        << " ";
+    // Write information matrix
+    for (int row = 0; row < inf.rows(); ++row) {
+      for (int col = row; col < inf.cols(); ++col) {
+        ofs << inf(row, col) << " ";
+      }
+    }
+    ofs << std::endl;
+  }
+
+  ofs.close();
+
+  return true;
+}
+bool file_io::save_kitti(
+  const std::string & filename, const std::vector<std::shared_ptr<OdometryFrame>> & keyframes)
+{
+  std::ofstream ofs(filename);
+  if (!ofs) {
+    return false;
+  }
+  for (size_t i = 0; i < keyframes.size(); i++) {
+    const Eigen::Matrix3d rotation = keyframes[i]->pose.rotation();
+    const Eigen::Vector3d translation = keyframes[i]->pose.translation();
+    ofs << rotation(0, 0) << " " << rotation(0, 1) << " " << rotation(0, 2) << " "
+        << translation.x() << " " << rotation(1, 0) << " " << rotation(1, 1) << " "
+        << rotation(1, 2) << " " << translation.y() << " " << rotation(2, 0) << " "
+        << rotation(2, 1) << " " << rotation(2, 2) << " " << translation.z() << std::endl;
+  }
+  ofs.close();
+
+  return true;
+}
+bool file_io::save_keyframes(
+  const std::string & directory, const std::vector<std::shared_ptr<OdometryFrame>> & keyframes,
+  const float downsample)
+{
+  for (size_t i = 0; i < keyframes.size(); i++) {
+    std::string keyframe_directory = (boost::format("%s/%06d") % directory % i).str();
+    boost::filesystem::create_directories(keyframe_directory);
+
+    boost::filesystem::copy_file(keyframes[i]->raw_cloud_path, keyframe_directory + "/raw.pcd");
+    pcl::io::savePCDFileBinary(keyframe_directory + "/cloud.pcd", *keyframes[i]->cloud(downsample));
+
+    std::ofstream ofs(keyframe_directory + "/data");
+    if (!ofs) {
+      return false;
+    }
+
+    ofs << "stamp " << keyframes[i]->stamp_sec << " " << keyframes[i]->stamp_nsec << std::endl;
+    ofs << "estimate" << std::endl << keyframes[i]->pose.matrix() << std::endl;
+    ofs << "odom " << std::endl << keyframes[i]->pose.matrix() << std::endl;
+    ofs << "id " << i << std::endl;
+  }
+
+  return true;
+}
+bool file_io::save_pos_frames(
+  const std::string & filename, const std::vector<PosFrame> & pos_keyframes)
+{
+  std::ofstream ofs(filename);
+  if (!ofs) {
+    return false;
+  }
+  for (size_t i = 0; i < pos_keyframes.size(); i++) {
+    ofs << std::fixed << std::setprecision(14) << pos_keyframes.at(i).x_pos << " " << std::fixed
+        << std::setprecision(14) << pos_keyframes.at(i).y_pos << " " << std::fixed
+        << std::setprecision(14) << pos_keyframes.at(i).z_pos << " " << std::fixed
+        << std::setprecision(14) << pos_keyframes.at(i).x_stddev << " " << std::fixed
+        << std::setprecision(14) << pos_keyframes.at(i).y_stddev << " " << std::fixed
+        << std::setprecision(14) << pos_keyframes.at(i).z_stddev << " " << std::endl;
+  }
+  ofs.close();
+
   return true;
 }
 /**

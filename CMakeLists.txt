@@ -15,6 +15,7 @@ endif()
 find_package(Eigen3 REQUIRED)
 find_package(PCL REQUIRED)
 find_package(CGAL REQUIRED)
+find_package(Boost REQUIRED)
 find_package(GeographicLib REQUIRED)
 
 # Fetch rerun_sdk and yaml-cpp
@@ -49,7 +50,27 @@ target_include_directories(file_io
 target_link_libraries(file_io
   Eigen3::Eigen
   ${PCL_LIBRARIES}
-  ${GeographicLib_LIBRARIES})
+  ${GeographicLib_LIBRARIES}
+  ${Boost_LIBRARIES})
+
+####################################
+# keyframe_interpolation
+####################################
+
+add_library(keyframe_interpolation SHARED
+src/keyframe_interpolation.cpp
+)
+
+target_include_directories(keyframe_interpolation
+PUBLIC
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/flexcloud>
+  $<INSTALL_INTERFACE:include>)
+
+target_link_libraries(keyframe_interpolation
+  file_io
+  Eigen3::Eigen
+  yaml-cpp::yaml-cpp
+  ${PCL_LIBRARIES})
 
 ####################################
 # map_transformation
@@ -72,7 +93,7 @@ target_link_libraries(transform
 # messages
 ####################################
 
-  add_library(visualization SHARED
+add_library(visualization SHARED
   src/visualization.cpp
 )
 
@@ -113,6 +134,7 @@ install(
 
 install(TARGETS
   file_io
+  keyframe_interpolation
   transform
   visualization
   analysis
@@ -125,8 +147,22 @@ install(TARGETS
 )
 
 ####################################
-# Main Executable
+# Main Executables
 ####################################
+
+# select_keyframes
+add_executable(select_keyframes
+  src/select_keyframes.cpp
+)
+
+target_include_directories(select_keyframes
+  PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/flexcloud>
+    $<INSTALL_INTERFACE:include>)
+
+target_link_libraries(select_keyframes
+  file_io
+  keyframe_interpolation)
 
 # pcd_georef
 add_executable(pcd_georef
@@ -147,4 +183,5 @@ target_link_libraries(pcd_georef
 
 install(TARGETS
   pcd_georef
+  select_keyframes
   DESTINATION pcd_georef/${PROJECT_NAME})

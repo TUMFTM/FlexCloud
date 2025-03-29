@@ -42,6 +42,15 @@ public:
   // Constructor
   file_io() {}
   /**
+   * @brief Load position frames from a directory
+   */
+  std::vector<PosFrame> load_pos_frames(
+    const std::string & directory, const float stddev_threshold);
+  /**
+   * @brief Load kitti odometry from a file
+   */
+  std::vector<Eigen::Isometry3d> load_kitti_odom(const std::string & file_path);
+  /**
    * @brief read traj from txt file
    *
    * @param[in] node                - rclcpp::Node:
@@ -66,6 +75,10 @@ public:
    */
   bool read_poses_SLAM_from_file(
     FlexCloudConfig & config, const std::string & poses_path, std::vector<ProjPoint> & poses);
+  /**
+   * @brief Load pcd point clouds from a directory
+   */
+  std::vector<std::string> load_clouds(const std::string & directory);
 
   /**
    * @brief read pcd map from file
@@ -80,18 +93,27 @@ public:
   bool read_pcd_from_file(
     FlexCloudConfig & config, const std::string & pcd_path,
     pcl::PointCloud<pcl::PointXYZI>::Ptr & pcm);
+  bool save_graph(
+    const std::string & filename, const std::vector<std::shared_ptr<OdometryFrame>> & keyframes);
+  bool save_kitti(
+    const std::string & filename, const std::vector<std::shared_ptr<OdometryFrame>> & keyframes);
+  bool save_keyframes(
+    const std::string & directory, const std::vector<std::shared_ptr<OdometryFrame>> & keyframes,
+    const float downsample);
+  bool save_pos_frames(
+    const std::string & filename, const std::vector<PosFrame> & pos_keyframes);
 
-  /**
-   * @brief write pcd map to file
-   *
-   * @param[in] node                - rclcpp::Node:
-   *                                  Node reference
-   * @param[in] pcd_out_path        - std::string:
-   *                                  absolute path to file
-   * @param[in] pcm                 - pcl::PointCloud<pcl::PointXYZ>::Ptr:
-   *                                  pointer on pointcloud map
-   */
-  bool write_pcd_to_path(
-    const std::string & pcd_out_path, const pcl::PointCloud<pcl::PointXYZI>::Ptr & pcd_map);
+    /**
+     * @brief write pcd map to file
+     *
+     * @param[in] node                - rclcpp::Node:
+     *                                  Node reference
+     * @param[in] pcd_out_path        - std::string:
+     *                                  absolute path to file
+     * @param[in] pcm                 - pcl::PointCloud<pcl::PointXYZ>::Ptr:
+     *                                  pointer on pointcloud map
+     */
+    bool write_pcd_to_path(
+      const std::string & pcd_out_path, const pcl::PointCloud<pcl::PointXYZI>::Ptr & pcd_map);
 };
 }  // namespace flexcloud
