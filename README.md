@@ -48,6 +48,7 @@ docker pull ghcr.io/tumftm/flexcloud:latest
 ```bash
 ./docker/run_docker.sh /your/local/directory/data
 ```
+
 Note that you have to change the image name within the script, if you downloaded the docker image from Dockerhub in the previous step.
 Although installation with the provided Docker-Container is recommended, you can also install the package locally.
 To do so, you first have to install the required dependencies:
@@ -60,6 +61,49 @@ If you are struggling with their installation, you can have a look at the proces
 
 <h2> 🔨 Usage</h2>
 
+<h3> Keyframe Interpolation</h3>
+
+* set parameters in `/config/select_keyframes.yaml`
+
+1. Necessary input parameters:
+   * `config_path` => path to [config-file](./config/select_keyframes.yaml)
+   * `pos_dir_path` => path to raw GNSS/reference trajectory of the vehicle (format: txt-file with `lat, lon, ele, lat_stddev, lon_stddev, ele_stddev` or `x, y, z, x_stddev, y_stddev, z_stddev`, if the reference trajectory is already in local coordinates)
+   * `kitti_odom_path` => path to SLAM trajectory of the vehicle (KITTI-format)
+   * `pcd_dir_path` => path to point cloud frames corresponding to odom trajectory
+   * `dst_dir_path` => path to output trajectory
+
+* make sure the data follows the following format/requirements:
+
+<!-- markdownlint-disable MD013 -->
+| Description | Format |
+| ----------- | ----------- |
+| global positions (usually from GNSS or an EKF using GNSS) | single `.txt` files in a directory specify position in `xpos ypos zpos x_stddev y_stddev z_stddev`. The files are named according to the UTC-timestamp of the position in the format `sec_nanosec`. |
+| inertial LiDAR trajectory (usually from a LiDAR odometry/SLAM algorithm) | single `.txt` file in KITTI-format: `r1 r2 r3 x r4 r5 r6 y r7 r8 r9 z` |
+| point cloud frames corresponding to LiDAR trajectory | single `.pcd` files in a directory. The files are named according to the UTC-timestamp of the position in the format `sec_nanosec`. |
+<!-- markdownlint-enable MD013 -->
+
+* the executable selects keyframes from the LiDAR trajectory (keyframes are based on minimum longitudinal distance
+* `keyframe_delta_x` - or minimum angle - `keyframe_delta_angle`) based on the config and converts it together
+with the pcd-files to a format compatible with [interactive_slam](https://github.com/koide3/interactive_slam)
+* as the global positions correspond to the same tracjetory, the keyframes of the global position trajectory can be
+computed in two ways (based on the parameter `interpolated`):
+  * **Closest neighbor**: For each keyframe of the LiDAR trajectory, the global position frame with the
+  smallest timestamp difference is selected.
+  * **Spline interpolation**: For each keyframe of the LiDAR trajectory, the global position frame at the given
+  timestamp is interpolated based on a third-order spline. The parameter `interp_pos_delta_xyz` is used to select
+  two positions that are next to each other but have a minimum euclidean distance of that parameter.
+  `stddev_threshold` is used to sort out global positions that have a high covariance.
+
+* to run the keyframe interpolation, simply execute the executable with the necessary data and config as arguments:
+
+```bash
+./select_keyframes <config_path> <pos_dir_path> <kitti_odom_path> <pcd_dir_path> <dst_dir_path>
+```
+
+* the output of the Keyframe Interpolation is designed to be compatible with [interactive_slam](https://github.com/koide3/interactive_slam).
+* This enables the additional insertion of loop closures before applying the georeferencing step.
+
+<h3> PCD Georeferencing</h3>
 * set parameters in `/config/pcd_georef.yaml`
 
 1. Necessary input parameters:
@@ -120,17 +164,20 @@ Detailed documentation of the modules can be found below.
 <h4>1. Projection of Global Coordinates</h4>
 
 * global coordinates may be projected into local coordinate system using ENU-coordinates from the [GeographicLib](https://geographiclib.sourceforge.io/2009-03/classGeographicLib_1_1LocalCartesian.html)
-* origin of grid for projection set based on config file otherwise first GNSS point
-* if the reference trajectory is already in a local, metric coordinate system, the projection may be skipped using the parameter `transform_traj`
 
-<h4>2. Alignment of Trajectories by Rigid Transformation</h4>
+<h4>2. Keyframe Interpolation</h4>
+- based on: <https://github.com/koide3/interactive_slam/blob/master/src/odometry2graph.cpp>
+- Selection of keyframes and interpolation of global position frames for map creation and manual optimization
+- Interpolation follows a third-order spline interpolation from [Eigen](https://eigen.tuxfamily.org/dox/unsupported/group__Splines__Module.html)
+
+<h4>3. Alignment of Trajectories by Rigid Transformation</h4>
 
 * SLAM trajectory aligned to reference using [Umeyama algorithm](https://web.stanford.edu/class/cs273/refs/umeyama.pdf) transformation in 2D/3D
 * application of calculated transformation on SLAM trajectory
 * screenshot below shows results of alignment of SLAM trajectory to projected reference trajectory with [Umeyama algorithm](https://web.stanford.edu/class/cs273/refs/umeyama.pdf)\
   ![image](doc/traj_al.png)
 
-<h4>3. Rubber-Sheet transformation</h4>
+<h4>4. Rubber-Sheet transformation</h4>
 
 * piecewise linear rubber-sheet transformation in 2D/3D based on concept of [Griffin & White](https://www.tandfonline.com/doi/abs/10.1559/152304085783915135)
 * using Delaunay triangulation from [CGAL](https://www.cgal.org/)

@@ -25,6 +25,13 @@ namespace flexcloud
 {
 /**
  * @brief Load position frames from a directory
+ * 
+ * @param[in] directory           - std::string:
+ *                                  absolute path to directory
+ * @param[in] stddev_threshold    - float:
+ *                                  threshold for standard deviation
+ * @return std::vector<PosFrame>:
+ *                                  vector of position frames
  */
 std::vector<PosFrame> file_io::load_pos_frames(const std::string & directory, const float stddev_threshold)
 {
@@ -255,6 +262,11 @@ bool file_io::read_poses_SLAM_from_file(
 }
 /**
  * @brief Load pcd point clouds from a directory
+ * 
+ * @param[in] directory           - std::string:
+ *                                  absolute path to directory
+ * @return std::vector<std::string>:
+ *                                  vector of pcd filenames
  */
 std::vector<std::string> file_io::load_clouds(const std::string & directory)
 {
@@ -316,6 +328,14 @@ bool file_io::read_pcd_from_file(
   pcm = cloud;
   return true;
 }
+/**
+ * @brief save kitti odometry to file
+ *
+ * @param[in] filename            - std::string:
+ *                                  absolute path to file
+ * @param[in] keyframes           - std::vector<std::shared_ptr<OdometryFrame>>:
+ *                                  vector of keyframes
+ */
 bool file_io::save_graph(
   const std::string & filename, const std::vector<std::shared_ptr<OdometryFrame>> & keyframes)
 {
@@ -366,6 +386,14 @@ bool file_io::save_graph(
 
   return true;
 }
+/**
+ * @brief save kitti odometry to file
+ *
+ * @param[in] filename           - std::string:
+ *                                  absolute path to file
+ * @param[in] keyframes          - std::vector<std::shared_ptr<OdometryFrame>>:
+ *                                  vector of keyframes
+ */
 bool file_io::save_kitti(
   const std::string & filename, const std::vector<std::shared_ptr<OdometryFrame>> & keyframes)
 {
@@ -385,6 +413,16 @@ bool file_io::save_kitti(
 
   return true;
 }
+/**
+ * @brief save keyframes to directory
+ *
+ * @param[in] directory           - std::string:
+ *                                  absolute path to directory
+ * @param[in] keyframes           - std::vector<std::shared_ptr<OdometryFrame>>:
+ *                                  vector of keyframes
+ * @param[in] downsample          - float:
+ *                                  downsample factor
+ */
 bool file_io::save_keyframes(
   const std::string & directory, const std::vector<std::shared_ptr<OdometryFrame>> & keyframes,
   const float downsample)

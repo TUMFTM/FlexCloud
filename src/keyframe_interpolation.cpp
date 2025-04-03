@@ -6,6 +6,7 @@
 #include "yaml-cpp/yaml.h"
 namespace flexcloud
 {
+
 KeyframeInterpolation::KeyframeInterpolation(
   const std::string & config_path, const std::string & pos_dir, const std::string & kitti_path,
   const std::string & pcd_dir, const std::string & dst_directory)
@@ -32,6 +33,13 @@ KeyframeInterpolation::KeyframeInterpolation(
 }
 /**
  * @brief Load frames from a directory
+ * 
+ * @param[in] pos_dir             - std::string:
+ *                                 absolute path to directory
+ * @param[in] kitti_path          - std::string:
+ *                                path to kitti odometry
+ * * @param[in] pcd_dir             - std::string:
+ * *                                 absolute path to directory
  */
 void KeyframeInterpolation::load(
   const std::string & pos_dir, const std::string & kitti_path, const std::string & pcd_dir)
@@ -65,6 +73,12 @@ void KeyframeInterpolation::load(
   }
   std::cout << "Loaded " << this->frames_.size() << " odometry frames" << std::endl;
 }
+/**
+ * @brief Save everything to directory
+ * 
+ * @param[in] dst_directory       - std::string:
+ *                                 absolute path to directory
+ */
 bool KeyframeInterpolation::save(const std::string & dst_directory) const
 {
   if (this->keyframes_.empty()) {
@@ -95,6 +109,18 @@ bool KeyframeInterpolation::save(const std::string & dst_directory) const
   std::cout << "Everything saved successfully" << std::endl;
   return true;
 }
+/**
+ * @brief Select keyframes
+ * 
+ * @param[in] keyframe_delta_x     - float:
+ *                                 delta x for keyframe selection
+ * @param[in] keyframe_delta_angle - float:
+ *                                 delta angle for keyframe selection
+ * @param[in] interpolate          - bool:
+ *                                 interpolate keyframes
+ * @param[in] pos_delta_xyz        - float:
+ *                                 delta xyz for keyframe selection
+ */
 void KeyframeInterpolation::select_keyframes(
   float keyframe_delta_x, float keyframe_delta_angle, bool interpolate, float pos_delta_xyz)
 {
@@ -144,6 +170,14 @@ void KeyframeInterpolation::select_keyframes(
               << "\033[0m" << std::endl;
   }
 }
+/**
+ * @brief Search closest PosFrame for a given frame
+ * 
+ * @param[in] frame              - std::shared_ptr<OdometryFrame>:
+ *                                 frame to search for
+ * @return PosFrame             - PosFrame:
+ *                                 closest PosFrame
+ */
 PosFrame KeyframeInterpolation::search_closest(const std::shared_ptr<OdometryFrame> & frame)
 {
   auto closest_it = std::min_element(
@@ -160,6 +194,16 @@ PosFrame KeyframeInterpolation::search_closest(const std::shared_ptr<OdometryFra
 
   return *closest_it;
 }
+/**
+ * @brief Interpolate PosFrame for a given frame
+ * 
+ * @param[in] frame              - std::shared_ptr<OdometryFrame>:
+ *                                 frame to search for
+ * @param[in] pos_delta_xyz      - float:
+ *                                 delta xyz for keyframe selection
+ * @return PosFrame             - PosFrame:
+ *                                 interpolated PosFrame
+ */
 PosFrame KeyframeInterpolation::interpolate_pos(
   const std::shared_ptr<OdometryFrame> & frame, const float pos_delta_xyz)
 {

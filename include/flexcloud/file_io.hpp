@@ -28,6 +28,7 @@
 #include <algorithm>
 #include <fstream>
 #include <iostream>
+#include <memory>
 #include <sstream>
 #include <string>
 #include <vector>
@@ -43,11 +44,23 @@ public:
   file_io() {}
   /**
    * @brief Load position frames from a directory
+   *
+   * @param[in] directory           - std::string:
+   *                                 absolute path to directory
+   * @param[in] stddev_threshold    - float:
+   *                                 threshold for standard deviation
+   * @return std::vector<PosFrame>:
+   *                                 vector of position frames
    */
   std::vector<PosFrame> load_pos_frames(
     const std::string & directory, const float stddev_threshold);
   /**
    * @brief Load kitti odometry from a file
+   *
+   * @param[in] file_path           - std::string:
+   *                                 absolute path to file
+   * @return std::vector<Eigen::Isometry3d>:
+   *                                 vector of poses
    */
   std::vector<Eigen::Isometry3d> load_kitti_odom(const std::string & file_path);
   /**
@@ -93,27 +106,58 @@ public:
   bool read_pcd_from_file(
     FlexCloudConfig & config, const std::string & pcd_path,
     pcl::PointCloud<pcl::PointXYZI>::Ptr & pcm);
+  /**
+   * @brief save kitti odometry to file
+   *
+   * @param[in] filename            - std::string:
+   *                                  absolute path to file
+   * @param[in] keyframes           - std::vector<std::shared_ptr<OdometryFrame>>:
+   *                                  vector of keyframes
+   */
   bool save_graph(
     const std::string & filename, const std::vector<std::shared_ptr<OdometryFrame>> & keyframes);
+  /**
+   * @brief save kitti odometry to file
+   *
+   * @param[in] filename            - std::string:
+   *                                  absolute path to file
+   * @param[in] keyframes           - std::vector<std::shared_ptr<OdometryFrame>>:
+   *                                  vector of keyframes
+   */
   bool save_kitti(
     const std::string & filename, const std::vector<std::shared_ptr<OdometryFrame>> & keyframes);
+  /**
+   * @brief save kitti odometry to file
+   *
+   * @param[in] filename            - std::string:
+   *                                  absolute path to file
+   * @param[in] keyframes           - std::vector<std::shared_ptr<OdometryFrame>>:
+   *                                  vector of keyframes
+   */
   bool save_keyframes(
     const std::string & directory, const std::vector<std::shared_ptr<OdometryFrame>> & keyframes,
     const float downsample);
-  bool save_pos_frames(
-    const std::string & filename, const std::vector<PosFrame> & pos_keyframes);
+  /**
+   * @brief save position frames to file
+   *
+   * @param[in] filename            - std::string:
+   *                                  absolute path to file
+   * @param[in] pos_keyframes       - std::vector<PosFrame>:
+   *                                  vector of position frames
+   */
+  bool save_pos_frames(const std::string & filename, const std::vector<PosFrame> & pos_keyframes);
 
-    /**
-     * @brief write pcd map to file
-     *
-     * @param[in] node                - rclcpp::Node:
-     *                                  Node reference
-     * @param[in] pcd_out_path        - std::string:
-     *                                  absolute path to file
-     * @param[in] pcm                 - pcl::PointCloud<pcl::PointXYZ>::Ptr:
-     *                                  pointer on pointcloud map
-     */
-    bool write_pcd_to_path(
-      const std::string & pcd_out_path, const pcl::PointCloud<pcl::PointXYZI>::Ptr & pcd_map);
+  /**
+   * @brief write pcd map to file
+   *
+   * @param[in] node                - rclcpp::Node:
+   *                                  Node reference
+   * @param[in] pcd_out_path        - std::string:
+   *                                  absolute path to file
+   * @param[in] pcm                 - pcl::PointCloud<pcl::PointXYZ>::Ptr:
+   *                                  pointer on pointcloud map
+   */
+  bool write_pcd_to_path(
+    const std::string & pcd_out_path, const pcl::PointCloud<pcl::PointXYZI>::Ptr & pcd_map);
 };
 }  // namespace flexcloud
