@@ -36,6 +36,7 @@
 #include <memory>
 #include <string>
 #include <vector>
+#include <iostream>
 
 typedef CGAL::Exact_predicates_inexact_constructions_kernel K;
 

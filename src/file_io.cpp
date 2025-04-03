@@ -18,6 +18,7 @@
 
 #include "file_io.hpp"
 
+#include <algorithm>
 #include <iostream>
 #include <string>
 #include <vector>
@@ -25,7 +26,7 @@ namespace flexcloud
 {
 /**
  * @brief Load position frames from a directory
- * 
+ *
  * @param[in] directory           - std::string:
  *                                  absolute path to directory
  * @param[in] stddev_threshold    - float:
@@ -33,7 +34,8 @@ namespace flexcloud
  * @return std::vector<PosFrame>:
  *                                  vector of position frames
  */
-std::vector<PosFrame> file_io::load_pos_frames(const std::string & directory, const float stddev_threshold)
+std::vector<PosFrame> file_io::load_pos_frames(
+  const std::string & directory, const float stddev_threshold)
 {
   std::vector<PosFrame> pos_frames{};
   std::cout << "Loading position frames from " << directory << std::endl;
@@ -262,7 +264,7 @@ bool file_io::read_poses_SLAM_from_file(
 }
 /**
  * @brief Load pcd point clouds from a directory
- * 
+ *
  * @param[in] directory           - std::string:
  *                                  absolute path to directory
  * @return std::vector<std::string>:

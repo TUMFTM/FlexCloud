@@ -18,6 +18,12 @@
 // based on: https://github.com/koide3/interactive_slam/blob/master/src/odometry2graph.cpp
 
 #include "keyframe_interpolation.hpp"
+#include <string>
+#include <vector>
+#include <iostream>
+#include <set>
+#include <memory>
+#include <algorithm>
 
 #include "yaml-cpp/yaml.h"
 namespace flexcloud

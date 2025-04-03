@@ -17,6 +17,7 @@
  */
 #include "keyframe_interpolation.hpp"
 #include "utility.hpp"
+#include <iostream>
 int main(int argc, char * argv[])
 {
   // Check the number of arguments
