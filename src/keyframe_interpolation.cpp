@@ -1,4 +1,20 @@
-// Copyright 2024 Maximilian Leitenstern
+/*
+ * TUM Autonomous Motorsport Georeferencing Tool
+ * Copyright (C) 2024 Maximilian Leitenstern, Marko Alten
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
 // based on: https://github.com/koide3/interactive_slam/blob/master/src/odometry2graph.cpp
 
 #include "keyframe_interpolation.hpp"
@@ -6,7 +22,6 @@
 #include "yaml-cpp/yaml.h"
 namespace flexcloud
 {
-
 KeyframeInterpolation::KeyframeInterpolation(
   const std::string & config_path, const std::string & pos_dir, const std::string & kitti_path,
   const std::string & pcd_dir, const std::string & dst_directory)
@@ -33,7 +48,7 @@ KeyframeInterpolation::KeyframeInterpolation(
 }
 /**
  * @brief Load frames from a directory
- * 
+ *
  * @param[in] pos_dir             - std::string:
  *                                 absolute path to directory
  * @param[in] kitti_path          - std::string:
@@ -75,7 +90,7 @@ void KeyframeInterpolation::load(
 }
 /**
  * @brief Save everything to directory
- * 
+ *
  * @param[in] dst_directory       - std::string:
  *                                 absolute path to directory
  */
@@ -111,7 +126,7 @@ bool KeyframeInterpolation::save(const std::string & dst_directory) const
 }
 /**
  * @brief Select keyframes
- * 
+ *
  * @param[in] keyframe_delta_x     - float:
  *                                 delta x for keyframe selection
  * @param[in] keyframe_delta_angle - float:
@@ -172,7 +187,7 @@ void KeyframeInterpolation::select_keyframes(
 }
 /**
  * @brief Search closest PosFrame for a given frame
- * 
+ *
  * @param[in] frame              - std::shared_ptr<OdometryFrame>:
  *                                 frame to search for
  * @return PosFrame             - PosFrame:
@@ -196,7 +211,7 @@ PosFrame KeyframeInterpolation::search_closest(const std::shared_ptr<OdometryFra
 }
 /**
  * @brief Interpolate PosFrame for a given frame
- * 
+ *
  * @param[in] frame              - std::shared_ptr<OdometryFrame>:
  *                                 frame to search for
  * @param[in] pos_delta_xyz      - float:
@@ -253,14 +268,12 @@ PosFrame KeyframeInterpolation::interpolate_pos(
 
   // Sanity check to check if enough pos frames found for interpolation
   if (selectedIndicesLow.size() < numFrames) {
-    std::cout
-      << "\033[31mNot enough Pos frames provided before the LiDAR frame with timestamp "
-      << static_cast<double>(frame->get_timestamp()) / 1000000000 << "\033[0m" << std::endl;
+    std::cout << "\033[31mNot enough Pos frames provided before the LiDAR frame with timestamp "
+              << static_cast<double>(frame->get_timestamp()) / 1000000000 << "\033[0m" << std::endl;
     exit(EXIT_FAILURE);
   } else if (selectedIndicesHigh.size() < (numFrames + 1)) {
-    std::cout
-      << "\033[31mNot enough Pos frames provided after the LiDAR frame with timestamp "
-      << static_cast<double>(frame->get_timestamp()) / 1000000000 << "\033[0m" << std::endl;
+    std::cout << "\033[31mNot enough Pos frames provided after the LiDAR frame with timestamp "
+              << static_cast<double>(frame->get_timestamp()) / 1000000000 << "\033[0m" << std::endl;
     exit(EXIT_FAILURE);
   }
 
@@ -306,5 +319,17 @@ PosFrame KeyframeInterpolation::interpolate_pos(
     frame->stamp_sec, frame->stamp_nsec, values[1], values[2], values[3], 0.0, 0.0, 0.0);
 
   return tmp_frame;
+}
+void KeyframeInterpolation::visualize()
+{
+  // Spawn a rerun stream
+  this->rec_.spawn().exit_on_failure();
+
+  // Visualize PosFrames
+  viz_->pos2rerun(this->pos_frames_, this->rec_, "Orange", "pos_frames");
+  viz_->pos2rerun(this->pos_keyframes_, this->rec_, "Green", "pos_keyframes");
+
+  viz_->odom2rerun(this->frames_, this->rec_, "Orange", "odom_frames");
+  viz_->odom2rerun(this->keyframes_, this->rec_, "Green", "odom_keyframes");
 }
 }  // namespace flexcloud

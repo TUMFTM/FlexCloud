@@ -24,6 +24,57 @@
 namespace flexcloud
 {
 /**
+ * @brief visualize odom frames in rerun
+ *
+ * @param[in] odom                 - std::vector<std::shared_ptr<OdometryFrame>>:
+ *                                  odom points
+ * @param[in] stream              - rerun::RecordingStream:
+ *                                  stream to add linestring to
+ * @param[in] color               - std_msgs::msg::ColorRGBA:
+ *                                  color of array
+ * @param[in] name                - std::string:
+ *                                  namespace of linestring
+ */
+void visualization::odom2rerun(
+  const std::vector<std::shared_ptr<OdometryFrame>> & odom, rerun::RecordingStream & stream,
+  const std::string color, const std::string name)
+{
+  // Convert to rerun
+  TUMcolor col(color);
+  std::vector<rerun::Position3D> positions{};
+  positions.reserve(odom.size());
+  for (const auto & p : odom) {
+    positions.push_back(rerun::Position3D(
+      p->pose.translation().x(), p->pose.translation().y(), p->pose.translation().z()));
+  }
+  stream.log(name, rerun::Points3D(positions).with_colors(rerun::Color(col.r, col.g, col.b)));
+}
+/**
+ * @brief visualize pos frames in rerun
+ *
+ * @param[in] pos                 - std::vector<PosFrame>:
+ *                                  pos points
+ * @param[in] stream              - rerun::RecordingStream:
+ *                                  stream to add linestring to
+ * @param[in] color               - std_msgs::msg::ColorRGBA:
+ *                                  color of array
+ * @param[in] name                - std::string:
+ *                                  namespace of linestring
+ */
+void visualization::pos2rerun(
+  std::vector<PosFrame> & pos, rerun::RecordingStream & stream, const std::string color,
+  const std::string name)
+{
+  // Convert to rerun
+  TUMcolor col(color);
+  std::vector<rerun::Position3D> positions{};
+  positions.reserve(pos.size());
+  for (const auto & p : pos) {
+    positions.push_back(rerun::Position3D(p.x_pos, p.y_pos, p.z_pos));
+  }
+  stream.log(name, rerun::Points3D(positions).with_colors(rerun::Color(col.r, col.g, col.b)));
+}
+/**
  * @brief visualize linestring in rerun
  *
  * @param[in] ls                  - std::vector<ProjPoint>:

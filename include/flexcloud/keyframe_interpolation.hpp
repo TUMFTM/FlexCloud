@@ -1,4 +1,20 @@
-// Copyright 2024 Maximilian Leitenstern
+/*
+ * TUM Autonomous Motorsport Georeferencing Tool
+ * Copyright (C) 2024 Maximilian Leitenstern, Marko Alten
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
 #pragma once
 
 #include <pcl/io/pcd_io.h>
@@ -16,6 +32,7 @@
 
 #include "file_io.hpp"
 #include "utility.hpp"
+#include "visualization.hpp"
 namespace flexcloud
 {
 class KeyframeInterpolation
@@ -24,15 +41,12 @@ public:
   KeyframeInterpolation(
     const std::string & config_path, const std::string & pos_dir, const std::string & kitti_path,
     const std::string & pcd_dir, const std::string & dst_directory);
-  std::vector<std::shared_ptr<OdometryFrame>> get_frames() const { return this->frames_; }
-  std::vector<std::shared_ptr<OdometryFrame>> get_keyframes() const { return this->keyframes_; }
-  std::vector<PosFrame> get_pos_frames() const { return this->pos_frames_; }
-  std::vector<PosFrame> get_pos_keyframes() const { return this->pos_keyframes_; }
+  void visualize();
 
 private:
   /**
    * @brief Load frames from a directory
-   * 
+   *
    * @param[in] pos_dir             - std::string:
    *                                  absolute path to directory
    * @param[in] kitti_path          - std::string:
@@ -44,14 +58,14 @@ private:
     const std::string & pos_dir, const std::string & kitti_path, const std::string & pcd_dir);
   /**
    * @brief Save everything to directory
-   * 
+   *
    * @param[in] dst_directory       - std::string:
    *                                  absolute path to directory
    */
   bool save(const std::string & dst_directory) const;
   /**
    * @brief Select keyframes
-   * 
+   *
    * @param[in] keyframe_delta_x     - float:
    *                                  delta x for keyframe selection
    * @param[in] keyframe_delta_angle - float:
@@ -66,7 +80,7 @@ private:
     const float pos_delta_xyz);
   /**
    * @brief Search closest PosFrame for a given frame
-   * 
+   *
    * @param[in] frame              - std::shared_ptr<OdometryFrame>:
    *                                 frame to search for
    * @return PosFrame             - PosFrame:
@@ -75,7 +89,7 @@ private:
   PosFrame search_closest(const std::shared_ptr<OdometryFrame> & frame);
   /**
    * @brief Interpolate PosFrame for a given frame
-   * 
+   *
    * @param[in] frame              - std::shared_ptr<OdometryFrame>:
    *                                 frame to interpolate
    * @param[in] pos_delta_xyz      - float:
@@ -94,6 +108,10 @@ private:
   std::vector<PosFrame> pos_frames_;
   std::vector<std::shared_ptr<OdometryFrame>> keyframes_;
   std::vector<PosFrame> pos_keyframes_;
+
+  // Visualization
+  std::shared_ptr<visualization> viz_;
+  rerun::RecordingStream rec_ = rerun::RecordingStream("keyframe_interpolation");
 
   // Config parameters
   bool interpolate_{false};

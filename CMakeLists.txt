@@ -54,25 +54,6 @@ target_link_libraries(file_io
   ${Boost_LIBRARIES})
 
 ####################################
-# keyframe_interpolation
-####################################
-
-add_library(keyframe_interpolation SHARED
-src/keyframe_interpolation.cpp
-)
-
-target_include_directories(keyframe_interpolation
-PUBLIC
-  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/flexcloud>
-  $<INSTALL_INTERFACE:include>)
-
-target_link_libraries(keyframe_interpolation
-  file_io
-  Eigen3::Eigen
-  yaml-cpp::yaml-cpp
-  ${PCL_LIBRARIES})
-
-####################################
 # map_transformation
 ####################################
 add_library(transform SHARED
@@ -90,7 +71,7 @@ target_link_libraries(transform
   CGAL::CGAL)
 
 ####################################
-# messages
+# visualization
 ####################################
 
 add_library(visualization SHARED
@@ -103,8 +84,31 @@ target_include_directories(visualization
     $<INSTALL_INTERFACE:include>)
 
 target_link_libraries(visualization
+  Eigen3::Eigen
   ${PCL_LIBRARIES}
+  CGAL::CGAL
+  ${Boost_LIBRARIES}
   rerun_sdk)
+
+####################################
+# keyframe_interpolation
+####################################
+
+add_library(keyframe_interpolation SHARED
+src/keyframe_interpolation.cpp
+)
+
+target_include_directories(keyframe_interpolation
+PUBLIC
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/flexcloud>
+  $<INSTALL_INTERFACE:include>)
+
+target_link_libraries(keyframe_interpolation
+  file_io
+  visualization
+  Eigen3::Eigen
+  yaml-cpp::yaml-cpp
+  ${PCL_LIBRARIES})
 
 ####################################
 # analysis
@@ -162,7 +166,8 @@ target_include_directories(select_keyframes
 
 target_link_libraries(select_keyframes
   file_io
-  keyframe_interpolation)
+  keyframe_interpolation
+  visualization)
 
 # pcd_georef
 add_executable(pcd_georef
