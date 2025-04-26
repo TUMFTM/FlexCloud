@@ -42,8 +42,8 @@ public:
   /**
    * @brief write all data relevant for evaluation of trajectory matching
    *
-   * @param[in] node                - rclcpp::Node:
-   *                                  Node reference
+   * @param[in] config              - FlexCloudConfig:
+   *                                  config struct
    * @param[in] src                 - std::vector<ProjPoint>:
    *                                  source trajectory
    * @param[in] target              - std::vector<ProjPoint>:
@@ -72,8 +72,8 @@ private:
   /**
    * @brief calculate difference of a target trajectory to a source trajectory
    *
-   * @param[in] node                - rclcpp::Node:
-   *                                  Node reference
+   * @param[in] config              - FlexCloudConfig:
+   *                                  config struct
    * @param[in] src                 - std::vector<ProjPoint>:
    *                                  source trajectory
    * @param[in] target              - std::vector<ProjPoint>:
@@ -84,16 +84,6 @@ private:
   void calc_diff(
     FlexCloudConfig & config, const std::vector<ProjPoint> & src,
     const std::vector<ProjPoint> & target, std::vector<double> & diff);
-
-  /**
-   * @brief create directory from name
-   *
-   * @param[in] node                - rclcpp::Node:
-   *                                  Node reference
-   * @param[in] dir_path            - std::string:
-   *                                  name of output directory
-   */
-  void create_output_dir(FlexCloudConfig & config, const std::string & dir_path);
   /**
    * @brief Save FlexCloudConfig to a text file
    * @param config The configuration to save
@@ -105,8 +95,6 @@ private:
   /**
    * @brief write a linestring to .txt file
    *
-   * @param[in] node                - rclcpp::Node:
-   *                                  Node reference
    * @param[in] ls                  - std::vector<ProjPoint>:
    *                                  linestring
    * @param[in] dir_path            - std::string:
@@ -114,8 +102,7 @@ private:
    * @param[in] file_name           - std::string:
    *                                  name of output file
    */
-  void write_ls(
-    FlexCloudConfig & config, const std::vector<ProjPoint> & ls, const std::string & dir_path,
+  void write_ls(const std::vector<ProjPoint> & ls, const std::string & dir_path,
     const std::string & file_name);
   /**
    * @brief write a linestrings to .txt file
@@ -129,14 +116,11 @@ private:
    * @param[in] file_name           - std::string:
    *                                  name of output file
    */
-  void write_lss(
-    FlexCloudConfig & config, const std::vector<std::vector<ProjPoint>> & lss,
+  void write_lss(const std::vector<std::vector<ProjPoint>> & lss,
     const std::string & dir_path, const std::string & file_name);
   /**
    * @brief write a double vector to .txt file
    *
-   * @param[in] node                - rclcpp::Node:
-   *                                  Node reference
    * @param[in] vec                 - std::vector<double>:
    *                                  vector of double values
    * @param[in] dir_path            - std::string:
@@ -144,15 +128,12 @@ private:
    * @param[in] file_name           - std::string:
    *                                  name of output file
    */
-  void write_double_vec(
-    FlexCloudConfig & config, const std::vector<double> & vec, const std::string & dir_path,
+  void write_double_vec(const std::vector<double> & vec, const std::string & dir_path,
     const std::string & file_name);
 
   /**
    * @brief write triangulation vertices to file
    *
-   * @param[in] node                - rclcpp::Node:
-   *                                  Node reference
    * @param[in] triag               - std::shared_ptr<Delaunay>:
    *                                  pointer to triangulation
    * @param[in] dir_path            - std::string:
@@ -160,14 +141,11 @@ private:
    * @param[in] file_name           - std::string:
    *                                  name of output file
    */
-  void write_triag(
-    FlexCloudConfig & config, const std::shared_ptr<Delaunay> & triag, const std::string & dir_path,
+  void write_triag(const std::shared_ptr<Delaunay> & triag, const std::string & dir_path,
     const std::string & file_name);
   /**
    * @brief write controlpoints to file
    *
-   * @param[in] node                - rclcpp::Node:
-   *                                  Node reference
    * @param[in] cps                 - std::vector<ControlPoint>:
    *                                  control points
    * @param[in] dir_path            - std::string:
@@ -175,8 +153,7 @@ private:
    * @param[in] file_name           - std::string:
    *                                  name of output file
    */
-  void write_cp(
-    FlexCloudConfig & config, const std::vector<ControlPoint> & cps, const std::string & dir_path,
+  void write_cp(const std::vector<ControlPoint> & cps, const std::string & dir_path,
     const std::string & file_name);
 };
 }  // namespace flexcloud

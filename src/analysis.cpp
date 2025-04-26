@@ -59,17 +59,26 @@ bool analysis::traj_matching(
   calc_diff(config, src, target_al, diff_al);
   calc_diff(config, src, target_rs, diff_rs);
 
-  const std::string traj_matching_dir = "/traj_matching";
-  create_output_dir(config, traj_matching_dir);
-
-  write_ls(config, src, traj_matching_dir, "source.txt");
-  write_ls(config, target, traj_matching_dir, "target.txt");
-  write_ls(config, target_al, traj_matching_dir, "target_al.txt");
-  write_ls(config, target_rs, traj_matching_dir, "target_rs.txt");
-  write_triag(config, triag, traj_matching_dir, "triag.txt");
-  write_cp(config, cps, traj_matching_dir, "controlPoints.txt");
-  write_double_vec(config, diff_al, traj_matching_dir, "diff_al.txt");
-  write_double_vec(config, diff_rs, traj_matching_dir, "diff_rs.txt");
+  // Extract path from output path
+  std::string path = config.pcd_out_path;
+  std::string::size_type pos = path.find_last_of("/");
+  if (pos != std::string::npos) {
+    path = path.substr(0, pos);
+  }
+  const std::string dir = path + "/traj_matching";
+  // Create if not a directory
+  if (!std::filesystem::is_directory(dir)) {
+    std::filesystem::create_directories(dir);
+  }
+  save_config(config, dir, "config.txt");
+  write_ls(src, dir, "source.txt");
+  write_ls(target, dir, "target.txt");
+  write_ls(target_al, dir, "target_al.txt");
+  write_ls(target_rs, dir, "target_rs.txt");
+  write_triag(triag, dir, "triag.txt");
+  write_cp(cps, dir, "controlPoints.txt");
+  write_double_vec(diff_al, dir, "diff_al.txt");
+  write_double_vec(diff_rs, dir, "diff_rs.txt");
   return true;
 }
 /**
@@ -108,22 +117,6 @@ void analysis::calc_diff(
   }
 }
 /**
- * @brief create directory from name
- *
- * @param[in] config              - FlexCloudConfig:
- *                                  config struct
- * @param[in] dir_path            - std::string:
- *                                  name of output directory
- */
-void analysis::create_output_dir(FlexCloudConfig & config, const std::string & dir_path)
-{
-  const std::string dir = config.analysis_output_dir + dir_path;
-  // Create if not a directory
-  if (!std::filesystem::is_directory(dir)) {
-    std::filesystem::create_directories(dir);
-  }
-}
-/**
  * @brief Save FlexCloudConfig to a text file
  * @param config The configuration to save
  * @param filepath Path to save the configuration file
@@ -132,7 +125,7 @@ void analysis::create_output_dir(FlexCloudConfig & config, const std::string & d
 void analysis::save_config(
   const FlexCloudConfig & config, const std::string & dir_path, const std::string & file_name)
 {
-  const std::string file_path = config.analysis_output_dir + dir_path + "/" + file_name;
+  const std::string file_path = dir_path + "/" + file_name;
   std::ofstream file(file_path);
 
   if (file.is_open()) {
@@ -207,8 +200,6 @@ void analysis::save_config(
 /**
  * @brief write a linestring to .txt file
  *
- * @param[in] config              - FlexCloudConfig:
- *                                  config struct
  * @param[in] ls                  - std::vector<ProjPoint>:
  *                                  linestring
  * @param[in] dir_path            - std::string:
@@ -217,10 +208,9 @@ void analysis::save_config(
  *                                  name of output file
  */
 void analysis::write_ls(
-  FlexCloudConfig & config, const std::vector<ProjPoint> & ls, const std::string & dir_path,
-  const std::string & file_name)
+  const std::vector<ProjPoint> & ls, const std::string & dir_path, const std::string & file_name)
 {
-  const std::string file_path = config.analysis_output_dir + dir_path + "/" + file_name;
+  const std::string file_path = dir_path + "/" + file_name;
   std::ofstream file(file_path);
 
   if (file.is_open()) {
@@ -235,8 +225,6 @@ void analysis::write_ls(
 /**
  * @brief write a linestrings to .txt file
  *
- * @param[in] config              - FlexCloudConfig:
- *                                  config struct
  * @param[in] lss                 - std::vector<std::vector<ProjPoint>>:
  *                                  vector of linestrings
  * @param[in] dir_path            - std::string:
@@ -245,10 +233,10 @@ void analysis::write_ls(
  *                                  name of output file
  */
 void analysis::write_lss(
-  FlexCloudConfig & config, const std::vector<std::vector<ProjPoint>> & lss,
-  const std::string & dir_path, const std::string & file_name)
+  const std::vector<std::vector<ProjPoint>> & lss, const std::string & dir_path,
+  const std::string & file_name)
 {
-  const std::string file_path = config.analysis_output_dir + dir_path + "/" + file_name;
+  const std::string file_path = dir_path + "/" + file_name;
   std::ofstream file(file_path);
 
   if (file.is_open()) {
@@ -267,8 +255,6 @@ void analysis::write_lss(
 /**
  * @brief write a double vector to .txt file
  *
- * @param[in] config              - FlexCloudConfig:
- *                                  config struct
  * @param[in] vec                 - std::vector<double>:
  *                                  vector of double values
  * @param[in] dir_path            - std::string:
@@ -277,10 +263,9 @@ void analysis::write_lss(
  *                                  name of output file
  */
 void analysis::write_double_vec(
-  FlexCloudConfig & config, const std::vector<double> & vec, const std::string & dir_path,
-  const std::string & file_name)
+  const std::vector<double> & vec, const std::string & dir_path, const std::string & file_name)
 {
-  const std::string file_path = config.analysis_output_dir + dir_path + "/" + file_name;
+  const std::string file_path = dir_path + "/" + file_name;
   std::ofstream file(file_path);
 
   if (file.is_open()) {
@@ -294,8 +279,6 @@ void analysis::write_double_vec(
 /**
  * @brief write triangulation vertices to file
  *
- * @param[in] config              - FlexCloudConfig:
- *                                  config struct
  * @param[in] triag               - std::shared_ptr<Delaunay>:
  *                                  pointer to triangulation
  * @param[in] dir_path            - std::string:
@@ -304,10 +287,10 @@ void analysis::write_double_vec(
  *                                  name of output file
  */
 void analysis::write_triag(
-  FlexCloudConfig & config, const std::shared_ptr<Delaunay> & triag, const std::string & dir_path,
+  const std::shared_ptr<Delaunay> & triag, const std::string & dir_path,
   const std::string & file_name)
 {
-  const std::string file_path = config.analysis_output_dir + dir_path + "/" + file_name;
+  const std::string file_path = dir_path + "/" + file_name;
   std::ofstream file(file_path);
 
   std::vector<std::vector<ProjPoint>> vertices = triag->getVertices();
@@ -326,8 +309,6 @@ void analysis::write_triag(
 /**
  * @brief write controlpoints to file
  *
- * @param[in] config              - FlexCloudConfig:
- *                                  config struct
  * @param[in] cps                 - std::vector<ControlPoint>:
  *                                  control points
  * @param[in] dir_path            - std::string:
@@ -336,10 +317,10 @@ void analysis::write_triag(
  *                                  name of output file
  */
 void analysis::write_cp(
-  FlexCloudConfig & config, const std::vector<ControlPoint> & cps, const std::string & dir_path,
+  const std::vector<ControlPoint> & cps, const std::string & dir_path,
   const std::string & file_name)
 {
-  const std::string file_path = config.analysis_output_dir + dir_path + "/" + file_name;
+  const std::string file_path = dir_path + "/" + file_name;
   std::ofstream file(file_path);
 
   if (file.is_open()) {

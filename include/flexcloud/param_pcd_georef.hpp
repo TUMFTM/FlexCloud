@@ -45,7 +45,5 @@ struct FlexCloudConfig
   // Zero point
   bool customZeroPoint{false};
   std::vector<double> zeroPoint{0.0, 0.0, 0.0};
-  // Output
-  std::string analysis_output_dir{};
 };
 }  // namespace flexcloud
