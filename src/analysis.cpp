@@ -124,6 +124,87 @@ void analysis::create_output_dir(FlexCloudConfig & config, const std::string & d
   }
 }
 /**
+ * @brief Save FlexCloudConfig to a text file
+ * @param config The configuration to save
+ * @param filepath Path to save the configuration file
+ * @return true if successful, false otherwise
+ */
+void analysis::save_config(
+  const FlexCloudConfig & config, const std::string & dir_path, const std::string & file_name)
+{
+  const std::string file_path = config.analysis_output_dir + dir_path + "/" + file_name;
+  std::ofstream file(file_path);
+
+  if (file.is_open()) {
+    // Set precision for floating-point values
+    file << std::fixed << std::setprecision(6);
+
+    // Write basic string paths
+    file << "traj_path=" << config.traj_path << std::endl;
+    file << "poses_path=" << config.poses_path << std::endl;
+    file << "pcd_path=" << config.pcd_path << std::endl;
+    file << "pcd_out_path=" << config.pcd_out_path << std::endl;
+
+    // Write dimension
+    file << "dim=" << config.dim << std::endl;
+
+    // Write trajectory alignment parameters
+    file << "transform_traj=" << (config.transform_traj ? "true" : "false") << std::endl;
+    file << "rs_num_controlPoints=" << config.rs_num_controlPoints << std::endl;
+    file << "stddev_threshold=" << config.stddev_threshold << std::endl;
+
+    // Write vector fields with comma separation
+    file << "square_size=";
+    for (size_t i = 0; i < config.square_size.size(); ++i) {
+      file << config.square_size[i];
+      if (i < config.square_size.size() - 1) file << ",";
+    }
+    file << std::endl;
+
+    // Write PCD georeferencing parameters
+    file << "transform_pcd=" << (config.transform_pcd ? "true" : "false") << std::endl;
+
+    file << "exclude_ind=";
+    for (size_t i = 0; i < config.exclude_ind.size(); ++i) {
+      file << config.exclude_ind[i];
+      if (i < config.exclude_ind.size() - 1) file << ",";
+    }
+    file << std::endl;
+
+    file << "shift_ind=";
+    for (size_t i = 0; i < config.shift_ind.size(); ++i) {
+      file << config.shift_ind[i];
+      if (i < config.shift_ind.size() - 1) file << ",";
+    }
+    file << std::endl;
+
+    file << "shift_ind_dist=";
+    for (size_t i = 0; i < config.shift_ind_dist.size(); ++i) {
+      file << config.shift_ind_dist[i];
+      if (i < config.shift_ind_dist.size() - 1) file << ",";
+    }
+    file << std::endl;
+
+    // Write threading parameters
+    file << "use_threading=" << (config.use_threading ? "true" : "false") << std::endl;
+    file << "num_cores=" << config.num_cores << std::endl;
+
+    // Write zero point parameters
+    file << "customZeroPoint=" << (config.customZeroPoint ? "true" : "false") << std::endl;
+
+    file << "zeroPoint=";
+    for (size_t i = 0; i < config.zeroPoint.size(); ++i) {
+      file << config.zeroPoint[i];
+      if (i < config.zeroPoint.size() - 1) file << ",";
+    }
+    file << std::endl;
+    file.close();
+  } else {
+    std::cout << "\033[1;31m!! Unable to open " << file_path << " !!\033[0m" << std::endl;
+  }
+  return;
+}
+/**
  * @brief write a linestring to .txt file
  *
  * @param[in] config              - FlexCloudConfig:

@@ -94,7 +94,14 @@ private:
    *                                  name of output directory
    */
   void create_output_dir(FlexCloudConfig & config, const std::string & dir_path);
-
+  /**
+   * @brief Save FlexCloudConfig to a text file
+   * @param config The configuration to save
+   * @param filepath Path to save the configuration file
+   * @return true if successful, false otherwise
+   */
+  void save_config(
+    const FlexCloudConfig & config, const std::string & dir_path, const std::string & file_name);
   /**
    * @brief write a linestring to .txt file
    *
