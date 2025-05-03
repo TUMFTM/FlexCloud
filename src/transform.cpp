@@ -78,21 +78,23 @@ bool transform::select_control_points(
   FlexCloudConfig & config, const std::vector<ProjPoint> & src,
   const std::vector<ProjPoint> & target, std::vector<ControlPoint> & cps)
 {
-  // Get node name
   cps.clear();
-
-  std::vector<Eigen::Vector3d> cp_inter;
+  std::vector<Eigen::Vector3d> cp_inter{};
   int cp_count = 0;
 
+  // Santiy checks
   if (config.shift_ind.size() != config.shift_ind_dist.size()) {
     std::cout << "Sizes of shift_ind and shift_ind_dist do not match!" << std::endl;
   }
-  // Code for when use_gpControlPoints is true
-  int gps_distance = static_cast<int>(target.size()) / config.rs_num_controlPoints;
+  if (config.fake_ind.size() != config.fake_ind_dist.size()) {
+    std::cout << "Sizes of fake_ind and fake_ind_dist do not match!" << std::endl;
+  }
+  // Set interval for control point selection
+  int traj_split = static_cast<int>(target.size()) / config.rs_num_controlPoints;
   int idx = 0;
 
   std::cout << "\033[33m~~~~~> LiDAR got " << target.size() << " poses!\033[0m" << std::endl;
-  std::cout << "\033[33m~~~~~> Every " << gps_distance
+  std::cout << "\033[33m~~~~~> Every " << traj_split
             << " st/nd/rd/th vertex is selected as control point\033[0m" << std::endl;
 
   while (idx < static_cast<int>(target.size())) {
@@ -105,19 +107,17 @@ bool transform::select_control_points(
         }
       }
     }
-    /* Point in GPS data -check if standard deviations are within threshold, otherwise skip
-     * point*/
-    if (
-      sqrt(pow(src[idx].stddev_(0), 2) + pow(src[idx].stddev_(1), 2)) <= config.stddev_threshold &&
-      use_ind) {
-      // Shift reference point if in config file
-      if (
-        std::find(config.shift_ind.begin(), config.shift_ind.end(), idx) !=
-        config.shift_ind.end()) {
-        const int dist_ind = std::find(config.shift_ind.begin(), config.shift_ind.end(), idx) -
-                             config.shift_ind.begin();
-        std::cout << "\033[33m~~~~~> Shift reference point at index: " << idx << "with distance "
-                  << config.shift_ind_dist[dist_ind] << "\033[0m" << std::endl;
+    // clang-format off
+    // Point in reference data -check if standard deviations are within threshold, otherwise skip point
+    if (sqrt(pow(src[idx].stddev_(0), 2) + pow(src[idx].stddev_(1), 2)) <= config.stddev_threshold && use_ind) {  // NOLINT
+      // Point configured to be shifted or fake
+      double real_offset = 0.0;
+      Eigen::Vector2d direction{};
+      double distance = 0.0;
+      int ind = 0;
+      if (std::find(config.shift_ind.begin(), config.shift_ind.end(), idx) != config.shift_ind.end() ||  // NOLINT
+          std::find(config.fake_ind.begin(), config.fake_ind.end(), idx) != config.fake_ind.end()) {  // NOLINT
+        // Compute vincinity
         // Create vincinity = pair of preceding and following point on linestring
         std::vector<Eigen::Vector3d> vincinity{};
         Eigen::Vector3d current = src[idx].pos_;
@@ -134,46 +134,76 @@ bool transform::select_control_points(
           Eigen::Vector3d forward = src[idx + 1].pos_;
           vincinity = std::vector<Eigen::Vector3d>{current - backward, forward - current};
         }
-        // shift point laterally by specified distance
-        Eigen::Vector2d perpendicular;
-        double realOffset = config.shift_ind_dist[dist_ind];
-        const auto epsilon{1.e-5};
-        if (idx == 0) {
-          perpendicular = Eigen::Vector2d(vincinity.back()(0), vincinity.back()(1));
-        } else if (idx + 1 == static_cast<int>(src.size())) {
-          perpendicular = Eigen::Vector2d(vincinity.front()(0), vincinity.front()(1));
-        } else {
-          perpendicular = Eigen::Vector2d(vincinity.back()(0), vincinity.back()(1)).normalized() +
-                          Eigen::Vector2d(vincinity.front()(0), vincinity.front()(1)).normalized();
-          auto minussin2 = perpendicular.norm() / 2;
-          realOffset = (minussin2 > epsilon) ? config.shift_ind_dist[dist_ind] / minussin2 : 0;
+        // Check if point is configured to be shifted or faked
+        if (std::find(config.shift_ind.begin(), config.shift_ind.end(), idx) != config.shift_ind.end()) {  // NOLINT
+          ind = std::find(config.shift_ind.begin(), config.shift_ind.end(), idx) - config.shift_ind.begin();  // NOLINT
+          std::cout << "\033[33m~~~~~> Shift reference point at index: " << idx << "with distance "
+          << config.shift_ind_dist[ind] << "\033[0m" << std::endl;
+          distance = config.shift_ind_dist[ind];
+        } else if (std::find(config.fake_ind.begin(), config.fake_ind.end(), idx) != config.fake_ind.end()) {  // NOLINT
+          ind = std::find(config.fake_ind.begin(), config.fake_ind.end(), idx) - config.fake_ind.begin();  // NOLINT
+          // Fake point
+          std::cout << "\033[33m~~~~~> Fake reference point at index: " << idx << "with distance "
+          << config.fake_ind_dist[ind] << "\033[0m" << std::endl;
+          distance = config.fake_ind_dist[ind];
         }
+        // Create control point on reference trajectory
+          // shift point laterally by specified distance
+          Eigen::Vector2d perpendicular;
+          real_offset = distance;
+          const auto epsilon{1.e-5};
+          if (idx == 0) {
+            perpendicular = Eigen::Vector2d(vincinity.back()(0), vincinity.back()(1));
+          } else if (idx + 1 == static_cast<int>(src.size())) {
+            perpendicular = Eigen::Vector2d(vincinity.front()(0), vincinity.front()(1));
+          } else {
+            perpendicular = Eigen::Vector2d(vincinity.back()(0), vincinity.back()(1)).normalized() +
+                            Eigen::Vector2d(vincinity.front()(0), vincinity.front()(1)).normalized();
+            auto minussin2 = perpendicular.norm() / 2;
+            real_offset = (minussin2 > epsilon) ? distance / minussin2 : 0;
+          }
 
-        Eigen::Vector2d direction(-perpendicular(1), perpendicular(0));
-        Eigen::Vector2d pt_2d_shift =
-          Eigen::Vector2d(src[idx].pos_(0), src[idx].pos_(1)) + direction.normalized() * realOffset;
-        // Create control point
-        cp_inter.push_back(Eigen::Vector3d(pt_2d_shift(0), pt_2d_shift(1), src[idx].pos_(2)));
+          direction << -perpendicular(1), perpendicular(0);
+          Eigen::Vector2d pt_2d_shift =
+            Eigen::Vector2d(src[idx].pos_(0), src[idx].pos_(1)) + direction.normalized() * real_offset;
+          // Create control point
+          cp_inter.push_back(Eigen::Vector3d(pt_2d_shift(0), pt_2d_shift(1), src[idx].pos_(2)));
       } else {
         // Set unmodified reference point
         cp_inter.push_back(Eigen::Vector3d(src[idx].pos_(0), src[idx].pos_(1), src[idx].pos_(2)));
       }
-
       // Point in LiDAR data
-      Eigen::Vector3d pt_pcd(target[idx].pos_(0), target[idx].pos_(1), target[idx].pos_(2));
+      // Check if point is configured to be faked
+      Eigen::Vector3d pt_pcd{};
+      if (std::find(config.fake_ind.begin(), config.fake_ind.end(), idx) != config.fake_ind.end()) {  // NOLINT
+        Eigen::Vector2d pt_pcd_shift =
+          Eigen::Vector2d(target[idx].pos_(0), target[idx].pos_(1)) + direction.normalized() * real_offset;
+        pt_pcd << pt_pcd_shift(0), pt_pcd_shift(1), target[idx].pos_(2);
+        cp_inter.push_back(pt_pcd);
+        ControlPoint P(
+          cp_inter[0](0), cp_inter[0](1), cp_inter[0](2), cp_inter[1](0), cp_inter[1](1),
+          cp_inter[1](2));
+        cps.push_back(P);
+        ++cp_count;
+        cp_inter.clear();
+        // Also add the original point
+        cp_inter.push_back(Eigen::Vector3d(src[idx].pos_(0), src[idx].pos_(1), src[idx].pos_(2)));
+        pt_pcd << target[idx].pos_(0), target[idx].pos_(1), target[idx].pos_(2);
+      } else {
+        pt_pcd << target[idx].pos_(0), target[idx].pos_(1), target[idx].pos_(2);
+      }
       cp_inter.push_back(pt_pcd);
-
       ControlPoint P(
         cp_inter[0](0), cp_inter[0](1), cp_inter[0](2), cp_inter[1](0), cp_inter[1](1),
         cp_inter[1](2));
       cps.push_back(P);
       ++cp_count;
-
       cp_inter.clear();
     } else {
       std::cout << "\033[31m!! Skipped control point !!\033[0m" << std::endl;
     }
-    idx += gps_distance;
+    // clang-format on
+    idx += traj_split;
   }
   std::cout << "\033[1;32m~~~~~~~~~~> Set " << cp_count << " controlpoints!\033[0m" << std::endl;
   return true;
