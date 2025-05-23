@@ -77,9 +77,9 @@ If you are struggling with their installation, you can have a look at the proces
 <!-- markdownlint-disable MD013 -->
 | Description | Format |
 | ----------- | ----------- |
-| global positions (usually from GNSS or an EKF using GNSS) | single `.txt` files in a directory specify position in `xpos ypos zpos x_stddev y_stddev z_stddev`. The files are named according to the UTC-timestamp of the position in the format `sec_nanosec`. |
+| global positions (usually from GNSS or an EKF using GNSS) | individual `.txt` files per position in a directory specify position in `xpos ypos zpos x_stddev y_stddev z_stddev`. The files are named according to the UTC-timestamp of the position in the format `sec_nanosec`. |
 | inertial LiDAR trajectory (usually from a LiDAR odometry/SLAM algorithm) | single `.txt` file in KITTI-format: `r1 r2 r3 x r4 r5 r6 y r7 r8 r9 z` |
-| point cloud frames corresponding to LiDAR trajectory | single `.pcd` files in a directory. The files are named according to the UTC-timestamp of the position in the format `sec_nanosec`. |
+| point cloud frames corresponding to LiDAR trajectory | individual `.pcd` files per cloud in a directory. The files are named according to the UTC-timestamp of the position in the format `sec_nanosec`. |
 <!-- markdownlint-enable MD013 -->
 
 * the executable selects keyframes from the LiDAR trajectory (keyframes are based on minimum longitudinal distance
@@ -108,7 +108,7 @@ computed in two ways (based on the parameter `interpolated`):
 
 1. Necessary input parameters:
    * `config_path` => path to [config-file](./config/pcd_georef.yaml)
-   * `traj_path` => path to GNSS/reference trajectory of the vehicle (format: txt-file with `lat, lon, ele, lat_stddev, lon_stddev, ele_stddev` or `x, y, z, x_stddev, y_stddev, z_stddev`, if the reference trajectory is already in local coordinates)
+   * `traj_path` => path to GNSS/reference trajectory of the vehicle (format: single txt-file with `lat, lon, ele, lat_stddev, lon_stddev, ele_stddev` or `x, y, z, x_stddev, y_stddev, z_stddev`, if the reference trajectory is already in local coordinates)
    * `poses_path` => path to SLAM trajectory of the vehicle (KITTI-format)
    * `pcd_path` => path to point cloud map corresponding to poses trajectory (OPTIONAL - only if `transform_pcd` set)
    * `pcd_out_path` => path to save the final, georeferenced point cloud map (OPTIONAL - only if `transform_pcd` set - DEFAULT: /pcd_map_georef.pcd)
