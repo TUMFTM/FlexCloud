@@ -142,6 +142,41 @@ std::vector<Eigen::Isometry3d> file_io::load_kitti_odom(const std::string & file
   return poses;
 }
 /**
+ * @brief Load glim odometry from a file
+ */
+std::vector<Eigen::Isometry3d> file_io::load_glim_odom(const std::string & file_path)
+{
+  std::vector<Eigen::Isometry3d> poses;
+  std::ifstream input_file(file_path);
+  if (!input_file.is_open()) {
+    std::cerr << "Unable to open file" << std::endl;
+    return poses;
+  }
+
+  std::string line;
+  // Read poses
+  double x, y, z, stamp;
+  float qx, qy, qz, qw;
+
+  while (std::getline(input_file, line)) {
+    std::istringstream iss(line);
+
+    if (!(iss >> stamp >> x >> y >> z >> qx >> qy >> qz >> qw)) {
+      std::cerr << "Error during extraction of odometry pose" << std::endl;
+    }
+    Eigen::Matrix3d rotation;
+    rotation = Eigen::Quaterniond(qw, qx, qy, qz).toRotationMatrix();
+
+    Eigen::Isometry3d pose = Eigen::Isometry3d::Identity();
+    pose.linear() = rotation;
+    pose.translation() << x, y, z;
+
+    poses.push_back(pose);
+  }
+  input_file.close();
+  return poses;
+}
+/**
  * @brief read traj from txt file
  *
  * @param[in] config              - FlexCloudConfig:

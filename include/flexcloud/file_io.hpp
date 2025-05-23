@@ -64,6 +64,15 @@ public:
    */
   std::vector<Eigen::Isometry3d> load_kitti_odom(const std::string & file_path);
   /**
+   * @brief Load glim odometry from a file
+   *
+   * @param[in] file_path           - std::string:
+   *                                 absolute path to file
+   * @return std::vector<Eigen::Isometry3d>:
+   *                                 vector of poses
+   */
+  std::vector<Eigen::Isometry3d> load_glim_odom(const std::string & file_path);
+  /**
    * @brief read traj from txt file
    *
    * @param[in] node                - rclcpp::Node:

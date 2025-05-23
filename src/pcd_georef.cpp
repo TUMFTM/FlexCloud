@@ -49,11 +49,12 @@ pcd_georef::pcd_georef(
   this->config_.exclude_ind = config["exclude_ind"].as<std::vector<int64_t>>();
   this->config_.shift_ind = config["shift_ind"].as<std::vector<int64_t>>();
   this->config_.shift_ind_dist = config["shift_ind_dist"].as<std::vector<double>>();
+  this->config_.fake_ind = config["fake_ind"].as<std::vector<int64_t>>();
+  this->config_.fake_ind_dist = config["fake_ind_dist"].as<std::vector<double>>();
   this->config_.use_threading = config["use_threading"].as<bool>();
   this->config_.num_cores = config["num_cores"].as<int>();
   this->config_.customZeroPoint = config["customZeroPoint"].as<bool>();
   this->config_.zeroPoint = config["zeroPoint"].as<std::vector<double>>();
-  this->config_.analysis_output_dir = config["analysis_output_dir"].as<std::string>();
 
   // Initialize dimension of transformation
   if (this->config_.dim == 2) {
@@ -269,8 +270,8 @@ void pcd_georef::evaluation()
     this->config_, this->traj_proj, this->traj_SLAM, this->traj_align, this->traj_rs, this->triag_,
     this->control_points, diff_al, diff_rs);
 
-  std::cout << "\033[1;36m===> Analysis calculations saved in " << this->config_.analysis_output_dir
-            << "/ !\033[0m" << std::endl;
+  std::cout << "\033[1;36m===> Analysis calculations saved in Output directory!\033[0m"
+            << std::endl;
 }
 }  // namespace flexcloud
 /**
