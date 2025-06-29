@@ -1,4 +1,5 @@
 # keyframe_interpolation:
+odom_format: "kitti"                    # Format of the odometry data, supported: "kitti", "glim"
 stddev_threshold: 5.0                   # Threshold for the standard deviation of the global positions to be used as keyframes
 keyframe_delta_x: 2.0                   # Minimum distance between keyframes in x direction
 keyframe_delta_angle: 0.5               # Minimum angle between keyframes
