@@ -39,7 +39,7 @@ class KeyframeInterpolation
 {
 public:
   KeyframeInterpolation(
-    const std::string & config_path, const std::string & pos_dir, const std::string & kitti_path,
+    const std::string & config_path, const std::string & pos_dir, const std::string & odom_path,
     const std::string & pcd_dir, const std::string & dst_directory);
   void visualize();
 
@@ -55,7 +55,8 @@ private:
    *                                  absolute path to directory
    */
   void load(
-    const std::string & pos_dir, const std::string & kitti_path, const std::string & pcd_dir);
+    const std::string & pos_dir, const std::string & odom_format, const std::string & odom_path,
+    const std::string & pcd_dir);
   /**
    * @brief Save everything to directory
    *

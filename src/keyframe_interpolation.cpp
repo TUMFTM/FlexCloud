@@ -18,24 +18,26 @@
 // based on: https://github.com/koide3/interactive_slam/blob/master/src/odometry2graph.cpp
 
 #include "keyframe_interpolation.hpp"
+
+#include <algorithm>
+#include <iostream>
+#include <memory>
+#include <set>
 #include <string>
 #include <vector>
-#include <iostream>
-#include <set>
-#include <memory>
-#include <algorithm>
 
 #include "yaml-cpp/yaml.h"
 namespace flexcloud
 {
 KeyframeInterpolation::KeyframeInterpolation(
-  const std::string & config_path, const std::string & pos_dir, const std::string & kitti_path,
+  const std::string & config_path, const std::string & pos_dir, const std::string & odom_path,
   const std::string & pcd_dir, const std::string & dst_directory)
 {
   this->globalMaxTimeDiff = 0.0f;
   // Load config
   YAML::Node config = YAML::LoadFile(config_path);
 
+  const std::string odom_format = config["odom_format"].as<std::string>();
   this->stddev_threshold_ = config["stddev_threshold"].as<float>();
   const float keyframe_delta_x = config["keyframe_delta_x"].as<float>();
   const float keyframe_delta_angle = config["keyframe_delta_angle"].as<float>();
@@ -44,7 +46,7 @@ KeyframeInterpolation::KeyframeInterpolation(
   const float pos_delta_xyz = config["interp_pos_delta_xyz"].as<float>();
 
   // Load position frames
-  load(pos_dir, kitti_path, pcd_dir);
+  load(pos_dir, odom_format, odom_path, pcd_dir);
 
   // Interpolate keyframes
   select_keyframes(keyframe_delta_x, keyframe_delta_angle, this->interpolate_, pos_delta_xyz);
@@ -63,7 +65,8 @@ KeyframeInterpolation::KeyframeInterpolation(
  * *                                 absolute path to directory
  */
 void KeyframeInterpolation::load(
-  const std::string & pos_dir, const std::string & kitti_path, const std::string & pcd_dir)
+  const std::string & pos_dir, const std::string & odom_format, const std::string & odom_path,
+  const std::string & pcd_dir)
 {
   // Load position frames
   this->pos_frames_.clear();
@@ -72,8 +75,18 @@ void KeyframeInterpolation::load(
   // Load odometry frames
   this->frames_.clear();
   // Load kitti odometry file
-  std::cout << "Loading odometry poses from " << kitti_path << std::endl;
-  std::vector<Eigen::Isometry3d> poses = file_io_->load_kitti_odom(kitti_path);
+  std::cout << "Loading odometry poses from " << odom_path << std::endl;
+  std::vector<Eigen::Isometry3d> poses{};
+  if (odom_format == "kitti") {
+    poses = file_io_->load_kitti_odom(odom_path);
+  } else if (odom_format == "glim") {
+    poses = file_io_->load_glim_odom(odom_path);
+  } else {
+    throw std::runtime_error(
+      "Unknown odometry format: " + odom_format +
+      ". Supported formats are: kitti, glim");
+    return;
+  }
   // Load pcd cloud filenames
   std::cout << "Loading pcd-clouds from " << pcd_dir << std::endl;
   std::vector<std::string> pcd_filenames = file_io_->load_clouds(pcd_dir);
