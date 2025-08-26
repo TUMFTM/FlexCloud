@@ -144,9 +144,10 @@ std::vector<Eigen::Isometry3d> file_io::load_kitti_odom(const std::string & file
 /**
  * @brief Load glim odometry from a file
  */
-std::vector<Eigen::Isometry3d> file_io::load_glim_odom(const std::string & file_path)
+std::vector<Eigen::Isometry3d> file_io::load_glim_odom(const std::string & file_path, std::vector<double> & timestamps)
 {
   std::vector<Eigen::Isometry3d> poses;
+  timestamps.clear();
   std::ifstream input_file(file_path);
   if (!input_file.is_open()) {
     std::cerr << "Unable to open file" << std::endl;
@@ -172,6 +173,7 @@ std::vector<Eigen::Isometry3d> file_io::load_glim_odom(const std::string & file_
     pose.translation() << x, y, z;
 
     poses.push_back(pose);
+    timestamps.push_back(stamp);
   }
   input_file.close();
   return poses;

@@ -110,6 +110,19 @@ struct OdometryFrame
 {
 public:
   /**
+   * @brief Constructor from pose and timestamp
+   */
+  static std::shared_ptr<OdometryFrame> create(
+    const Eigen::Isometry3d & pose, std::int64_t stamp_sec, std::int64_t stamp_nsec)
+  {
+    return std::make_shared<OdometryFrame>(pose, stamp_sec, stamp_nsec);
+  }
+  OdometryFrame(
+    const Eigen::Isometry3d & pose, std::int64_t stamp_sec, std::int64_t stamp_nsec)
+  : pose(pose), stamp_sec(stamp_sec), stamp_nsec(stamp_nsec), cloud_(nullptr)
+  {
+  }
+  /**
    * @brief Construct a new OdometryFrame object from a raw cloud path and pose and get timestamp
    * from filename
    */

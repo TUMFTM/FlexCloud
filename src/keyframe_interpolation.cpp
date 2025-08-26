@@ -52,7 +52,7 @@ KeyframeInterpolation::KeyframeInterpolation(
   select_keyframes(keyframe_delta_x, keyframe_delta_angle, this->interpolate_, pos_delta_xyz);
 
   // Save keyframes
-  save(dst_directory);
+  save(dst_directory, odom_format);
 }
 /**
  * @brief Load frames from a directory
@@ -79,31 +79,43 @@ void KeyframeInterpolation::load(
   std::vector<Eigen::Isometry3d> poses{};
   if (odom_format == "kitti") {
     poses = file_io_->load_kitti_odom(odom_path);
+    // Load pcd cloud filenames
+    std::cout << "Loading pcd-clouds from " << pcd_dir << std::endl;
+    std::vector<std::string> pcd_filenames = file_io_->load_clouds(pcd_dir);
+    // Check if sizes match
+    if (pcd_filenames.size() != poses.size()) {
+      std::cerr << "Number of pcd files and poses do not match: " << pcd_filenames.size() << " vs "
+                << poses.size() << std::endl;
+      return;
+    }
+
+    // Load pcd files and creates frames
+    for (size_t i = 0; i < pcd_filenames.size(); ++i) {
+      auto frame = OdometryFrame::load(pcd_filenames[i], poses[i], this->downsample_resolution_);
+      if (frame == nullptr) {
+        continue;
+      }
+      this->frames_.push_back(frame);
+    }
   } else if (odom_format == "glim") {
-    poses = file_io_->load_glim_odom(odom_path);
+    std::vector<double> timestamps{};
+    poses = file_io_->load_glim_odom(odom_path, timestamps);
+    // Create frames
+    for (size_t i = 0; i < poses.size(); ++i) {
+      // Convert timestamp to seconds and nanoseconds
+      std::int64_t stamp_sec = static_cast<std::int64_t>(timestamps[i]);
+      std::int64_t stamp_nsec = static_cast<std::int64_t>((timestamps[i] - stamp_sec) * 1e9);
+      auto frame = OdometryFrame::create(poses[i], stamp_sec, stamp_nsec);
+      if (frame == nullptr) {
+        std::cerr << "Failed to create odometry frame" << std::endl;
+        continue;
+      }
+      this->frames_.push_back(frame);
+    }
   } else {
     throw std::runtime_error(
-      "Unknown odometry format: " + odom_format +
-      ". Supported formats are: kitti, glim");
+      "Unknown odometry format: " + odom_format + ". Supported formats are: kitti, glim");
     return;
-  }
-  // Load pcd cloud filenames
-  std::cout << "Loading pcd-clouds from " << pcd_dir << std::endl;
-  std::vector<std::string> pcd_filenames = file_io_->load_clouds(pcd_dir);
-  // Check if sizes match
-  if (pcd_filenames.size() != poses.size()) {
-    std::cerr << "Number of pcd files and poses do not match: " << pcd_filenames.size() << " vs "
-              << poses.size() << std::endl;
-    return;
-  }
-
-  // Load pcd files and creates frames
-  for (size_t i = 0; i < pcd_filenames.size(); ++i) {
-    auto frame = OdometryFrame::load(pcd_filenames[i], poses[i], this->downsample_resolution_);
-    if (frame == nullptr) {
-      continue;
-    }
-    this->frames_.push_back(frame);
   }
   std::cout << "Loaded " << this->frames_.size() << " odometry frames" << std::endl;
 }
@@ -113,7 +125,8 @@ void KeyframeInterpolation::load(
  * @param[in] dst_directory       - std::string:
  *                                 absolute path to directory
  */
-bool KeyframeInterpolation::save(const std::string & dst_directory) const
+bool KeyframeInterpolation::save(
+  const std::string & dst_directory, const std::string & odom_format) const
 {
   if (this->keyframes_.empty()) {
     return false;
@@ -124,22 +137,24 @@ bool KeyframeInterpolation::save(const std::string & dst_directory) const
     boost::filesystem::create_directories(dst_directory);
   }
 
-  // Save files
-  if (!file_io_->save_graph(dst_directory + "/graph.g2o", this->keyframes_)) {
-    return false;
-  }
-
   if (!file_io_->save_kitti(dst_directory + "/kitti_poses.txt", this->keyframes_)) {
-    return false;
-  }
-
-  if (!file_io_->save_keyframes(dst_directory, this->keyframes_, this->downsample_resolution_)) {
     return false;
   }
 
   if (!file_io_->save_pos_frames(dst_directory + "/poseData.txt", this->pos_keyframes_)) {
     return false;
   }
+
+  // Save graph only when using kitti format
+  if (odom_format == "kitti") {
+    if (!file_io_->save_graph(dst_directory + "/graph.g2o", this->keyframes_)) {
+      return false;
+    }
+    if (!file_io_->save_keyframes(dst_directory, this->keyframes_, this->downsample_resolution_)) {
+      return false;
+    }
+  }
+
   std::cout << "Everything saved successfully" << std::endl;
   return true;
 }

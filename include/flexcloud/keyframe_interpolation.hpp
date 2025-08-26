@@ -63,7 +63,7 @@ private:
    * @param[in] dst_directory       - std::string:
    *                                  absolute path to directory
    */
-  bool save(const std::string & dst_directory) const;
+  bool save(const std::string & dst_directory, const std::string & odom_format) const;
   /**
    * @brief Select keyframes
    *

@@ -71,7 +71,7 @@ public:
    * @return std::vector<Eigen::Isometry3d>:
    *                                 vector of poses
    */
-  std::vector<Eigen::Isometry3d> load_glim_odom(const std::string & file_path);
+  std::vector<Eigen::Isometry3d> load_glim_odom(const std::string & file_path, std::vector<double> & timestamps);
   /**
    * @brief read traj from txt file
    *
