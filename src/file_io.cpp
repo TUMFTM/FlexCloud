@@ -144,7 +144,8 @@ std::vector<Eigen::Isometry3d> file_io::load_kitti_odom(const std::string & file
 /**
  * @brief Load glim odometry from a file
  */
-std::vector<Eigen::Isometry3d> file_io::load_glim_odom(const std::string & file_path, std::vector<double> & timestamps)
+std::vector<Eigen::Isometry3d> file_io::load_glim_odom(
+  const std::string & file_path, std::vector<double> & timestamps)
 {
   std::vector<Eigen::Isometry3d> poses;
   timestamps.clear();
@@ -503,6 +504,40 @@ bool file_io::save_pos_frames(
   }
   ofs.close();
 
+  return true;
+}
+/**
+ * @brief Accumulate all keyframes and save to single pcd file
+ *
+ * @param[in] path                - std::string:
+ *                                  absolute path to file
+ * @param[in] keyframes           - std::vector<std::shared_ptr<OdometryFrame>>:
+ *                                  vector of keyframes
+ * @param[in] downsample          - float:
+ *                                  downsample factor
+ */
+bool file_io::save_accumulated_cloud(
+  const std::string & path, const std::vector<std::shared_ptr<OdometryFrame>> & keyframes,
+  const float downsample)
+{
+  // Create output cloud
+  pcl::PointCloud<pcl::PointXYZI>::Ptr accumulated_cloud(new pcl::PointCloud<pcl::PointXYZI>);
+
+  // Loop through all frames
+  for (size_t i = 0; i < keyframes.size(); i++) {
+    // Create temporary cloud for transformed points
+    pcl::PointCloud<pcl::PointXYZI>::Ptr transformed_cloud(new pcl::PointCloud<pcl::PointXYZI>);
+
+    // Transform cloud using frame's pose
+    pcl::transformPointCloud(
+      *keyframes[i]->cloud(downsample), *transformed_cloud, keyframes[i]->pose.matrix());
+
+    // Accumulate points
+    *accumulated_cloud += *transformed_cloud;
+    std::cout << "Accumulated " << accumulated_cloud->size() << " points" << std::endl;
+  }
+  std::cout << "Total accumulated points: " << accumulated_cloud->size() << std::endl;
+  pcl::io::savePCDFileBinary(path, *accumulated_cloud);
   return true;
 }
 /**

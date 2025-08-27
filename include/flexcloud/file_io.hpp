@@ -20,6 +20,7 @@
 
 #include <pcl/io/pcd_io.h>
 #include <pcl/point_types.h>
+#include <pcl/common/transforms.h>
 
 #include <Eigen/Geometry>
 #include <GeographicLib/Geocentric.hpp>
@@ -155,6 +156,19 @@ public:
    *                                  vector of position frames
    */
   bool save_pos_frames(const std::string & filename, const std::vector<PosFrame> & pos_keyframes);
+/**
+ * @brief Accumulate all keyframes and save to single pcd file
+ * 
+ * @param[in] path                - std::string:
+ *                                  absolute path to file
+ * @param[in] keyframes           - std::vector<std::shared_ptr<OdometryFrame>>:
+ *                                  vector of keyframes
+ * @param[in] downsample          - float:
+ *                                  downsample factor
+ */
+bool save_accumulated_cloud(
+  const std::string & path, const std::vector<std::shared_ptr<OdometryFrame>> & keyframes,
+  const float downsample);
 
   /**
    * @brief write pcd map to file
@@ -168,5 +182,6 @@ public:
    */
   bool write_pcd_to_path(
     const std::string & pcd_out_path, const pcl::PointCloud<pcl::PointXYZI>::Ptr & pcd_map);
+private:
 };
 }  // namespace flexcloud

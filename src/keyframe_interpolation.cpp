@@ -79,43 +79,31 @@ void KeyframeInterpolation::load(
   std::vector<Eigen::Isometry3d> poses{};
   if (odom_format == "kitti") {
     poses = file_io_->load_kitti_odom(odom_path);
-    // Load pcd cloud filenames
-    std::cout << "Loading pcd-clouds from " << pcd_dir << std::endl;
-    std::vector<std::string> pcd_filenames = file_io_->load_clouds(pcd_dir);
-    // Check if sizes match
-    if (pcd_filenames.size() != poses.size()) {
-      std::cerr << "Number of pcd files and poses do not match: " << pcd_filenames.size() << " vs "
-                << poses.size() << std::endl;
-      return;
-    }
-
-    // Load pcd files and creates frames
-    for (size_t i = 0; i < pcd_filenames.size(); ++i) {
-      auto frame = OdometryFrame::load(pcd_filenames[i], poses[i], this->downsample_resolution_);
-      if (frame == nullptr) {
-        continue;
-      }
-      this->frames_.push_back(frame);
-    }
   } else if (odom_format == "glim") {
     std::vector<double> timestamps{};
     poses = file_io_->load_glim_odom(odom_path, timestamps);
-    // Create frames
-    for (size_t i = 0; i < poses.size(); ++i) {
-      // Convert timestamp to seconds and nanoseconds
-      std::int64_t stamp_sec = static_cast<std::int64_t>(timestamps[i]);
-      std::int64_t stamp_nsec = static_cast<std::int64_t>((timestamps[i] - stamp_sec) * 1e9);
-      auto frame = OdometryFrame::create(poses[i], stamp_sec, stamp_nsec);
-      if (frame == nullptr) {
-        std::cerr << "Failed to create odometry frame" << std::endl;
-        continue;
-      }
-      this->frames_.push_back(frame);
-    }
   } else {
     throw std::runtime_error(
       "Unknown odometry format: " + odom_format + ". Supported formats are: kitti, glim");
     return;
+  }
+  // Load pcd cloud filenames
+  std::cout << "Loading pcd-clouds from " << pcd_dir << std::endl;
+  std::vector<std::string> pcd_filenames = file_io_->load_clouds(pcd_dir);
+  // Check if sizes match
+  if (pcd_filenames.size() != poses.size()) {
+    std::cerr << "Number of pcd files and poses do not match: " << pcd_filenames.size() << " vs "
+              << poses.size() << std::endl;
+    return;
+  }
+
+  // Load pcd files and creates frames
+  for (size_t i = 0; i < pcd_filenames.size(); ++i) {
+    auto frame = OdometryFrame::load(pcd_filenames[i], poses[i], this->downsample_resolution_);
+    if (frame == nullptr) {
+      continue;
+    }
+    this->frames_.push_back(frame);
   }
   std::cout << "Loaded " << this->frames_.size() << " odometry frames" << std::endl;
 }
@@ -153,8 +141,11 @@ bool KeyframeInterpolation::save(
     if (!file_io_->save_keyframes(dst_directory, this->keyframes_, this->downsample_resolution_)) {
       return false;
     }
+  } else if (odom_format == "glim") {
+    if (!file_io_->save_accumulated_cloud(dst_directory + "/map.pcd", this->keyframes_, this->downsample_resolution_)) {
+      return false;
+    }
   }
-
   std::cout << "Everything saved successfully" << std::endl;
   return true;
 }
