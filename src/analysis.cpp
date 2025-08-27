@@ -178,6 +178,20 @@ void analysis::save_config(
     }
     file << std::endl;
 
+    file << "fake_ind=";
+    for (size_t i = 0; i < config.fake_ind.size(); ++i) {
+      file << config.fake_ind[i];
+      if (i < config.fake_ind.size() - 1) file << ",";
+    }
+    file << std::endl;
+
+    file << "fake_ind_dist=";
+    for (size_t i = 0; i < config.fake_ind_dist.size(); ++i) {
+      file << config.fake_ind_dist[i];
+      if (i < config.fake_ind_dist.size() - 1) file << ",";
+    }
+    file << std::endl;
+
     // Write threading parameters
     file << "use_threading=" << (config.use_threading ? "true" : "false") << std::endl;
     file << "num_cores=" << config.num_cores << std::endl;
