@@ -29,9 +29,9 @@ namespace flexcloud
  *
  * @param[in] node                - rclcpp::Node:
  *                                  reference to node
- * @param[in] src                 - std::vector<ProjPoint>:
+ * @param[in] src                 - std::vector<PointStdDev>:
  *                                  source trajectory
- * @param[in] target              - std::vector<ProjPoint>:
+ * @param[in] target              - std::vector<PointStdDev>:
  *                                  target trajectory
  * @param[in] umeyama             - std::shared_ptr<Umeyama>:
  *                                  pointer to Umeyama transformation
@@ -39,8 +39,8 @@ namespace flexcloud
  *                                  true if function executed
  */
 bool transform::get_umeyama(
-  FlexCloudConfig & config, const std::vector<ProjPoint> & src,
-  const std::vector<ProjPoint> & target, const std::shared_ptr<Umeyama> & umeyama)
+  FlexCloudConfig & config, const std::vector<PointStdDev> & src,
+  const std::vector<PointStdDev> & target, const std::shared_ptr<Umeyama> & umeyama)
 {
   (void)config;
   // Convert vector to Eigen format
@@ -48,10 +48,10 @@ bool transform::get_umeyama(
   sr.clear();
   tar.clear();
   for (const auto & pt : src) {
-    sr.push_back(pt.pos_);
+    sr.push_back(pt.pos);
   }
   for (const auto & pt : target) {
-    tar.push_back(pt.pos_);
+    tar.push_back(pt.pos);
   }
 
   // Insert into Umeyama class and calculate transformation matrix
@@ -65,9 +65,9 @@ bool transform::get_umeyama(
  *
  * @param[in] node                - rclcpp::Node:
  *                                  reference to node
- * @param[in] src                 - std::vector<ProjPoint>:
+ * @param[in] src                 - std::vector<PointStdDev>:
  *                                  source trajectory
- * @param[in] target              - std::vector<ProjPoint>:
+ * @param[in] target              - std::vector<PointStdDev>:
  *                                  target trajectory
  * @param[in] cps                 - std::vector<ControlPoint>:
  *                                  selected control points
@@ -75,8 +75,8 @@ bool transform::get_umeyama(
  *                                  true if function executed
  */
 bool transform::select_control_points(
-  FlexCloudConfig & config, const std::vector<ProjPoint> & src,
-  const std::vector<ProjPoint> & target, std::vector<ControlPoint> & cps)
+  FlexCloudConfig & config, const std::vector<PointStdDev> & src,
+  const std::vector<PointStdDev> & target, std::vector<ControlPoint> & cps)
 {
   cps.clear();
   std::vector<Eigen::Vector3d> cp_inter{};
@@ -109,7 +109,7 @@ bool transform::select_control_points(
     }
     // clang-format off
     // Point in reference data -check if standard deviations are within threshold, otherwise skip point
-    if (sqrt(pow(src[idx].stddev_(0), 2) + pow(src[idx].stddev_(1), 2)) <= config.stddev_threshold && use_ind) {  // NOLINT
+    if (sqrt(pow(src[idx].stddev.x(), 2) + pow(src[idx].stddev.y(), 2)) <= config.stddev_threshold && use_ind) {  // NOLINT
       // Point configured to be shifted or fake
       double real_offset = 0.0;
       Eigen::Vector2d direction{};
@@ -120,18 +120,18 @@ bool transform::select_control_points(
         // Compute vincinity
         // Create vincinity = pair of preceding and following point on linestring
         std::vector<Eigen::Vector3d> vincinity{};
-        Eigen::Vector3d current = src[idx].pos_;
+        Eigen::Vector3d current = src[idx].pos;
         if (idx == 0) {
-          Eigen::Vector3d forward = src[idx + 1].pos_;
+          Eigen::Vector3d forward = src[idx + 1].pos;
           vincinity =
             std::vector<Eigen::Vector3d>{Eigen::Vector3d(0.0, 0.0, 0.0), forward - current};
         } else if (idx + 1 == static_cast<int>(src.size())) {
-          Eigen::Vector3d backward = src[idx - 1].pos_;
+          Eigen::Vector3d backward = src[idx - 1].pos;
           vincinity =
             std::vector<Eigen::Vector3d>{current - backward, Eigen::Vector3d(0.0, 0.0, 0.0)};
         } else {
-          Eigen::Vector3d backward = src[idx - 1].pos_;
-          Eigen::Vector3d forward = src[idx + 1].pos_;
+          Eigen::Vector3d backward = src[idx - 1].pos;
+          Eigen::Vector3d forward = src[idx + 1].pos;
           vincinity = std::vector<Eigen::Vector3d>{current - backward, forward - current};
         }
         // Check if point is configured to be shifted or faked
@@ -165,37 +165,37 @@ bool transform::select_control_points(
 
           direction << -perpendicular(1), perpendicular(0);
           Eigen::Vector2d pt_2d_shift =
-            Eigen::Vector2d(src[idx].pos_(0), src[idx].pos_(1)) + direction.normalized() * real_offset;
+            Eigen::Vector2d(src[idx].pos.x(), src[idx].pos.y()) + direction.normalized() * real_offset;
           // Create control point
-          cp_inter.push_back(Eigen::Vector3d(pt_2d_shift(0), pt_2d_shift(1), src[idx].pos_(2)));
+          cp_inter.push_back(Eigen::Vector3d(pt_2d_shift(0), pt_2d_shift(1), src[idx].pos.z()));
       } else {
         // Set unmodified reference point
-        cp_inter.push_back(Eigen::Vector3d(src[idx].pos_(0), src[idx].pos_(1), src[idx].pos_(2)));
+        cp_inter.push_back(Eigen::Vector3d(src[idx].pos.x(), src[idx].pos.y(), src[idx].pos.z()));
       }
       // Point in LiDAR data
       // Check if point is configured to be faked
       Eigen::Vector3d pt_pcd{};
       if (std::find(config.fake_ind.begin(), config.fake_ind.end(), idx) != config.fake_ind.end()) {  // NOLINT
         Eigen::Vector2d pt_pcd_shift =
-          Eigen::Vector2d(target[idx].pos_(0), target[idx].pos_(1)) + direction.normalized() * real_offset;
-        pt_pcd << pt_pcd_shift(0), pt_pcd_shift(1), target[idx].pos_(2);
+          Eigen::Vector2d(target[idx].pos.x(), target[idx].pos.y()) + direction.normalized() * real_offset;
+        pt_pcd << pt_pcd_shift(0), pt_pcd_shift(1), target[idx].pos.z();
         cp_inter.push_back(pt_pcd);
         ControlPoint P(
-          cp_inter[0](0), cp_inter[0](1), cp_inter[0](2), cp_inter[1](0), cp_inter[1](1),
-          cp_inter[1](2));
+          PointStdDev(cp_inter[0](0), cp_inter[0](1), cp_inter[0](2), 0.0, 0.0, 0.0), PointStdDev(cp_inter[1](0), cp_inter[1](1),
+          cp_inter[1](2), 0.0, 0.0, 0.0));
         cps.push_back(P);
         ++cp_count;
         cp_inter.clear();
         // Also add the original point
-        cp_inter.push_back(Eigen::Vector3d(src[idx].pos_(0), src[idx].pos_(1), src[idx].pos_(2)));
-        pt_pcd << target[idx].pos_(0), target[idx].pos_(1), target[idx].pos_(2);
+        cp_inter.push_back(Eigen::Vector3d(src[idx].pos.x(), src[idx].pos.y(), src[idx].pos.z()));
+        pt_pcd << target[idx].pos.x(), target[idx].pos.y(), target[idx].pos.z();
       } else {
-        pt_pcd << target[idx].pos_(0), target[idx].pos_(1), target[idx].pos_(2);
+        pt_pcd << target[idx].pos.x(), target[idx].pos.y(), target[idx].pos.z();
       }
       cp_inter.push_back(pt_pcd);
       ControlPoint P(
-        cp_inter[0](0), cp_inter[0](1), cp_inter[0](2), cp_inter[1](0), cp_inter[1](1),
-        cp_inter[1](2));
+        PointStdDev(cp_inter[0](0), cp_inter[0](1), cp_inter[0](2), 0.0, 0.0, 0.0), PointStdDev(cp_inter[1](0), cp_inter[1](1),
+        cp_inter[1](2), 0.0, 0.0, 0.0));
       cps.push_back(P);
       ++cp_count;
       cp_inter.clear();
@@ -213,7 +213,7 @@ bool transform::select_control_points(
  *
  * @param[in] node                - rclcpp::Node:
  *                                  reference to node
- * @param[in] target              - std::vector<ProjPoint>:
+ * @param[in] target              - std::vector<PointStdDev>:
  *                                  target trajectory
  * @param[in] cps                 - std::vector<ControlPoint>:
  *                                  control points
@@ -223,13 +223,13 @@ bool transform::select_control_points(
  *                                  true if function executed
  */
 bool transform::get_rubber_sheeting(
-  FlexCloudConfig & config, const std::vector<ProjPoint> & target, std::vector<ControlPoint> & cps,
-  const std::shared_ptr<Delaunay> triag)
+  FlexCloudConfig & config, const std::vector<PointStdDev> & target, std::vector<ControlPoint> & cps,
+  const std::shared_ptr<Delaunay> & triag)
 {
   triag->enclosingControlPoints(config.square_size, target, cps);
   // Insertion of control points into triangulation structure
   for (unsigned i = 0; i < cps.size(); i++) {
-    triag->insertPoint(cps[i].get_target_point());
+    triag->insertPoint(cps[i].get_target_point().pos);
   }
   triag->mapControlPoints(cps);
   triag->calcTransformations();
@@ -238,9 +238,9 @@ bool transform::get_rubber_sheeting(
 /**
  * @brief transform linestring with Umeyama trafo
  *
- * @param[in] ls                  - std::vector<ProjPoint>:
+ * @param[in] ls                  - std::vector<PointStdDev>:
  *                                  input linestring
- * @param[in] ls_trans            - std::vector<ProjPoint>:
+ * @param[in] ls_trans            - std::vector<PointStdDev>:
  *                                  transformed linestring
  * @param[in] umeyama             - std::shared_ptr<Umeyama>:
  *                                  pointer to Umeyama transformation
@@ -248,15 +248,15 @@ bool transform::get_rubber_sheeting(
  *                                  true if function executed
  */
 bool transform::transform_ls_al(
-  const std::vector<ProjPoint> & ls, std::vector<ProjPoint> & ls_trans,
+  const std::vector<PointStdDev> & ls, std::vector<PointStdDev> & ls_trans,
   const std::shared_ptr<Umeyama> & umeyama)
 {
   ls_trans.clear();
   // Transform geometry
   for (const auto & pt : ls) {
-    Eigen::Vector3d point = pt.pos_;
+    Eigen::Vector3d point = pt.pos;
     umeyama->transformPoint(point);
-    ProjPoint pt_t(point(0), point(1), point(2), pt.stddev_(0), pt.stddev_(1), pt.stddev_(2));
+    PointStdDev pt_t(point.x(), point.y(), point.z(), pt.stddev.x(), pt.stddev.y(), pt.stddev.z());
     ls_trans.push_back(pt_t);
   }
   return true;
@@ -264,9 +264,9 @@ bool transform::transform_ls_al(
 /**
  * @brief transform linestring with Rubber-Sheeting trafo
  *
- * @param[in] ls                  - std::vector<ProjPoint>:
+ * @param[in] ls                  - std::vector<PointStdDev>:
  *                                  input linestring
- * @param[in] ls_trans            - std::vector<ProjPoint>:
+ * @param[in] ls_trans            - std::vector<PointStdDev>:
  *                                  transformed linestring
  * @param[in] triag               - std::shared_ptr<Delaunay>:
  *                                  pointer to triangulation
@@ -274,7 +274,7 @@ bool transform::transform_ls_al(
  *                                  true if function executed
  */
 bool transform::transform_ls_rs(
-  const std::vector<ProjPoint> & ls, std::vector<ProjPoint> & ls_trans,
+  const std::vector<PointStdDev> & ls, std::vector<PointStdDev> & ls_trans,
   const std::shared_ptr<Delaunay> & triag)
 {
   // Initialize output linestring to be filled -> non-const
@@ -282,9 +282,9 @@ bool transform::transform_ls_rs(
   // Transform geometry
   for (const auto & pt : ls) {
     // Find area the point is in
-    Eigen::Vector3d pt_ = pt.pos_;
+    Eigen::Vector3d pt_ = pt.pos;
     triag->transformPoint(pt_);
-    ProjPoint pt_t(pt_(0), pt_(1), pt_(2), pt.stddev_(0), pt.stddev_(1), pt.stddev_(2));
+    PointStdDev pt_t(pt_.x(), pt_.y(), pt_.z(), pt.stddev.x(), pt.stddev.y(), pt.stddev.z());
     ls_trans.push_back(pt_t);
   }
   return true;
@@ -493,23 +493,21 @@ bool transform::transform_pcd(
 /**
  * @brief get closest point on a linestring for a given point
  *
- * @param[in] pt                    - ProjPoint:
+ * @param[in] pt                    - PointStdDev:
  *                                    input point to be modified
- * @param[in] ls                    - std::vector<ProjPoint>:
+ * @param[in] ls                    - std::vector<PointStdDev>:
  *                                    linestring to match point to
  */
-void transform::closest_on_ls(ProjPoint & pt, const std::vector<ProjPoint> & ls)
+void transform::closest_on_ls(PointStdDev & pt, const std::vector<PointStdDev> & ls)
 {
   // Initialize
   std::vector<double> dist;
   for (const auto & pt_ : ls) {
-    double d = (pt.pos_ - pt_.pos_).norm();
+    double d = (pt.pos - pt_.pos).norm();
     dist.push_back(d);
   }
   const int ind = std::distance(dist.begin(), std::min_element(dist.begin(), dist.end()));
-  pt.pos_(0) = ls[ind].pos_(0);
-  pt.pos_(1) = ls[ind].pos_(1);
-  pt.pos_(2) = ls[ind].pos_(2);
+  pt.pos = ls[ind].pos;
 }
 /**
  * @brief transform sub point cloud map one one thread

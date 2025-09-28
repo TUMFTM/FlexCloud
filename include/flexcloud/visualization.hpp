@@ -59,7 +59,7 @@ public:
   /**
    * @brief visualize pos frames in rerun
    *
-   * @param[in] pos                 - std::vector<PosFrame>:
+   * @param[in] pos                 - std::vector<PointStdDevStamped>:
    *                                  pos points
    * @param[in] stream              - rerun::RecordingStream:
    *                                  stream to add linestring to
@@ -69,12 +69,12 @@ public:
    *                                  namespace of linestring
    */
   void pos2rerun(
-    std::vector<PosFrame> & pos, rerun::RecordingStream & stream, const std::string color,
+    std::vector<PointStdDevStamped> & pos, rerun::RecordingStream & stream, const std::string color,
     const std::string name);
   /**
    * @brief visualize linestring in rerun
    *
-   * @param[in] ls                  - std::vector<ProjPoint>:
+   * @param[in] ls                  - std::vector<PointStdDev>:
    *                                  controlpoints
    * @param[in] stream              - rerun::RecordingStream:
    *                                  stream to add linestring to
@@ -84,7 +84,7 @@ public:
    *                                  namespace of linestring
    */
   void linestring2rerun(
-    const std::vector<ProjPoint> & ls, rerun::RecordingStream & stream, const std::string color,
+    const std::vector<PointStdDev> & ls, rerun::RecordingStream & stream, const std::string color,
     const std::string name);
   /**
    * @brief visualize rubber-sheeting geometry in rerun

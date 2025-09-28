@@ -133,7 +133,7 @@ bool KeyframeInterpolation::save(
     return false;
   }
 
-  // Save graph only when using kitti format
+  // Save graph for kitti format and accumulated cloud for glim format
   if (odom_format == "kitti") {
     if (!file_io_->save_graph(dst_directory + "/graph.g2o", this->keyframes_)) {
       return false;
@@ -211,22 +211,22 @@ void KeyframeInterpolation::select_keyframes(
   }
 }
 /**
- * @brief Search closest PosFrame for a given frame
+ * @brief Search closest PointStdDevStamped for a given frame
  *
  * @param[in] frame              - std::shared_ptr<OdometryFrame>:
  *                                 frame to search for
- * @return PosFrame             - PosFrame:
- *                                 closest PosFrame
+ * @return PointStdDevStamped    - PointStdDevStamped:
+ *                                 closest PointStdDevStamped
  */
-PosFrame KeyframeInterpolation::search_closest(const std::shared_ptr<OdometryFrame> & frame)
+PointStdDevStamped KeyframeInterpolation::search_closest(const std::shared_ptr<OdometryFrame> & frame)
 {
   auto closest_it = std::min_element(
-    pos_frames_.begin(), pos_frames_.end(), [&frame](const PosFrame & a, const PosFrame & b) {
-      return std::abs(frame->get_timestamp() - a.get_timestamp()) <
-             std::abs(frame->get_timestamp() - b.get_timestamp());
+    pos_frames_.begin(), pos_frames_.end(), [&frame](const PointStdDevStamped & a, const PointStdDevStamped & b) {
+      return std::abs(frame->get_timestamp() - a.stamp) <
+             std::abs(frame->get_timestamp() - b.stamp);
     });
 
-  std::int64_t minDiff = std::abs(frame->get_timestamp() - closest_it->get_timestamp());
+  std::int64_t minDiff = std::abs(frame->get_timestamp() - closest_it->stamp);
 
   if (minDiff > globalMaxTimeDiff) {
     globalMaxTimeDiff = minDiff;
@@ -235,16 +235,16 @@ PosFrame KeyframeInterpolation::search_closest(const std::shared_ptr<OdometryFra
   return *closest_it;
 }
 /**
- * @brief Interpolate PosFrame for a given frame
+ * @brief Interpolate PointStdDevStamped for a given frame
  *
  * @param[in] frame              - std::shared_ptr<OdometryFrame>:
  *                                 frame to search for
  * @param[in] pos_delta_xyz      - float:
  *                                 delta xyz for keyframe selection
- * @return PosFrame             - PosFrame:
- *                                 interpolated PosFrame
+ * @return PointStdDevStamped     - PointStdDevStamped:
+ *                                 interpolated PointStdDevStamped
  */
-PosFrame KeyframeInterpolation::interpolate_pos(
+PointStdDevStamped KeyframeInterpolation::interpolate_pos(
   const std::shared_ptr<OdometryFrame> & frame, const float pos_delta_xyz)
 {
   const int numFrames = 2;
@@ -252,8 +252,8 @@ PosFrame KeyframeInterpolation::interpolate_pos(
   // search closest pos timestamp smaller than keyframe timestamp
   auto lowerBound = std::lower_bound(
     this->pos_frames_.begin(), this->pos_frames_.end(), frame,
-    [](const PosFrame & posFrame, const std::shared_ptr<OdometryFrame> & odomFrame) {
-      return posFrame.get_timestamp() < odomFrame->get_timestamp();
+    [](const PointStdDevStamped & posFrame, const std::shared_ptr<OdometryFrame> & odomFrame) {
+      return posFrame.stamp < odomFrame->get_timestamp();
     });
   size_t lowerIndex = (lowerBound == this->pos_frames_.begin())
                         ? 0
@@ -262,7 +262,7 @@ PosFrame KeyframeInterpolation::interpolate_pos(
   // Sanity check to check if enough pos frames before first keyframe
   if (
     lowerIndex < (numFrames - 1) ||
-    this->pos_frames_[lowerIndex].get_timestamp() > frame->get_timestamp()) {
+    this->pos_frames_[lowerIndex].stamp > frame->get_timestamp()) {
     std::cout << std::fixed << std::setprecision(6);
     std::cout << "\033[31mNot enough Pos frames provided for smallest LiDAR frame with timestamp "
               << static_cast<double>(frame->get_timestamp()) / 1000000000 << "\033[0m" << std::endl;
@@ -321,11 +321,11 @@ PosFrame KeyframeInterpolation::interpolate_pos(
   for (int i = 0; i < num_support_points; ++i) {
     // compute timestamps in reference to very first pos frame
     points(0, i) = std::abs(
-      this->pos_frames_[resultVector[0]].get_timestamp() -
-      this->pos_frames_[resultVector[i]].get_timestamp());
-    points(1, i) = this->pos_frames_[resultVector[i]].x_pos;
-    points(2, i) = this->pos_frames_[resultVector[i]].y_pos;
-    points(3, i) = this->pos_frames_[resultVector[i]].z_pos;
+      this->pos_frames_[resultVector[0]].stamp -
+      this->pos_frames_[resultVector[i]].stamp);
+    points(1, i) = this->pos_frames_[resultVector[i]].point.pos.x();
+    points(2, i) = this->pos_frames_[resultVector[i]].point.pos.y();
+    points(3, i) = this->pos_frames_[resultVector[i]].point.pos.z();
   }
 
   // The degree of the interpolating spline needs to be one less than the number of points
@@ -336,14 +336,14 @@ PosFrame KeyframeInterpolation::interpolate_pos(
 
   // Normalize the timestamp of the frame we are interested in to [0,1]
   double divider =
-    std::abs(this->pos_frames_[resultVector[0]].get_timestamp() - frame->get_timestamp()) /
+    std::abs(this->pos_frames_[resultVector[0]].stamp - frame->get_timestamp()) /
     (points.row(0).maxCoeff() - points.row(0).minCoeff());
   const Eigen::Vector4d values = spline(divider);
 
-  PosFrame tmp_frame(
-    frame->stamp_sec, frame->stamp_nsec, values[1], values[2], values[3], 0.0, 0.0, 0.0);
-
-  return tmp_frame;
+  // TODO(Maxi): check stddev values of surrounding pos frames and interpolate accordingly
+  PointStdDev tmp_frame(
+    values[1], values[2], values[3], 0.0, 0.0, 0.0);
+  return PointStdDevStamped(tmp_frame, frame->get_timestamp());
 }
 void KeyframeInterpolation::visualize()
 {

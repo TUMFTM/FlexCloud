@@ -31,13 +31,13 @@ namespace flexcloud
  *                                  absolute path to directory
  * @param[in] stddev_threshold    - float:
  *                                  threshold for standard deviation
- * @return std::vector<PosFrame>:
+ * @return std::vector<PointStdDevStamped>:
  *                                  vector of position frames
  */
-std::vector<PosFrame> file_io::load_pos_frames(
+std::vector<PointStdDevStamped> file_io::load_pos_frames(
   const std::string & directory, const float stddev_threshold)
 {
-  std::vector<PosFrame> pos_frames{};
+  std::vector<PointStdDevStamped> pos_frames{};
   std::cout << "Loading position frames from " << directory << std::endl;
   boost::filesystem::directory_iterator dir_itr(directory);
   boost::filesystem::directory_iterator end;
@@ -93,14 +93,13 @@ std::vector<PosFrame> file_io::load_pos_frames(
                 << std::endl;
       continue;
     }
-
-    PosFrame frame(stamp_sec, stamp_usec, x_pos, y_pos, z_pos, x_stddev, y_stddev, z_stddev);
-    pos_frames.push_back(frame);
+    PointStdDev point(x_pos, y_pos, z_pos, x_stddev, y_stddev, z_stddev);
+    pos_frames.push_back(PointStdDevStamped(point, stamp_sec, stamp_usec));
   }
 
   // Sort frames based on timestamps (smallest TS first)
-  std::sort(pos_frames.begin(), pos_frames.end(), [](const PosFrame & a, const PosFrame & b) {
-    return a.get_timestamp() < b.get_timestamp();
+  std::sort(pos_frames.begin(), pos_frames.end(), [](const PointStdDevStamped & a, const PointStdDevStamped & b) {
+    return a.stamp < b.stamp;
   });
 
   std::cout << "Loaded " << pos_frames.size() << " global position frames" << std::endl;
@@ -186,16 +185,15 @@ std::vector<Eigen::Isometry3d> file_io::load_glim_odom(
  *                                  config struct
  * @param[in] traj_path           - std::string:
  *                                  absolute path to file
- * @param[in] traj_local          - std::vector<ProjPoint>:
+ * @param[in] traj_local          - std::vector<PointStdDev>:
  *                                  trajectory as vector of positions with standard dev
  */
 bool file_io::read_traj_from_file(
-  FlexCloudConfig & config, const std::string & traj_path, std::vector<ProjPoint> & traj_local)
+  FlexCloudConfig & config, const std::string & traj_path, std::vector<PointStdDev> & traj_local)
 {
   traj_local.clear();
   if (config.transform_traj) {
-    std::vector<GPSPoint> traj_gps;
-    Eigen::Vector3d pt_;
+    std::vector<PointStdDev> traj_gps;
 
     // Read trajectory in GPS format
     double lat, lon, height, lat_stddev, lon_stddev, height_stddev;
@@ -209,7 +207,7 @@ bool file_io::read_traj_from_file(
       if (!(iss >> lat >> lon >> height >> lat_stddev >> lon_stddev >> height_stddev)) {
         std::cout << "Trajectory in wrong format!" << std::endl;
       }
-      GPSPoint gps_pt(lat, lon, height, lat_stddev, lon_stddev, height_stddev);
+      PointStdDev gps_pt(lat, lon, height, lat_stddev, lon_stddev, height_stddev);
       traj_gps.emplace_back(gps_pt);
     }
 
@@ -219,9 +217,9 @@ bool file_io::read_traj_from_file(
       orig_lon = config.zeroPoint[1];
       orig_ele = config.zeroPoint[2];
     } else {
-      orig_lat = traj_gps[0].lat_;
-      orig_lon = traj_gps[0].lon_;
-      orig_ele = traj_gps[0].ele_;
+      orig_lat = traj_gps[0].pos.x();
+      orig_lon = traj_gps[0].pos.y();
+      orig_ele = traj_gps[0].pos.z();
     }
 
     std::cout << "\033[33mMap origin: " << orig_lat << " " << orig_lon << " " << orig_ele
@@ -240,11 +238,11 @@ bool file_io::read_traj_from_file(
       GeographicLib::LocalCartesian(orig_lat, orig_lon, orig_ele, WGS84ellipsoid);
 
     for (const auto & gps : traj_gps) {
-      ProjPoint pt_proj(0.0, 0.0, 0.0, 0.0, 0.0, 0.0);
-      proj.Forward(gps.lat_, gps.lon_, gps.ele_, pt_proj.pos_[0], pt_proj.pos_[1], pt_proj.pos_[2]);
-      pt_proj.stddev_[0] = gps.lat_stddev_;
-      pt_proj.stddev_[1] = gps.lon_stddev_;
-      pt_proj.stddev_[2] = gps.ele_stddev_;
+      PointStdDev pt_proj(0.0, 0.0, 0.0, 0.0, 0.0, 0.0);
+      proj.Forward(gps.pos.y(), gps.pos.x(), gps.pos.z(), pt_proj.pos.x(), pt_proj.pos.y(), pt_proj.pos.z());
+      pt_proj.stddev.x() = gps.stddev.x();
+      pt_proj.stddev.y() = gps.stddev.y();
+      pt_proj.stddev.z() = gps.stddev.z();
       traj_local.push_back(pt_proj);
     }
   } else {
@@ -261,8 +259,7 @@ bool file_io::read_traj_from_file(
         std::cout << "Trajectory in wrong format!" << std::endl;
         return false;
       }
-      ProjPoint pt(x, y, z, x_stddev, y_stddev, z_stddev);
-      traj_local.push_back(pt);
+      traj_local.push_back(PointStdDev(x, y, z, x_stddev, y_stddev, z_stddev));
     }
   }
   return true;
@@ -274,11 +271,11 @@ bool file_io::read_traj_from_file(
  *                                  config struct
  * @param[in] poses_path          - std::string:
  *                                  absolute path to file
- * @param[in] poses               - std::vector<ProjPoint>:
+ * @param[in] poses               - std::vector<PointStdDev>:
  *                                  trajectory as vector of positions with standard dev
  */
 bool file_io::read_poses_SLAM_from_file(
-  FlexCloudConfig & config, const std::string & poses_path, std::vector<ProjPoint> & poses)
+  FlexCloudConfig & config, const std::string & poses_path, std::vector<PointStdDev> & poses)
 {
   poses.clear();
   // Read poses
@@ -295,8 +292,7 @@ bool file_io::read_poses_SLAM_from_file(
       std::cout << "Poses in wrong format!" << std::endl;
       return false;
     }
-    ProjPoint pt(x, y, z, 0.0, 0.0, 0.0);
-    poses.push_back(pt);
+    poses.push_back(PointStdDev(x, y, z, 0.0, 0.0, 0.0));
   }
   return true;
 }
@@ -488,19 +484,19 @@ bool file_io::save_keyframes(
   return true;
 }
 bool file_io::save_pos_frames(
-  const std::string & filename, const std::vector<PosFrame> & pos_keyframes)
+  const std::string & filename, const std::vector<PointStdDevStamped> & pos_keyframes)
 {
   std::ofstream ofs(filename);
   if (!ofs) {
     return false;
   }
-  for (size_t i = 0; i < pos_keyframes.size(); i++) {
-    ofs << std::fixed << std::setprecision(14) << pos_keyframes.at(i).x_pos << " " << std::fixed
-        << std::setprecision(14) << pos_keyframes.at(i).y_pos << " " << std::fixed
-        << std::setprecision(14) << pos_keyframes.at(i).z_pos << " " << std::fixed
-        << std::setprecision(14) << pos_keyframes.at(i).x_stddev << " " << std::fixed
-        << std::setprecision(14) << pos_keyframes.at(i).y_stddev << " " << std::fixed
-        << std::setprecision(14) << pos_keyframes.at(i).z_stddev << " " << std::endl;
+  for (const auto & frame : pos_keyframes) {
+    ofs << std::fixed << std::setprecision(14) << frame.point.pos.x() << " " << std::fixed
+        << std::setprecision(14) << frame.point.pos.y() << " " << std::fixed
+        << std::setprecision(14) << frame.point.pos.z() << " " << std::fixed
+        << std::setprecision(14) << frame.point.stddev.x() << " " << std::fixed
+        << std::setprecision(14) << frame.point.stddev.y() << " " << std::fixed
+        << std::setprecision(14) << frame.point.stddev.z() << " " << std::endl;
   }
   ofs.close();
 

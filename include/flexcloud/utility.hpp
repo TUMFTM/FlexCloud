@@ -33,10 +33,10 @@
 #include <algorithm>
 #include <boost/filesystem.hpp>
 #include <boost/format.hpp>
+#include <iostream>
 #include <memory>
 #include <string>
 #include <vector>
-#include <iostream>
 
 typedef CGAL::Exact_predicates_inexact_constructions_kernel K;
 
@@ -53,54 +53,82 @@ typedef CGAL::Triangulation_data_structure_2<Vb2, Fb2> Tds2;
 typedef CGAL::Delaunay_triangulation_2<K, Tds2> DT2;
 typedef DT2::Point Point2D;
 typedef DT2::Face_handle FaceHandle;
-// Helper function for timestamp calculation
-inline std::int64_t calculate_timestamp(std::int64_t sec, std::int64_t nsec)
+namespace flexcloud
 {
-  return sec * 1000000000 + nsec;
-}
 /**
- * @brief Struct to handle position frames (from GNSS or state estimation)
+ * @brief struct to represent metric position with standard deviation
  *
+ * @param[in] x                     - double:
+ *                                    x-position
+ * @param[in] y                     - double:
+ *                                    y-position
+ * @param[in] z                     - double:
+ *                                    z-position
+ * @param[in] x_stddev              - double:
+ *                                    x standard deviation
+ * @param[in] y_stddev              - double:
+ *                                    y standard deviation
+ * @param[in] z_stddev              - double:
+ *                                    z standard deviation
  */
-struct PosFrame
+struct PointStdDev
 {
 public:
-  /**
-   * @brief Construct a new PosFrame object
-   */
-  PosFrame(
-    std::int64_t stamp_sec, std::int64_t stamp_nsec, double x_pos, double y_pos, double z_pos,
-    double x_stddev, double y_stddev, double z_stddev)
-  : stamp_sec(stamp_sec),
-    stamp_nsec(stamp_nsec),
-    x_pos(x_pos),
-    y_pos(y_pos),
-    z_pos(z_pos),
-    x_stddev(x_stddev),
-    y_stddev(y_stddev),
-    z_stddev(z_stddev)
+  PointStdDev(
+    const double x, const double y, const double z, const double x_stddev, const double y_stddev,
+    const double z_stddev)
+  : pos(x, y, z), stddev(x_stddev, y_stddev, z_stddev)
   {
   }
-  /**
-   * @brief Get the timestamp as a single integer
-   */
-  std::int64_t get_timestamp() const { return calculate_timestamp(stamp_sec, stamp_nsec); }
-  double calc_dist(PosFrame & frame) const
-  {
-    return std::sqrt(
-      std::pow(this->x_pos - frame.x_pos, 2) + std::pow(this->y_pos - frame.y_pos, 2) +
-      std::pow(this->z_pos - frame.z_pos, 2));
-  }
-  // Member variables
-  std::int64_t stamp_sec;
-  std::int64_t stamp_nsec;
 
-  double x_pos;
-  double y_pos;
-  double z_pos;
-  double x_stddev;
-  double y_stddev;
-  double z_stddev;
+public:
+  Eigen::Vector3d pos;
+  Eigen::Vector3d stddev;
+};
+/**
+ * @brief PointStdDev with timestamp
+ *
+ * @param [in] PointStdDev point with stddev
+ *
+ * @param [in] stamp timestamp in nanoseconds
+ */
+struct PointStdDevStamped
+{
+public:
+  PointStdDevStamped(const PointStdDev & point, const std::int64_t stamp)
+  : point(point), stamp(stamp)
+  {
+  }
+  PointStdDevStamped(const PointStdDev & point, const std::int64_t sec, const std::int64_t nsec)
+  : point(point)
+  {
+    stamp = sec * 1e9 + nsec;
+  }
+  double calc_dist(PointStdDevStamped & other) const
+  {
+    return (point.pos - other.point.pos).norm();
+  }
+
+public:
+  PointStdDev point;
+  std::int64_t stamp;
+};
+/**
+ * @brief struct to represent controlpoint
+ *
+ * @param[in] v                     - PointStdDev:
+ * @param[in] u                     - PointStdDev:
+ */
+struct ControlPoint
+{
+public:
+  ControlPoint(const PointStdDev & v, const PointStdDev & u) : v(v), u(u) {}
+  PointStdDev get_source_point() const { return this->v; }
+  PointStdDev get_target_point() const { return this->u; }
+
+private:
+  PointStdDev v;  // Source point
+  PointStdDev u;  // Target point
 };
 /**
  * @brief Struct to handle odometry frames and their corresponding point clouds
@@ -124,7 +152,7 @@ public:
   /**
    * @brief Get the timestamp as a single integer
    */
-  std::int64_t get_timestamp() { return calculate_timestamp(stamp_sec, stamp_nsec); }
+  std::int64_t get_timestamp() { return stamp_sec * 1e9 + stamp_nsec; }
   /**
    * @brief Load an odometry frame from a cloud and pose file
    */
@@ -187,103 +215,6 @@ public:
 private:
   pcl::PointCloud<pcl::PointXYZI>::Ptr cloud_;
   float downsample_resolution;
-};
-/**
- * @brief struct to represent gps point with stddevs
- *
- * @param[in] lat                   - double:
- *                                    lateral degree
- * @param[in] lon                   - double:
- *                                    longitudinal degree
- * @param[in] ele                   - double:
- *                                    elevation
- * @param[in] lat_stddev            - double:
- *                                    lateral standard deviation
- * @param[in] lon_stddev            - double:
- *                                    longitudinal standard deviation
- * @param[in] ele_stddev            - double:
- *                                    elevation standard deviation
- */
-struct GPSPoint
-{
-public:
-  GPSPoint(
-    const double lat, const double lon, const double ele, const double lat_stddev,
-    const double lon_stddev, const double ele_stddev)
-  : lat_(lat),
-    lon_(lon),
-    ele_(ele),
-    lat_stddev_(lat_stddev),
-    lon_stddev_(lon_stddev),
-    ele_stddev_(ele_stddev)
-  {
-  }
-  double lat_{0.};
-  double lon_{0.};
-  double ele_{0.};
-  double lat_stddev_{0.};
-  double lon_stddev_{0.};
-  double ele_stddev_{0.};
-};
-/**
- * @brief struct to represent metric position with standard deviation
- *
- * @param[in] x                     - double:
- *                                    x-position
- * @param[in] y                     - double:
- *                                    y-position
- * @param[in] z                     - double:
- *                                    z-position
- * @param[in] x_stddev              - double:
- *                                    x standard deviation
- * @param[in] y_stddev              - double:
- *                                    y standard deviation
- * @param[in] z_stddev              - double:
- *                                    z standard deviation
- */
-struct ProjPoint
-{
-public:
-  ProjPoint(
-    const double x, const double y, const double z, const double x_stddev, const double y_stddev,
-    const double z_stddev)
-  : pos_(x, y, z), stddev_(x_stddev, y_stddev, z_stddev)
-  {
-  }
-  Eigen::Vector3d pos_;
-  Eigen::Vector3d stddev_;
-};
-/**
- * @brief struct to represent controlpoint
- *
- * @param[in] vx                    - double:
- *                                    x-pos of source point
- * @param[in] vy                    - double:
- *                                    y-pos of source point
- * @param[in] vz                    - double:
- *                                    z-pos of source point
- * @param[in] ux                    - double:
- *                                    x-pos of source point
- * @param[in] uy                    - double:
- *                                    y-pos of source point
- * @param[in] uz                    - double:
- *                                    z-pos of source point
- */
-struct ControlPoint
-{
-public:
-  ControlPoint(
-    const double vx, const double vy, const double vz, const double ux, const double uy,
-    const double uz)
-  : v_(vx, vy, vz), u_(ux, uy, uz)
-  {
-  }
-  Eigen::Vector3d get_source_point() const { return this->v_; }
-  Eigen::Vector3d get_target_point() const { return this->u_; }
-
-private:
-  Eigen::Vector3d v_;  // Source point
-  Eigen::Vector3d u_;  // Target point
 };
 /**
  * @brief struct to represent mapping of controlpoints to triangulation
@@ -445,4 +376,4 @@ struct TUMcolor
   }
   int r, g, b, a;
 };
-;
+}  // namespace flexcloud

@@ -80,25 +80,25 @@ private:
     const float keyframe_delta_x, const float keyframe_delta_angle, const bool interpolate,
     const float pos_delta_xyz);
   /**
-   * @brief Search closest PosFrame for a given frame
+   * @brief Search closest PointStdDevStamped for a given frame
    *
    * @param[in] frame              - std::shared_ptr<OdometryFrame>:
    *                                 frame to search for
-   * @return PosFrame             - PosFrame:
-   *                                 closest PosFrame
+   * @return PointStdDevStamped    - PointStdDevStamped:
+   *                                 closest PointStdDevStamped
    */
-  PosFrame search_closest(const std::shared_ptr<OdometryFrame> & frame);
+  PointStdDevStamped search_closest(const std::shared_ptr<OdometryFrame> & frame);
   /**
-   * @brief Interpolate PosFrame for a given frame
+   * @brief Interpolate PointStdDevStamped for a given frame
    *
    * @param[in] frame              - std::shared_ptr<OdometryFrame>:
    *                                 frame to interpolate
    * @param[in] pos_delta_xyz      - float:
    *                                 delta xyz for interpolation
-   * @return PosFrame             - PosFrame:
-   *                                 interpolated PosFrame
+   * @return PointStdDevStamped     - PointStdDevStamped:
+   *                                 interpolated PointStdDevStamped
    */
-  PosFrame interpolate_pos(const std::shared_ptr<OdometryFrame> & frame, const float pos_delta_xyz);
+  PointStdDevStamped interpolate_pos(const std::shared_ptr<OdometryFrame> & frame, const float pos_delta_xyz);
 
 private:
   // File IO
@@ -106,9 +106,9 @@ private:
 
   // Data
   std::vector<std::shared_ptr<OdometryFrame>> frames_;
-  std::vector<PosFrame> pos_frames_;
+  std::vector<PointStdDevStamped> pos_frames_;
   std::vector<std::shared_ptr<OdometryFrame>> keyframes_;
-  std::vector<PosFrame> pos_keyframes_;
+  std::vector<PointStdDevStamped> pos_keyframes_;
 
   // Visualization
   std::shared_ptr<visualization> viz_;

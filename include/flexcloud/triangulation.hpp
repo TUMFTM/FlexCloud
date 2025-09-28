@@ -40,13 +40,13 @@ public:
    *
    * @param[in] size                - std::vector<double>:
    *                                  expansion (percentage)
-   * @param[in] target              - std::vector<ProjPoint>:
+   * @param[in] target              - std::vector<PointStdDev>:
    *                                  target trajectory
    * @param[in] cps                 - std::vector<ControlPoint>:
    *                                  control points on trajectory
    */
   virtual void enclosingControlPoints(
-    const std::vector<double> & size, const std::vector<ProjPoint> & target,
+    const std::vector<double> & size, const std::vector<PointStdDev> & target,
     std::vector<ControlPoint> & cps) const = 0;
   /**
    * @brief insert point into triangulation
@@ -76,25 +76,25 @@ public:
   /**
    * @brief get edges of triangulation
    *
-   * @param[out]                    - std::vector<std::vector<ProjPoint>>:
+   * @param[out]                    - std::vector<std::vector<PointStdDev>>:
    *                                  edges of triangulation
    */
-  virtual std::vector<std::vector<ProjPoint>> getEdges() const = 0;
+  virtual std::vector<std::vector<PointStdDev>> getEdges() const = 0;
   /**
    * @brief get vertices of triangulation
    *
-   * @param[out]                    - std::vector<std::vector<ProjPoint>>:
+   * @param[out]                    - std::vector<std::vector<PointStdDev>>:
    *                                  vertices of triangulation
    */
-  virtual std::vector<std::vector<ProjPoint>> getVertices() const = 0;
+  virtual std::vector<std::vector<PointStdDev>> getVertices() const = 0;
 
 protected:
   /**
    * @brief add pair of source and target points to vector of control points
    *
-   * @param[in] target_pt           - std::vector<ProjPoint>:
+   * @param[in] target_pt           - std::vector<PointStdDev>:
    *                                  target points
-   * @param[in] source_pt           - std::vector<ProjPoint>:
+   * @param[in] source_pt           - std::vector<PointStdDev>:
    *                                  source points
    * @param[in] cps                 - std::vector<ControlPoint>:
    *                                  control points
@@ -116,13 +116,13 @@ public:
    *
    * @param[in] size                - std::vector<double>:
    *                                  expansion (percentage) -> x,y
-   * @param[in] target              - std::vector<ProjPoint>:
+   * @param[in] target              - std::vector<PointStdDev>:
    *                                  target trajectory
    * @param[in] cps                 - std::vector<ControlPoint>:
    *                                  control points on trajectory
    */
   void enclosingControlPoints(
-    const std::vector<double> & size, const std::vector<ProjPoint> & target,
+    const std::vector<double> & size, const std::vector<PointStdDev> & target,
     std::vector<ControlPoint> & cps) const override;
   /**
    * @brief insert point as 2D point into triangulation
@@ -152,17 +152,17 @@ public:
   /**
    * @brief get edges of triangles
    *
-   * @param[out]                    - std::vector<std::vector<ProjPoint>>:
+   * @param[out]                    - std::vector<std::vector<PointStdDev>>:
    *                                  edges of triangles
    */
-  std::vector<std::vector<ProjPoint>> getEdges() const override;
+  std::vector<std::vector<PointStdDev>> getEdges() const override;
   /**
    * @brief get vertices of triangles
    *
-   * @param[out]                    - std::vector<std::vector<ProjPoint>>:
+   * @param[out]                    - std::vector<std::vector<PointStdDev>>:
    *                                  vertices of triangles
    */
-  std::vector<std::vector<ProjPoint>> getVertices() const override;
+  std::vector<std::vector<PointStdDev>> getVertices() const override;
 
 private:
   /**
@@ -195,13 +195,13 @@ public:
    *
    * @param[in] size                - std::vector<double>:
    *                                  expansion (percentage) -> x,y,z
-   * @param[in] target              - std::vector<ProjPoint>:
+   * @param[in] target              - std::vector<PointStdDev>:
    *                                  target trajectory
    * @param[in] cps                 - std::vector<ControlPoint>:
    *                                  control points on trajectory
    */
   void enclosingControlPoints(
-    const std::vector<double> & size, const std::vector<ProjPoint> & target,
+    const std::vector<double> & size, const std::vector<PointStdDev> & target,
     std::vector<ControlPoint> & cps) const override;
   /**
    * @brief insert point as 3D point into triangulation
@@ -231,17 +231,17 @@ public:
   /**
    * @brief get edges of tetrahedrons
    *
-   * @param[out]                    - std::vector<std::vector<ProjPoint>>:
+   * @param[out]                    - std::vector<std::vector<PointStdDev>>:
    *                                  edges of tetrahedrons
    */
-  std::vector<std::vector<ProjPoint>> getEdges() const override;
+  std::vector<std::vector<PointStdDev>> getEdges() const override;
   /**
    * @brief get vertices of tetrahedrons
    *
-   * @param[out]                    - std::vector<std::vector<ProjPoint>>:
+   * @param[out]                    - std::vector<std::vector<PointStdDev>>:
    *                                  vertices of tetrahedrons
    */
-  std::vector<std::vector<ProjPoint>> getVertices() const override;
+  std::vector<std::vector<PointStdDev>> getVertices() const override;
 
 private:
   /**
@@ -264,9 +264,9 @@ private:
 /**
  * @brief add pair of source and target points to vector of control points
  *
- * @param[in] target_pt           - std::vector<ProjPoint>:
+ * @param[in] target_pt           - std::vector<Eigen::Vector3d>:
  *                                  target points
- * @param[in] source_pt           - std::vector<ProjPoint>:
+ * @param[in] source_pt           - std::vector<Eigen::Vector3d>:
  *                                  source points
  * @param[in] cps                 - std::vector<ControlPoint>:
  *                                  control points
@@ -276,10 +276,9 @@ void Delaunay::corner2cps(
   std::vector<ControlPoint> & cps) const
 {
   for (size_t i = 0; i < target_pt.size(); ++i) {
-    ControlPoint P(
-      src_pt.at(i)(0), src_pt.at(i)(1), src_pt.at(i)(2), target_pt.at(i)(0), target_pt.at(i)(1),
-      target_pt.at(i)(2));
-    cps.push_back(P);
+    PointStdDev source(src_pt.at(i)(0), src_pt.at(i)(1), src_pt.at(i)(2), 0.0, 0.0, 0.0);
+    PointStdDev target(target_pt.at(i)(0), target_pt.at(i)(1), target_pt.at(i)(2), 0.0, 0.0, 0.0);
+    cps.push_back(ControlPoint(source, target));
   }
 }
 /**
@@ -287,13 +286,13 @@ void Delaunay::corner2cps(
  *
  * @param[in] size                - std::vector<double>:
  *                                  expansion (percentage) -> x,y
- * @param[in] target              - std::vector<ProjPoint>:
+ * @param[in] target              - std::vector<PointStdDev>:
  *                                  target trajectory
  * @param[in] cps                 - std::vector<ControlPoint>:
  *                                  control points on trajectory
  */
 void Delaunay_2D::enclosingControlPoints(
-  const std::vector<double> & size, const std::vector<ProjPoint> & target,
+  const std::vector<double> & size, const std::vector<PointStdDev> & target,
   std::vector<ControlPoint> & cps) const
 {
   if (size.size() != 2) {
@@ -303,8 +302,8 @@ void Delaunay_2D::enclosingControlPoints(
   std::vector<double> x, y;
 
   for (const auto & pt : target) {
-    x.push_back(pt.pos_(0));
-    y.push_back(pt.pos_(1));
+    x.push_back(pt.pos.x());
+    y.push_back(pt.pos.y());
   }
 
   double min_x = *std::min_element(x.begin(), x.end());
@@ -333,11 +332,11 @@ void Delaunay_2D::enclosingControlPoints(
 
     // Iterate through controlpoints to find closest one
     for (auto & cp : cps) {
-      vx.push_back(pts_target.at(i)(0) + cp.get_source_point()(0) - cp.get_target_point()(0));
-      vy.push_back(pts_target.at(i)(1) + cp.get_source_point()(1) - cp.get_target_point()(1));
+      vx.push_back(pts_target.at(i).x() + cp.get_source_point().pos.x() - cp.get_target_point().pos.x());
+      vy.push_back(pts_target.at(i).y() + cp.get_source_point().pos.y() - cp.get_target_point().pos.y());
       Eigen::Vector3d pt(vx.back(), vy.back(), 0.0);
 
-      d.push_back(std::abs((pt - cp.get_source_point()).norm()));
+      d.push_back(std::abs((pt - cp.get_source_point().pos).norm()));
     }
     const int ind = std::distance(d.begin(), std::min_element(d.begin(), d.end()));
     Eigen::Vector3d pt_src(vx.at(ind), vy.at(ind), 0.0);
@@ -373,7 +372,7 @@ void Delaunay_2D::mapControlPoints(const std::vector<ControlPoint> & cps)
       // Check every Controlpoint
       for (const auto & cp : cps) {
         Point2D p = this->triangulation_.triangle(face)[i];
-        if (p.x() == cp.get_target_point()(0) && p.y() == cp.get_target_point()(1)) {
+        if (p.x() == cp.get_target_point().pos.x() && p.y() == cp.get_target_point().pos.y()) {
           found_cps.push_back(cp);
         }
       }
@@ -398,8 +397,8 @@ void Delaunay_2D::calcTransformations()
     target.clear();
     source.clear();
     for (size_t i = 0; i < 3; i++) {
-      target.push_back(entry.get_cps().at(i).get_target_point());
-      source.push_back(entry.get_cps().at(i).get_source_point());
+      target.push_back(entry.get_cps().at(i).get_target_point().pos);
+      source.push_back(entry.get_cps().at(i).get_source_point().pos);
     }
 
     // Construct linear equations and solve to find transformation matrix for tetrahedron
@@ -434,24 +433,24 @@ void Delaunay_2D::transformPoint(Eigen::Vector3d & pt) const
 /**
  * @brief get edges of triangles
  *
- * @param[out]                    - std::vector<std::vector<ProjPoint>>:
+ * @param[out]                    - std::vector<std::vector<PointStdDev>>:
  *                                  edges of triangles
  */
-std::vector<std::vector<ProjPoint>> Delaunay_2D::getEdges() const
+std::vector<std::vector<PointStdDev>> Delaunay_2D::getEdges() const
 {
   // Create linestrings and linestring array
-  std::vector<std::vector<ProjPoint>> edges{};
+  std::vector<std::vector<PointStdDev>> edges{};
 
   for (const CpsMap_2D & entry : this->mapping_) {
     const FaceHandle face = entry.get_face_handle();
     // Create points for linestring
-    ProjPoint p1(face->vertex(0)->point().x(), face->vertex(0)->point().y(), 0.0, 0.0, 0.0, 0.0);
-    ProjPoint p2(face->vertex(1)->point().x(), face->vertex(1)->point().y(), 0.0, 0.0, 0.0, 0.0);
-    ProjPoint p3(face->vertex(2)->point().x(), face->vertex(2)->point().y(), 0.0, 0.0, 0.0, 0.0);
+    PointStdDev p1(face->vertex(0)->point().x(), face->vertex(0)->point().y(), 0.0, 0.0, 0.0, 0.0);
+    PointStdDev p2(face->vertex(1)->point().x(), face->vertex(1)->point().y(), 0.0, 0.0, 0.0, 0.0);
+    PointStdDev p3(face->vertex(2)->point().x(), face->vertex(2)->point().y(), 0.0, 0.0, 0.0, 0.0);
 
-    std::vector<ProjPoint> ls1{p1, p2};
-    std::vector<ProjPoint> ls2{p1, p3};
-    std::vector<ProjPoint> ls3{p2, p3};
+    std::vector<PointStdDev> ls1{p1, p2};
+    std::vector<PointStdDev> ls2{p1, p3};
+    std::vector<PointStdDev> ls3{p2, p3};
 
     edges.push_back(ls1);
     edges.push_back(ls2);
@@ -462,19 +461,19 @@ std::vector<std::vector<ProjPoint>> Delaunay_2D::getEdges() const
 /**
  * @brief get vertices of triangles
  *
- * @param[out]                    - std::vector<std::vector<ProjPoint>>:
+ * @param[out]                    - std::vector<std::vector<PointStdDev>>:
  *                                  vertices of triangles
  */
-std::vector<std::vector<ProjPoint>> Delaunay_2D::getVertices() const
+std::vector<std::vector<PointStdDev>> Delaunay_2D::getVertices() const
 {
-  std::vector<std::vector<ProjPoint>> vertices;
-  std::vector<ProjPoint> tet;
+  std::vector<std::vector<PointStdDev>> vertices;
+  std::vector<PointStdDev> tet;
 
   for (const CpsMap_2D & entry : this->mapping_) {
     tet.clear();
     for (size_t i = 0; i < 3; ++i) {
-      const Eigen::Vector3d p = entry.get_cps().at(i).get_target_point();
-      ProjPoint pt(p(0), p(1), 0.0, 0.0, 0.0, 0.0);
+      const Eigen::Vector3d p = entry.get_cps().at(i).get_target_point().pos;
+      PointStdDev pt(p(0), p(1), 0.0, 0.0, 0.0, 0.0);
       tet.push_back(pt);
     }
     vertices.push_back(tet);
@@ -527,13 +526,13 @@ Eigen::Matrix3d Delaunay_2D::solve_linear_2d(
  *
  * @param[in] size                - std::vector<double>:
  *                                  expansion (percentage) -> x,y,z
- * @param[in] target              - std::vector<ProjPoint>:
+ * @param[in] target              - std::vector<PointStdDev>:
  *                                  target trajectory
  * @param[in] cps                 - std::vector<ControlPoint>:
  *                                  control points on trajectory
  */
 void Delaunay_3D::enclosingControlPoints(
-  const std::vector<double> & size, const std::vector<ProjPoint> & target,
+  const std::vector<double> & size, const std::vector<PointStdDev> & target,
   std::vector<ControlPoint> & cps) const
 {
   if (size.size() != 3) {
@@ -543,9 +542,9 @@ void Delaunay_3D::enclosingControlPoints(
   std::vector<double> x, y, z;
 
   for (const auto & pt : target) {
-    x.push_back(pt.pos_(0));
-    y.push_back(pt.pos_(1));
-    z.push_back(pt.pos_(2));
+    x.push_back(pt.pos.x());
+    y.push_back(pt.pos.y());
+    z.push_back(pt.pos.z());
   }
 
   double min_x = *std::min_element(x.begin(), x.end());
@@ -581,12 +580,12 @@ void Delaunay_3D::enclosingControlPoints(
 
     // Iterate through controlpoints to find closest one
     for (auto & cp : cps) {
-      vx.push_back(pts_target.at(i)(0) + cp.get_source_point()(0) - cp.get_target_point()(0));
-      vy.push_back(pts_target.at(i)(1) + cp.get_source_point()(1) - cp.get_target_point()(1));
-      vz.push_back(pts_target.at(i)(2) + cp.get_source_point()(2) - cp.get_target_point()(2));
+      vx.push_back(pts_target.at(i).x() + cp.get_source_point().pos.x() - cp.get_target_point().pos.x());
+      vy.push_back(pts_target.at(i).y() + cp.get_source_point().pos.y() - cp.get_target_point().pos.y());
+      vz.push_back(pts_target.at(i).z() + cp.get_source_point().pos.z() - cp.get_target_point().pos.z());
       Eigen::Vector3d pt(vx.back(), vy.back(), vz.back());
 
-      d.push_back(std::abs((pt - cp.get_source_point()).norm()));
+      d.push_back(std::abs((pt - cp.get_source_point().pos).norm()));
     }
     const int ind = std::distance(d.begin(), std::min_element(d.begin(), d.end()));
     Eigen::Vector3d pt_src(vx.at(ind), vy.at(ind), vz.at(ind));
@@ -623,8 +622,8 @@ void Delaunay_3D::mapControlPoints(const std::vector<ControlPoint> & cps)
       for (auto cp : cps) {
         Point3D p = this->triangulation_.tetrahedron(tetra)[i];
         if (
-          p.x() == cp.get_target_point()(0) && p.y() == cp.get_target_point()(1) &&
-          p.z() == cp.get_target_point()(2)) {
+          p.x() == cp.get_target_point().pos.x() && p.y() == cp.get_target_point().pos.y() &&
+          p.z() == cp.get_target_point().pos.z()) {
           found_cps.push_back(cp);
         }
       }
@@ -649,8 +648,8 @@ void Delaunay_3D::calcTransformations()
     target.clear();
     source.clear();
     for (size_t i = 0; i < 4; i++) {
-      target.push_back(entry.get_cps().at(i).get_target_point());
-      source.push_back(entry.get_cps().at(i).get_source_point());
+      target.push_back(entry.get_cps().at(i).get_target_point().pos);
+      source.push_back(entry.get_cps().at(i).get_source_point().pos);
     }
 
     // Construct linear equations and solve to find transformation matrix for tetrahedron
@@ -685,36 +684,36 @@ void Delaunay_3D::transformPoint(Eigen::Vector3d & pt) const
 /**
  * @brief get edges of tetrahedrons
  *
- * @param[out]                    - std::vector<std::vector<ProjPoint>>:
+ * @param[out]                    - std::vector<std::vector<PointStdDev>>:
  *                                  edges of tetrahedrons
  */
-std::vector<std::vector<ProjPoint>> Delaunay_3D::getEdges() const
+std::vector<std::vector<PointStdDev>> Delaunay_3D::getEdges() const
 {
   // Create linestrings and linestring array
-  std::vector<std::vector<ProjPoint>> tet{};
+  std::vector<std::vector<PointStdDev>> tet{};
 
   for (const CpsMap_3D & entry : this->mapping_) {
     CellHandle cell = entry.get_cell_handle();
     // Create points for linestring
-    ProjPoint p1(
+    PointStdDev p1(
       cell->vertex(0)->point().x(), cell->vertex(0)->point().y(), cell->vertex(0)->point().z(), 0.0,
       0.0, 0.0);
-    ProjPoint p2(
+    PointStdDev p2(
       cell->vertex(1)->point().x(), cell->vertex(1)->point().y(), cell->vertex(1)->point().z(), 0.0,
       0.0, 0.0);
-    ProjPoint p3(
+    PointStdDev p3(
       cell->vertex(2)->point().x(), cell->vertex(2)->point().y(), cell->vertex(2)->point().z(), 0.0,
       0.0, 0.0);
-    ProjPoint p4(
+    PointStdDev p4(
       cell->vertex(3)->point().x(), cell->vertex(3)->point().y(), cell->vertex(3)->point().z(), 0.0,
       0.0, 0.0);
 
-    std::vector<ProjPoint> ls1{p1, p2};
-    std::vector<ProjPoint> ls2{p1, p3};
-    std::vector<ProjPoint> ls3{p1, p4};
-    std::vector<ProjPoint> ls4{p2, p3};
-    std::vector<ProjPoint> ls5{p2, p4};
-    std::vector<ProjPoint> ls6{p3, p4};
+    std::vector<PointStdDev> ls1{p1, p2};
+    std::vector<PointStdDev> ls2{p1, p3};
+    std::vector<PointStdDev> ls3{p1, p4};
+    std::vector<PointStdDev> ls4{p2, p3};
+    std::vector<PointStdDev> ls5{p2, p4};
+    std::vector<PointStdDev> ls6{p3, p4};
 
     tet.push_back(ls1);
     tet.push_back(ls2);
@@ -728,19 +727,19 @@ std::vector<std::vector<ProjPoint>> Delaunay_3D::getEdges() const
 /**
  * @brief get vertices of tetrahedrons
  *
- * @param[out]                    - std::vector<std::vector<ProjPoint>>:
+ * @param[out]                    - std::vector<std::vector<PointStdDev>>:
  *                                  vertices of tetrahedrons
  */
-std::vector<std::vector<ProjPoint>> Delaunay_3D::getVertices() const
+std::vector<std::vector<PointStdDev>> Delaunay_3D::getVertices() const
 {
-  std::vector<std::vector<ProjPoint>> vertices;
-  std::vector<ProjPoint> tet;
+  std::vector<std::vector<PointStdDev>> vertices;
+  std::vector<PointStdDev> tet;
 
   for (const CpsMap_3D & entry : this->mapping_) {
     tet.clear();
     for (size_t i = 0; i < 4; ++i) {
-      const Eigen::Vector3d p = entry.get_cps().at(i).get_target_point();
-      ProjPoint pt(p(0), p(1), p(2), 0.0, 0.0, 0.0);
+      const Eigen::Vector3d p = entry.get_cps().at(i).get_target_point().pos;
+      PointStdDev pt(p(0), p(1), p(2), 0.0, 0.0, 0.0);
       tet.push_back(pt);
     }
     vertices.push_back(tet);
