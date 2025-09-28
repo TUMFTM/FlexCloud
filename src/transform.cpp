@@ -148,26 +148,26 @@ bool transform::select_control_points(
           distance = config.fake_ind_dist[ind];
         }
         // Create control point on reference trajectory
-          // shift point laterally by specified distance
-          Eigen::Vector2d perpendicular;
-          real_offset = distance;
-          const auto epsilon{1.e-5};
-          if (idx == 0) {
-            perpendicular = Eigen::Vector2d(vincinity.back()(0), vincinity.back()(1));
-          } else if (idx + 1 == static_cast<int>(src.size())) {
-            perpendicular = Eigen::Vector2d(vincinity.front()(0), vincinity.front()(1));
-          } else {
-            perpendicular = Eigen::Vector2d(vincinity.back()(0), vincinity.back()(1)).normalized() +
-                            Eigen::Vector2d(vincinity.front()(0), vincinity.front()(1)).normalized();
-            auto minussin2 = perpendicular.norm() / 2;
-            real_offset = (minussin2 > epsilon) ? distance / minussin2 : 0;
-          }
+        // shift point laterally by specified distance
+        Eigen::Vector2d perpendicular;
+        real_offset = distance;
+        const auto epsilon{1.e-5};
+        if (idx == 0) {
+          perpendicular = Eigen::Vector2d(vincinity.back()(0), vincinity.back()(1));
+        } else if (idx + 1 == static_cast<int>(src.size())) {
+          perpendicular = Eigen::Vector2d(vincinity.front()(0), vincinity.front()(1));
+        } else {
+          perpendicular = Eigen::Vector2d(vincinity.back()(0), vincinity.back()(1)).normalized() +
+                          Eigen::Vector2d(vincinity.front()(0), vincinity.front()(1)).normalized();
+          auto minussin2 = perpendicular.norm() / 2;
+          real_offset = (minussin2 > epsilon) ? distance / minussin2 : 0;
+        }
 
-          direction << -perpendicular(1), perpendicular(0);
-          Eigen::Vector2d pt_2d_shift =
-            Eigen::Vector2d(src[idx].pos.x(), src[idx].pos.y()) + direction.normalized() * real_offset;
-          // Create control point
-          cp_inter.push_back(Eigen::Vector3d(pt_2d_shift(0), pt_2d_shift(1), src[idx].pos.z()));
+        direction << -perpendicular(1), perpendicular(0);
+        Eigen::Vector2d pt_2d_shift =
+          Eigen::Vector2d(src[idx].pos.x(), src[idx].pos.y()) + direction.normalized() * real_offset;
+        // Create control point
+        cp_inter.push_back(Eigen::Vector3d(pt_2d_shift(0), pt_2d_shift(1), src[idx].pos.z()));
       } else {
         // Set unmodified reference point
         cp_inter.push_back(Eigen::Vector3d(src[idx].pos.x(), src[idx].pos.y(), src[idx].pos.z()));

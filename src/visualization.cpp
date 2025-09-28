@@ -173,7 +173,7 @@ void visualization::pc_map2rerun(
   pcl::PointCloud<pcl::PointXYZI>::Ptr cloud_filtered(new pcl::PointCloud<pcl::PointXYZI>());
   pcl::ApproximateVoxelGrid<pcl::PointXYZI> grid;
   grid.setInputCloud(pcd_map);
-  grid.setLeafSize(1.5, 1.5, 1.5);
+  grid.setLeafSize(3.0, 3.0, 3.0);
   grid.filter(*cloud_filtered);
 
   // Convert to rerun
