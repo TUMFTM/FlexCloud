@@ -29,13 +29,13 @@ namespace flexcloud
  *
  * @param[in] config              - FlexCloudConfig:
  *                                  config struct
- * @param[in] src                 - std::vector<ProjPoint>:
+ * @param[in] src                 - std::vector<PointStdDev>:
  *                                  source trajectory
- * @param[in] target              - std::vector<ProjPoint>:
+ * @param[in] target              - std::vector<PointStdDev>:
  *                                  target trajectory
- * @param[in] target_al           - std::vector<ProjPoint>:
+ * @param[in] target_al           - std::vector<PointStdDev>:
  *                                  target trajectory after Umeyama trafo
- * @param[in] target_rs           - std::vector<ProjPoint>:
+ * @param[in] target_rs           - std::vector<PointStdDev>:
  *                                  target trajectory after rubber-sheeting
  * @param[in] triag               - std::shared_ptr<Delaunay>:
  *                                  pointer to triangulation
@@ -47,9 +47,9 @@ namespace flexcloud
  *                                  difference of rubber-sheeted trajectory to source trajectory
  */
 bool analysis::traj_matching(
-  FlexCloudConfig & config, const std::vector<ProjPoint> & src,
-  const std::vector<ProjPoint> & target, const std::vector<ProjPoint> & target_al,
-  const std::vector<ProjPoint> & target_rs, const std::shared_ptr<Delaunay> & triag,
+  FlexCloudConfig & config, const std::vector<PointStdDev> & src,
+  const std::vector<PointStdDev> & target, const std::vector<PointStdDev> & target_al,
+  const std::vector<PointStdDev> & target_rs, const std::shared_ptr<Delaunay> & triag,
   const std::vector<ControlPoint> & cps, std::vector<double> & diff_al,
   std::vector<double> & diff_rs)
 {
@@ -86,16 +86,16 @@ bool analysis::traj_matching(
  *
  * @param[in] config              - FlexCloudConfig:
  *                                  config struct
- * @param[in] src                 - std::vector<ProjPoint>:
+ * @param[in] src                 - std::vector<PointStdDev>:
  *                                  source trajectory
- * @param[in] target              - std::vector<ProjPoint>:
+ * @param[in] target              - std::vector<PointStdDev>:
  *                                  target trajectory
  * @param[in] diff                - std::vector<double>:
  *                                  difference between trajectories (euclidean distance)
  */
 void analysis::calc_diff(
-  FlexCloudConfig & config, const std::vector<ProjPoint> & src,
-  const std::vector<ProjPoint> & target, std::vector<double> & diff)
+  FlexCloudConfig & config, const std::vector<PointStdDev> & src,
+  const std::vector<PointStdDev> & target, std::vector<double> & diff)
 {
   diff.clear();
   int i = 0;
@@ -103,12 +103,12 @@ void analysis::calc_diff(
     if (config.dim == 2) {
       // Only 2D distance
       double dist =
-        (Eigen::Vector2d(pt.pos_(0), pt.pos_(1)) - Eigen::Vector2d(src[i].pos_(0), src[i].pos_(1)))
+        (Eigen::Vector2d(pt.pos.x(), pt.pos.y()) - Eigen::Vector2d(src[i].pos.x(), src[i].pos.y()))
           .norm();
       diff.push_back(dist);
       ++i;
     } else if (config.dim == 3) {
-      double dist = (pt.pos_ - src[i].pos_).norm();
+      double dist = (pt.pos - src[i].pos).norm();
       diff.push_back(dist);
       ++i;
     } else {
@@ -178,6 +178,20 @@ void analysis::save_config(
     }
     file << std::endl;
 
+    file << "fake_ind=";
+    for (size_t i = 0; i < config.fake_ind.size(); ++i) {
+      file << config.fake_ind[i];
+      if (i < config.fake_ind.size() - 1) file << ",";
+    }
+    file << std::endl;
+
+    file << "fake_ind_dist=";
+    for (size_t i = 0; i < config.fake_ind_dist.size(); ++i) {
+      file << config.fake_ind_dist[i];
+      if (i < config.fake_ind_dist.size() - 1) file << ",";
+    }
+    file << std::endl;
+
     // Write threading parameters
     file << "use_threading=" << (config.use_threading ? "true" : "false") << std::endl;
     file << "num_cores=" << config.num_cores << std::endl;
@@ -200,7 +214,7 @@ void analysis::save_config(
 /**
  * @brief write a linestring to .txt file
  *
- * @param[in] ls                  - std::vector<ProjPoint>:
+ * @param[in] ls                  - std::vector<PointStdDev>:
  *                                  linestring
  * @param[in] dir_path            - std::string:
  *                                  name of output directory
@@ -208,14 +222,14 @@ void analysis::save_config(
  *                                  name of output file
  */
 void analysis::write_ls(
-  const std::vector<ProjPoint> & ls, const std::string & dir_path, const std::string & file_name)
+  const std::vector<PointStdDev> & ls, const std::string & dir_path, const std::string & file_name)
 {
   const std::string file_path = dir_path + "/" + file_name;
   std::ofstream file(file_path);
 
   if (file.is_open()) {
     for (const auto & pt : ls) {
-      file << pt.pos_(0) << " " << pt.pos_(1) << " " << pt.pos_(2) << std::endl;
+      file << pt.pos.x() << " " << pt.pos.y() << " " << pt.pos.z() << std::endl;
     }
     file.close();
   } else {
@@ -225,7 +239,7 @@ void analysis::write_ls(
 /**
  * @brief write a linestrings to .txt file
  *
- * @param[in] lss                 - std::vector<std::vector<ProjPoint>>:
+ * @param[in] lss                 - std::vector<std::vector<PointStdDev>>:
  *                                  vector of linestrings
  * @param[in] dir_path            - std::string:
  *                                  name of output directory
@@ -233,7 +247,7 @@ void analysis::write_ls(
  *                                  name of output file
  */
 void analysis::write_lss(
-  const std::vector<std::vector<ProjPoint>> & lss, const std::string & dir_path,
+  const std::vector<std::vector<PointStdDev>> & lss, const std::string & dir_path,
   const std::string & file_name)
 {
   const std::string file_path = dir_path + "/" + file_name;
@@ -242,13 +256,13 @@ void analysis::write_lss(
   if (file.is_open()) {
     for (const auto & ls : lss) {
       for (const auto & pt : ls) {
-        file << pt.pos_(0) << " " << pt.pos_(1) << " " << pt.pos_(2) << " ";
+        file << pt.pos.x() << " " << pt.pos.y() << " " << pt.pos.z() << " ";
       }
       file << std::endl;
     }
     file.close();
   } else {
-    std::cout << "\033[1;31m!! UnabDelaunay triagle to open " << file_path << " !!\033[0m"
+    std::cout << "\033[1;31m!! Unable to open " << file_path << " !!\033[0m"
               << std::endl;
   }
 }
@@ -293,12 +307,12 @@ void analysis::write_triag(
   const std::string file_path = dir_path + "/" + file_name;
   std::ofstream file(file_path);
 
-  std::vector<std::vector<ProjPoint>> vertices = triag->getVertices();
+  std::vector<std::vector<PointStdDev>> vertices = triag->getVertices();
 
   if (file.is_open()) {
     for (const auto & tet : vertices) {
-      for (const ProjPoint & p : tet) {
-        file << p.pos_(0) << " " << p.pos_(1) << " " << p.pos_(2) << " ";
+      for (const PointStdDev & p : tet) {
+        file << p.pos.x() << " " << p.pos.y() << " " << p.pos.z() << " ";
       }
       file << std::endl;
     }
@@ -325,8 +339,8 @@ void analysis::write_cp(
 
   if (file.is_open()) {
     for (const auto & cpt : cps) {
-      Eigen::Vector3d src = cpt.get_source_point();
-      Eigen::Vector3d target = cpt.get_target_point();
+      Eigen::Vector3d src = cpt.get_source_point().pos;
+      Eigen::Vector3d target = cpt.get_target_point().pos;
       file << src(0) << " " << src(1) << " " << src(2) << " " << target(0) << " " << target(1)
            << " " << target(2) << std::endl;
     }

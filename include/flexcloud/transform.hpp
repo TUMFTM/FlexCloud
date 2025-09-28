@@ -49,9 +49,9 @@ public:
    *
    * @param[in] node                - rclcpp::Node:
    *                                  reference to node
-   * @param[in] src                 - std::vector<ProjPoint>:
+   * @param[in] src                 - std::vector<PointStdDev>:
    *                                  source trajectory
-   * @param[in] target              - std::vector<ProjPoint>:
+   * @param[in] target              - std::vector<PointStdDev>:
    *                                  target trajectory
    * @param[in] umeyama             - std::shared_ptr<Umeyama>:
    *                                  pointer to Umeyama transformation
@@ -59,7 +59,7 @@ public:
    *                                  true if function executed
    */
   bool get_umeyama(
-    FlexCloudConfig & config, const std::vector<ProjPoint> & src, const std::vector<ProjPoint> & target,
+    FlexCloudConfig & config, const std::vector<PointStdDev> & src, const std::vector<PointStdDev> & target,
     const std::shared_ptr<Umeyama> & umeyama);
 
   /**
@@ -67,9 +67,9 @@ public:
    *
    * @param[in] node                - rclcpp::Node:
    *                                  reference to node
-   * @param[in] src                 - std::vector<ProjPoint>:
+   * @param[in] src                 - std::vector<PointStdDev>:
    *                                  source trajectory
-   * @param[in] target              - std::vector<ProjPoint>:
+   * @param[in] target              - std::vector<PointStdDev>:
    *                                  target trajectory
    * @param[in] cps                 - std::vector<ControlPoint>:
    *                                  selected control points
@@ -77,7 +77,7 @@ public:
    *                                  true if function executed
    */
   bool select_control_points(
-    FlexCloudConfig & config, const std::vector<ProjPoint> & src, const std::vector<ProjPoint> & target,
+    FlexCloudConfig & config, const std::vector<PointStdDev> & src, const std::vector<PointStdDev> & target,
     std::vector<ControlPoint> & cps);
 
   /**
@@ -85,7 +85,7 @@ public:
    *
    * @param[in] node                - rclcpp::Node:
    *                                  reference to node
-   * @param[in] target              - std::vector<ProjPoint>:
+   * @param[in] target              - std::vector<PointStdDev>:
    *                                  target trajectory
    * @param[in] cps                 - std::vector<ControlPoint>:
    *                                  control points
@@ -95,15 +95,15 @@ public:
    *                                  true if function executed
    */
   bool get_rubber_sheeting(
-    FlexCloudConfig & config, const std::vector<ProjPoint> & target, std::vector<ControlPoint> & cps,
-    const std::shared_ptr<Delaunay> triag);
+    FlexCloudConfig & config, const std::vector<PointStdDev> & target, std::vector<ControlPoint> & cps,
+    const std::shared_ptr<Delaunay> & triag);
 
   /**
    * @brief transform linestring with Umeyama trafo
    *
-   * @param[in] ls                  - std::vector<ProjPoint>:
+   * @param[in] ls                  - std::vector<PointStdDev>:
    *                                  input linestring
-   * @param[in] ls_trans            - std::vector<ProjPoint>:
+   * @param[in] ls_trans            - std::vector<PointStdDev>:
    *                                  transformed linestring
    * @param[in] umeyama             - std::shared_ptr<Umeyama>:
    *                                  pointer to Umeyama transformation
@@ -111,15 +111,15 @@ public:
    *                                  true if function executed
    */
   bool transform_ls_al(
-    const std::vector<ProjPoint> & ls, std::vector<ProjPoint> & ls_trans,
+    const std::vector<PointStdDev> & ls, std::vector<PointStdDev> & ls_trans,
     const std::shared_ptr<Umeyama> & umeyama);
 
   /**
    * @brief transform linestring with Rubber-Sheeting trafo
    *
-   * @param[in] ls                  - std::vector<ProjPoint>:
+   * @param[in] ls                  - std::vector<PointStdDev>:
    *                                  input linestring
-   * @param[in] ls_trans            - std::vector<ProjPoint>:
+   * @param[in] ls_trans            - std::vector<PointStdDev>:
    *                                  transformed linestring
    * @param[in] triag               - std::shared_ptr<Delaunay>:
    *                                  pointer to triangulation
@@ -127,7 +127,7 @@ public:
    *                                  true if function executed
    */
   bool transform_ls_rs(
-    const std::vector<ProjPoint> & ls, std::vector<ProjPoint> & ls_trans,
+    const std::vector<PointStdDev> & ls, std::vector<PointStdDev> & ls_trans,
     const std::shared_ptr<Delaunay> & triag);
 
   /**
@@ -177,12 +177,12 @@ private:
   /**
    * @brief get closest point on a linestring for a given point
    *
-   * @param[in] pt                    - ProjPoint:
+   * @param[in] pt                    - PointStdDev:
    *                                    input point to be modified
-   * @param[in] ls                    - std::vector<ProjPoint>:
+   * @param[in] ls                    - std::vector<PointStdDev>:
    *                                    linestring to match point to
    */
-  void closest_on_ls(ProjPoint & pt, const std::vector<ProjPoint> & ls);
+  void closest_on_ls(PointStdDev & pt, const std::vector<PointStdDev> & ls);
 
   /**
    * @brief transform sub point cloud map one one thread

@@ -96,10 +96,10 @@ private:
 
   // Objects
   // Trajectories
-  std::vector<ProjPoint> traj_proj;
-  std::vector<ProjPoint> traj_SLAM;
-  std::vector<ProjPoint> traj_align;
-  std::vector<ProjPoint> traj_rs;
+  std::vector<PointStdDev> traj_proj;
+  std::vector<PointStdDev> traj_SLAM;
+  std::vector<PointStdDev> traj_align;
+  std::vector<PointStdDev> traj_rs;
   // PCD map
   pcl::PointCloud<pcl::PointXYZI>::Ptr pcd_map;
 

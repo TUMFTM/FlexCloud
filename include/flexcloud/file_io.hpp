@@ -20,6 +20,7 @@
 
 #include <pcl/io/pcd_io.h>
 #include <pcl/point_types.h>
+#include <pcl/common/transforms.h>
 
 #include <Eigen/Geometry>
 #include <GeographicLib/Geocentric.hpp>
@@ -49,10 +50,10 @@ public:
    *                                 absolute path to directory
    * @param[in] stddev_threshold    - float:
    *                                 threshold for standard deviation
-   * @return std::vector<PosFrame>:
-   *                                 vector of position frames
+   * @return std::vector<PointStdDevStamped>:
+   *                                 vector of frames
    */
-  std::vector<PosFrame> load_pos_frames(
+  std::vector<PointStdDevStamped> load_pos_frames(
     const std::string & directory, const float stddev_threshold);
   /**
    * @brief Load kitti odometry from a file
@@ -71,7 +72,7 @@ public:
    * @return std::vector<Eigen::Isometry3d>:
    *                                 vector of poses
    */
-  std::vector<Eigen::Isometry3d> load_glim_odom(const std::string & file_path);
+  std::vector<Eigen::Isometry3d> load_glim_odom(const std::string & file_path, std::vector<double> & timestamps);
   /**
    * @brief read traj from txt file
    *
@@ -79,11 +80,11 @@ public:
    *                                  Node reference
    * @param[in] traj_path           - std::string:
    *                                  absolute path to file
-   * @param[in] traj_local          - std::vector<ProjPoint>:
+   * @param[in] traj_local          - std::vector<PointStdDev>:
    *                                  trajectory as vector of positions with standard dev
    */
   bool read_traj_from_file(
-    FlexCloudConfig & config, const std::string & traj_path, std::vector<ProjPoint> & traj_local);
+    FlexCloudConfig & config, const std::string & traj_path, std::vector<PointStdDev> & traj_local);
 
   /**
    * @brief read poses from txt file in KITTI format
@@ -92,11 +93,11 @@ public:
    *                                  Node reference
    * @param[in] poses_path          - std::string:
    *                                  absolute path to file
-   * @param[in] poses               - std::vector<ProjPoint>:
+   * @param[in] poses               - std::vector<PointStdDev>:
    *                                  trajectory as vector of positions with standard dev
    */
   bool read_poses_SLAM_from_file(
-    FlexCloudConfig & config, const std::string & poses_path, std::vector<ProjPoint> & poses);
+    FlexCloudConfig & config, const std::string & poses_path, std::vector<PointStdDev> & poses);
   /**
    * @brief Load pcd point clouds from a directory
    */
@@ -151,10 +152,23 @@ public:
    *
    * @param[in] filename            - std::string:
    *                                  absolute path to file
-   * @param[in] pos_keyframes       - std::vector<PosFrame>:
+   * @param[in] pos_keyframes       - std::vector<PointStdDevStamped>:
    *                                  vector of position frames
    */
-  bool save_pos_frames(const std::string & filename, const std::vector<PosFrame> & pos_keyframes);
+  bool save_pos_frames(const std::string & filename, const std::vector<PointStdDevStamped> & pos_keyframes);
+/**
+ * @brief Accumulate all keyframes and save to single pcd file
+ * 
+ * @param[in] path                - std::string:
+ *                                  absolute path to file
+ * @param[in] keyframes           - std::vector<std::shared_ptr<OdometryFrame>>:
+ *                                  vector of keyframes
+ * @param[in] downsample          - float:
+ *                                  downsample factor
+ */
+bool save_accumulated_cloud(
+  const std::string & path, const std::vector<std::shared_ptr<OdometryFrame>> & keyframes,
+  const float downsample);
 
   /**
    * @brief write pcd map to file
@@ -168,5 +182,6 @@ public:
    */
   bool write_pcd_to_path(
     const std::string & pcd_out_path, const pcl::PointCloud<pcl::PointXYZI>::Ptr & pcd_map);
+private:
 };
 }  // namespace flexcloud

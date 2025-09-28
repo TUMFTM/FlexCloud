@@ -189,4 +189,4 @@ target_link_libraries(pcd_georef
 install(TARGETS
   pcd_georef
   select_keyframes
-  DESTINATION pcd_georef/${PROJECT_NAME})
+  DESTINATION flexcloud)

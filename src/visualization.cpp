@@ -52,7 +52,7 @@ void visualization::odom2rerun(
 /**
  * @brief visualize pos frames in rerun
  *
- * @param[in] pos                 - std::vector<PosFrame>:
+ * @param[in] pos                 - std::vector<PointStdDevStamped>:
  *                                  pos points
  * @param[in] stream              - rerun::RecordingStream:
  *                                  stream to add linestring to
@@ -62,7 +62,7 @@ void visualization::odom2rerun(
  *                                  namespace of linestring
  */
 void visualization::pos2rerun(
-  std::vector<PosFrame> & pos, rerun::RecordingStream & stream, const std::string color,
+  std::vector<PointStdDevStamped> & pos, rerun::RecordingStream & stream, const std::string color,
   const std::string name)
 {
   // Convert to rerun
@@ -70,14 +70,14 @@ void visualization::pos2rerun(
   std::vector<rerun::Position3D> positions{};
   positions.reserve(pos.size());
   for (const auto & p : pos) {
-    positions.push_back(rerun::Position3D(p.x_pos, p.y_pos, p.z_pos));
+    positions.push_back(rerun::Position3D(p.point.pos.x(), p.point.pos.y(), p.point.pos.z()));
   }
   stream.log(name, rerun::Points3D(positions).with_colors(rerun::Color(col.r, col.g, col.b)));
 }
 /**
  * @brief visualize linestring in rerun
  *
- * @param[in] ls                  - std::vector<ProjPoint>:
+ * @param[in] ls                  - std::vector<PointStdDev>:
  *                                  controlpoints
  * @param[in] stream              - rerun::RecordingStream:
  *                                  stream to add linestring to
@@ -87,14 +87,14 @@ void visualization::pos2rerun(
  *                                  namespace of linestring
  */
 void visualization::linestring2rerun(
-  const std::vector<ProjPoint> & ls, rerun::RecordingStream & stream, const std::string color,
+  const std::vector<PointStdDev> & ls, rerun::RecordingStream & stream, const std::string color,
   const std::string name)
 {
   TUMcolor col(color);
   std::vector<rerun::Position3D> positions{};
   positions.reserve(ls.size());
   for (const auto & p : ls) {
-    positions.push_back(rerun::Position3D(p.pos_(0), p.pos_(1), p.pos_(2)));
+    positions.push_back(rerun::Position3D(p.pos.x(), p.pos.y(), p.pos.z()));
   }
   std::vector<rerun::LineStrip3D> lines;
   std::vector<rerun::components::Text> labels;
@@ -129,10 +129,10 @@ void visualization::rs2rerun(
   std::vector<rerun::Position3D> positions_cps{};
   positions_cps.reserve(cps.size());
   for (const auto & cp : cps) {
-    const Eigen::Vector3d source = cp.get_source_point();
-    const Eigen::Vector3d target = cp.get_target_point();
-    positions_cps.push_back(rerun::Position3D(source(0), source(1), source(2)));
-    positions_cps.push_back(rerun::Position3D(target(0), target(1), target(2)));
+    const PointStdDev source = cp.get_source_point();
+    const PointStdDev target = cp.get_target_point();
+    positions_cps.push_back(rerun::Position3D(source.pos.x(), source.pos.y(), source.pos.z()));
+    positions_cps.push_back(rerun::Position3D(target.pos.x(), target.pos.y(), target.pos.z()));
   }
   stream.log(
     "control_points", rerun::Points3D(positions_cps)
@@ -141,12 +141,12 @@ void visualization::rs2rerun(
 
   // Triangulation
   TUMcolor col_edges("WEBBlueLight");
-  std::vector<std::vector<ProjPoint>> edges = triag->getEdges();
+  std::vector<std::vector<PointStdDev>> edges = triag->getEdges();
   std::vector<rerun::Position3D> positions_edges{};
   positions_edges.reserve(edges.size() * 2);
   for (const auto & edge : edges) {
     for (const auto & pt : edge) {
-      positions_edges.push_back(rerun::Position3D(pt.pos_(0), pt.pos_(1), pt.pos_(2)));
+      positions_edges.push_back(rerun::Position3D(pt.pos.x(), pt.pos.y(), pt.pos.z()));
     }
   }
   std::vector<rerun::LineStrip3D> lines;
@@ -173,7 +173,7 @@ void visualization::pc_map2rerun(
   pcl::PointCloud<pcl::PointXYZI>::Ptr cloud_filtered(new pcl::PointCloud<pcl::PointXYZI>());
   pcl::ApproximateVoxelGrid<pcl::PointXYZI> grid;
   grid.setInputCloud(pcd_map);
-  grid.setLeafSize(1.5, 1.5, 1.5);
+  grid.setLeafSize(3.0, 3.0, 3.0);
   grid.filter(*cloud_filtered);
 
   // Convert to rerun
