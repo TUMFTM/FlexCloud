@@ -181,8 +181,8 @@ bool transform::select_control_points(
         pt_pcd << pt_pcd_shift(0), pt_pcd_shift(1), target[idx].pos.z();
         cp_inter.push_back(pt_pcd);
         ControlPoint P(
-          PointStdDev(cp_inter[0](0), cp_inter[0](1), cp_inter[0](2), 0.0, 0.0, 0.0), PointStdDev(cp_inter[1](0), cp_inter[1](1),
-          cp_inter[1](2), 0.0, 0.0, 0.0));
+          PointStdDev(cp_inter[0](0), cp_inter[0](1), cp_inter[0](2), 0.0, 0.0, 0.0),
+          PointStdDev(cp_inter[1](0), cp_inter[1](1), cp_inter[1](2), 0.0, 0.0, 0.0));
         cps.push_back(P);
         ++cp_count;
         cp_inter.clear();
@@ -194,8 +194,8 @@ bool transform::select_control_points(
       }
       cp_inter.push_back(pt_pcd);
       ControlPoint P(
-        PointStdDev(cp_inter[0](0), cp_inter[0](1), cp_inter[0](2), 0.0, 0.0, 0.0), PointStdDev(cp_inter[1](0), cp_inter[1](1),
-        cp_inter[1](2), 0.0, 0.0, 0.0));
+        PointStdDev(cp_inter[0](0), cp_inter[0](1), cp_inter[0](2), 0.0, 0.0, 0.0),
+        PointStdDev(cp_inter[1](0), cp_inter[1](1), cp_inter[1](2), 0.0, 0.0, 0.0));
       cps.push_back(P);
       ++cp_count;
       cp_inter.clear();
@@ -223,8 +223,8 @@ bool transform::select_control_points(
  *                                  true if function executed
  */
 bool transform::get_rubber_sheeting(
-  FlexCloudConfig & config, const std::vector<PointStdDev> & target, std::vector<ControlPoint> & cps,
-  const std::shared_ptr<Delaunay> & triag)
+  FlexCloudConfig & config, const std::vector<PointStdDev> & target,
+  std::vector<ControlPoint> & cps, const std::shared_ptr<Delaunay> & triag)
 {
   triag->enclosingControlPoints(config.square_size, target, cps);
   // Insertion of control points into triangulation structure
