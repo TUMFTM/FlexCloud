@@ -91,119 +91,125 @@ bool transform::select_control_points(
   }
   // Set interval for control point selection
   int traj_split = static_cast<int>(target.size()) / config.rs_num_controlPoints;
-  int idx = 0;
-
   std::cout << "\033[33m~~~~~> LiDAR got " << target.size() << " poses!\033[0m" << std::endl;
   std::cout << "\033[33m~~~~~> Every " << traj_split
             << " st/nd/rd/th vertex is selected as control point\033[0m" << std::endl;
 
-  while (idx < static_cast<int>(target.size())) {
-    // Chech if index is within manually excluded indices
+  // Iterate over indices
+  for (size_t idx = 0; idx < static_cast<size_t>(target.size()); ++idx) {
+    // Check if index is within manually excluded indices
     bool use_ind = true;
     if (!config.exclude_ind.empty() || static_cast<int>(config.exclude_ind.size()) % 2 != 0) {
       for (int i = 0; i < static_cast<int>(config.exclude_ind.size()) / 2; ++i) {
         if (idx >= config.exclude_ind[2 * i] && idx <= config.exclude_ind[2 * i + 1]) {
           use_ind = false;
+          break;
         }
       }
     }
+    if (!use_ind) {
+      continue;
+    }
     // clang-format off
-    // Point in reference data -check if standard deviations are within threshold, otherwise skip point
-    if (sqrt(pow(src[idx].stddev.x(), 2) + pow(src[idx].stddev.y(), 2)) <= config.stddev_threshold && use_ind) {  // NOLINT
-      // Point configured to be shifted or fake
-      double real_offset = 0.0;
-      Eigen::Vector2d direction{};
-      double distance = 0.0;
-      int ind = 0;
-      if (std::find(config.shift_ind.begin(), config.shift_ind.end(), idx) != config.shift_ind.end() ||  // NOLINT
-          std::find(config.fake_ind.begin(), config.fake_ind.end(), idx) != config.fake_ind.end()) {  // NOLINT
-        // Compute vincinity
-        // Create vincinity = pair of preceding and following point on linestring
-        std::vector<Eigen::Vector3d> vincinity{};
-        Eigen::Vector3d current = src[idx].pos;
-        if (idx == 0) {
-          Eigen::Vector3d forward = src[idx + 1].pos;
-          vincinity =
-            std::vector<Eigen::Vector3d>{Eigen::Vector3d(0.0, 0.0, 0.0), forward - current};
-        } else if (idx + 1 == static_cast<int>(src.size())) {
-          Eigen::Vector3d backward = src[idx - 1].pos;
-          vincinity =
-            std::vector<Eigen::Vector3d>{current - backward, Eigen::Vector3d(0.0, 0.0, 0.0)};
-        } else {
-          Eigen::Vector3d backward = src[idx - 1].pos;
-          Eigen::Vector3d forward = src[idx + 1].pos;
-          vincinity = std::vector<Eigen::Vector3d>{current - backward, forward - current};
-        }
-        // Check if point is configured to be shifted or faked
-        if (std::find(config.shift_ind.begin(), config.shift_ind.end(), idx) != config.shift_ind.end()) {  // NOLINT
-          ind = std::find(config.shift_ind.begin(), config.shift_ind.end(), idx) - config.shift_ind.begin();  // NOLINT
-          std::cout << "\033[33m~~~~~> Shift reference point at index: " << idx << "with distance "
-          << config.shift_ind_dist[ind] << "\033[0m" << std::endl;
-          distance = config.shift_ind_dist[ind];
-        } else if (std::find(config.fake_ind.begin(), config.fake_ind.end(), idx) != config.fake_ind.end()) {  // NOLINT
-          ind = std::find(config.fake_ind.begin(), config.fake_ind.end(), idx) - config.fake_ind.begin();  // NOLINT
-          // Fake point
-          std::cout << "\033[33m~~~~~> Fake reference point at index: " << idx << "with distance "
-          << config.fake_ind_dist[ind] << "\033[0m" << std::endl;
-          distance = config.fake_ind_dist[ind];
-        }
-        // Create control point on reference trajectory
-        // shift point laterally by specified distance
-        Eigen::Vector2d perpendicular;
-        real_offset = distance;
-        const auto epsilon{1.e-5};
-        if (idx == 0) {
-          perpendicular = Eigen::Vector2d(vincinity.back()(0), vincinity.back()(1));
-        } else if (idx + 1 == static_cast<int>(src.size())) {
-          perpendicular = Eigen::Vector2d(vincinity.front()(0), vincinity.front()(1));
-        } else {
-          perpendicular = Eigen::Vector2d(vincinity.back()(0), vincinity.back()(1)).normalized() +
-                          Eigen::Vector2d(vincinity.front()(0), vincinity.front()(1)).normalized();
-          auto minussin2 = perpendicular.norm() / 2;
-          real_offset = (minussin2 > epsilon) ? distance / minussin2 : 0;
-        }
-
-        direction << -perpendicular(1), perpendicular(0);
-        Eigen::Vector2d pt_2d_shift =
-          Eigen::Vector2d(src[idx].pos.x(), src[idx].pos.y()) + direction.normalized() * real_offset;
-        // Create control point
-        cp_inter.push_back(Eigen::Vector3d(pt_2d_shift(0), pt_2d_shift(1), src[idx].pos.z()));
-      } else {
-        // Set unmodified reference point
-        cp_inter.push_back(Eigen::Vector3d(src[idx].pos.x(), src[idx].pos.y(), src[idx].pos.z()));
-      }
-      // Point in LiDAR data
-      // Check if point is configured to be faked
-      Eigen::Vector3d pt_pcd{};
-      if (std::find(config.fake_ind.begin(), config.fake_ind.end(), idx) != config.fake_ind.end()) {  // NOLINT
-        Eigen::Vector2d pt_pcd_shift =
-          Eigen::Vector2d(target[idx].pos.x(), target[idx].pos.y()) + direction.normalized() * real_offset;
-        pt_pcd << pt_pcd_shift(0), pt_pcd_shift(1), target[idx].pos.z();
-        cp_inter.push_back(pt_pcd);
-        ControlPoint P(
-          PointStdDev(cp_inter[0](0), cp_inter[0](1), cp_inter[0](2), 0.0, 0.0, 0.0),
-          PointStdDev(cp_inter[1](0), cp_inter[1](1), cp_inter[1](2), 0.0, 0.0, 0.0));
-        cps.push_back(P);
-        ++cp_count;
-        cp_inter.clear();
-        // Also add the original point
-        cp_inter.push_back(Eigen::Vector3d(src[idx].pos.x(), src[idx].pos.y(), src[idx].pos.z()));
-        pt_pcd << target[idx].pos.x(), target[idx].pos.y(), target[idx].pos.z();
-      } else {
-        pt_pcd << target[idx].pos.x(), target[idx].pos.y(), target[idx].pos.z();
-      }
-      cp_inter.push_back(pt_pcd);
+    // Check if standard deviations of reference point are within threshold, otherwise skip point
+    if (sqrt(pow(src[idx].stddev.x(), 2) + pow(src[idx].stddev.y(), 2)) > config.stddev_threshold) {  // NOLINT
+      std::cout << "\033[31m!! Skipped control point due to high stddev !!\033[0m" << std::endl;
+      continue;
+    }
+    // Check if index is used in regular split or faked
+    if (idx % traj_split == 0 && std::find(config.shift_ind.begin(), config.shift_ind.end(), idx) == config.shift_ind.end()) {  // NOLINT
+      // Point is a regular control point
+      // Set unmodified reference point
+      cp_inter.push_back(Eigen::Vector3d(src[idx].pos.x(), src[idx].pos.y(), src[idx].pos.z()));
+      // Set unmodified LiDAR point
+      cp_inter.push_back(Eigen::Vector3d(target[idx].pos.x(), target[idx].pos.y(), target[idx].pos.z()));
       ControlPoint P(
         PointStdDev(cp_inter[0](0), cp_inter[0](1), cp_inter[0](2), 0.0, 0.0, 0.0),
         PointStdDev(cp_inter[1](0), cp_inter[1](1), cp_inter[1](2), 0.0, 0.0, 0.0));
       cps.push_back(P);
       ++cp_count;
       cp_inter.clear();
-    } else {
-      std::cout << "\033[31m!! Skipped control point !!\033[0m" << std::endl;
     }
+
+    // Now only continue of point is to be shifted or faked
+    if (std::find(config.shift_ind.begin(), config.shift_ind.end(), idx) == config.shift_ind.end() &&  // NOLINT
+        std::find(config.fake_ind.begin(), config.fake_ind.end(), idx) == config.fake_ind.end()) {  // NOLINT
+      continue;
+    }
+    // Point configured to be shifted or fake => compute vincinity
+    double real_offset = 0.0;
+    Eigen::Vector2d direction{};
+    double distance = 0.0;
+    int ind = 0;
+    // Compute vincinity
+    // Create vincinity = pair of preceding and following point on linestring
+    std::vector<Eigen::Vector3d> vincinity{};
+    Eigen::Vector3d current = src[idx].pos;
+    if (idx == 0) {
+      Eigen::Vector3d forward = src[idx + 1].pos;
+      vincinity =
+        std::vector<Eigen::Vector3d>{Eigen::Vector3d(0.0, 0.0, 0.0), forward - current};
+    } else if (idx + 1 == static_cast<int>(src.size())) {
+      Eigen::Vector3d backward = src[idx - 1].pos;
+      vincinity =
+        std::vector<Eigen::Vector3d>{current - backward, Eigen::Vector3d(0.0, 0.0, 0.0)};
+    } else {
+      Eigen::Vector3d backward = src[idx - 1].pos;
+      Eigen::Vector3d forward = src[idx + 1].pos;
+      vincinity = std::vector<Eigen::Vector3d>{current - backward, forward - current};
+    }
+    // Check if point is configured to be shifted or faked
+    if (std::find(config.shift_ind.begin(), config.shift_ind.end(), idx) != config.shift_ind.end()) {  // NOLINT
+      ind = std::find(config.shift_ind.begin(), config.shift_ind.end(), idx) - config.shift_ind.begin();  // NOLINT
+      std::cout << "\033[33m~~~~~> Shift reference point at index: " << idx << "with distance "
+      << config.shift_ind_dist[ind] << "\033[0m" << std::endl;
+      distance = config.shift_ind_dist[ind];
+    } else if (std::find(config.fake_ind.begin(), config.fake_ind.end(), idx) != config.fake_ind.end()) {  // NOLINT
+      ind = std::find(config.fake_ind.begin(), config.fake_ind.end(), idx) - config.fake_ind.begin();  // NOLINT
+      // Fake point
+      std::cout << "\033[33m~~~~~> Fake reference point at index: " << idx << "with distance "
+      << config.fake_ind_dist[ind] << "\033[0m" << std::endl;
+      distance = config.fake_ind_dist[ind];
+    }
+    // Create control point on reference trajectory
+    // shift point laterally by specified distance
+    Eigen::Vector2d perpendicular;
+    real_offset = distance;
+    const auto epsilon{1.e-5};
+    if (idx == 0) {
+      perpendicular = Eigen::Vector2d(vincinity.back()(0), vincinity.back()(1));
+    } else if (idx + 1 == static_cast<int>(src.size())) {
+      perpendicular = Eigen::Vector2d(vincinity.front()(0), vincinity.front()(1));
+    } else {
+      perpendicular = Eigen::Vector2d(vincinity.back()(0), vincinity.back()(1)).normalized() +
+                      Eigen::Vector2d(vincinity.front()(0), vincinity.front()(1)).normalized();
+      auto minussin2 = perpendicular.norm() / 2;
+      real_offset = (minussin2 > epsilon) ? distance / minussin2 : 0;
+    }
+
+    direction << -perpendicular(1), perpendicular(0);
+    Eigen::Vector2d pt_2d_shift =
+      Eigen::Vector2d(src[idx].pos.x(), src[idx].pos.y()) + direction.normalized() * real_offset;
+    // Add shifted reference point
+    cp_inter.push_back(Eigen::Vector3d(pt_2d_shift(0), pt_2d_shift(1), src[idx].pos.z()));
+    // Point in LiDAR data
+    // Check if point is configured to be faked
+    Eigen::Vector3d pt_pcd{};
+    if (std::find(config.fake_ind.begin(), config.fake_ind.end(), idx) != config.fake_ind.end()) {  // NOLINT
+      // Fake point
+      Eigen::Vector2d pt_pcd_shift = Eigen::Vector2d(target[idx].pos.x(), target[idx].pos.y()) + direction.normalized() * real_offset;  // NOLINT
+      pt_pcd << pt_pcd_shift(0), pt_pcd_shift(1), target[idx].pos.z();
+    } else {
+      pt_pcd << target[idx].pos.x(), target[idx].pos.y(), target[idx].pos.z();
+    }
+    cp_inter.push_back(pt_pcd);
+    ControlPoint P(
+      PointStdDev(cp_inter[0](0), cp_inter[0](1), cp_inter[0](2), 0.0, 0.0, 0.0),
+      PointStdDev(cp_inter[1](0), cp_inter[1](1), cp_inter[1](2), 0.0, 0.0, 0.0));
+    cps.push_back(P);
+    ++cp_count;
+    cp_inter.clear();
     // clang-format on
-    idx += traj_split;
   }
   std::cout << "\033[1;32m~~~~~~~~~~> Set " << cp_count << " controlpoints!\033[0m" << std::endl;
   return true;
