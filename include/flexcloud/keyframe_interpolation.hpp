@@ -40,6 +40,9 @@ class KeyframeInterpolation
 public:
   KeyframeInterpolation(
     const std::string & config_path, const std::string & pos_dir, const std::string & odom_path,
+    const std::string & dst_directory);
+  KeyframeInterpolation(
+    const std::string & config_path, const std::string & pos_dir, const std::string & odom_path,
     const std::string & pcd_dir, const std::string & dst_directory);
   void visualize();
 
@@ -51,11 +54,21 @@ private:
    *                                  absolute path to directory
    * @param[in] kitti_path          - std::string:
    *                                  path to kitti odometry
+   */
+  void load(
+    const std::string & pos_dir, const std::string & odom_path);
+  /**
+   * @brief Load frames from a directory
+   *
+   * @param[in] pos_dir             - std::string:
+   *                                  absolute path to directory
+   * @param[in] kitti_path          - std::string:
+   *                                  path to kitti odometry
    * @param[in] pcd_dir             - std::string:
    *                                  absolute path to directory
    */
   void load(
-    const std::string & pos_dir, const std::string & odom_format, const std::string & odom_path,
+    const std::string & pos_dir, const std::string & odom_path,
     const std::string & pcd_dir);
   /**
    * @brief Save everything to directory
@@ -63,22 +76,11 @@ private:
    * @param[in] dst_directory       - std::string:
    *                                  absolute path to directory
    */
-  bool save(const std::string & dst_directory, const std::string & odom_format) const;
+  bool save(const std::string & dst_directory) const;
   /**
    * @brief Select keyframes
-   *
-   * @param[in] keyframe_delta_x     - float:
-   *                                  delta x for keyframe selection
-   * @param[in] keyframe_delta_angle - float:
-   *                                  delta angle for keyframe selection
-   * @param[in] interpolate          - bool:
-   *                                  interpolate keyframes
-   * @param[in] pos_delta_xyz        - float:
-   *                                  delta xyz for keyframe selection
    */
-  void select_keyframes(
-    const float keyframe_delta_x, const float keyframe_delta_angle, const bool interpolate,
-    const float pos_delta_xyz);
+  void select_keyframes();
   /**
    * @brief Search closest PointStdDevStamped for a given frame
    *
@@ -93,12 +95,14 @@ private:
    *
    * @param[in] frame              - std::shared_ptr<OdometryFrame>:
    *                                 frame to interpolate
-   * @param[in] pos_delta_xyz      - float:
-   *                                 delta xyz for interpolation
    * @return PointStdDevStamped     - PointStdDevStamped:
    *                                 interpolated PointStdDevStamped
    */
-  PointStdDevStamped interpolate_pos(const std::shared_ptr<OdometryFrame> & frame, const float pos_delta_xyz);
+  PointStdDevStamped interpolate_pos(const std::shared_ptr<OdometryFrame> & frame);
+  /**
+   * @brief Set parameters from config
+   */
+  void set_params(const std::string & config_path);
 
 private:
   // File IO
@@ -115,9 +119,13 @@ private:
   rerun::RecordingStream rec_ = rerun::RecordingStream("keyframe_interpolation");
 
   // Config parameters
-  bool interpolate_{false};
-  std::int64_t globalMaxTimeDiff;
+  std::string odom_format_{};
   float stddev_threshold_{1.0f};
+  float keyframe_delta_x_{1.0f};
+  float keyframe_delta_angle_{10.0f};
   float downsample_resolution_{0.1f};
+  bool interpolate_{false};
+  float pos_delta_xyz_{1.0f};
+  std::int64_t globalMaxTimeDiff_{};
 };
 }  // namespace flexcloud

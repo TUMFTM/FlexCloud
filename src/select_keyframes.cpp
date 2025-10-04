@@ -15,9 +15,10 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
+#include <iostream>
+
 #include "keyframe_interpolation.hpp"
 #include "utility.hpp"
-#include <iostream>
 int main(int argc, char * argv[])
 {
   // Check the number of arguments
@@ -28,9 +29,15 @@ int main(int argc, char * argv[])
               << std::endl;
     return 1;
   }
-  flexcloud::KeyframeInterpolation set_frames(argv[1], argv[2], argv[3], argv[4], argv[5]);
-
-  set_frames.visualize();
-
+  if (argc == 5) {
+    // Only interpolation without accumulating clouds
+    flexcloud::KeyframeInterpolation set_frames(argv[1], argv[2], argv[3], argv[4]);
+    set_frames.visualize();
+  }
+  if (argc == 6) {
+    // Interpolation with accumulating clouds
+    flexcloud::KeyframeInterpolation set_frames(argv[1], argv[2], argv[3], argv[4], argv[5]);
+    set_frames.visualize();
+  }
   return 0;
 }
