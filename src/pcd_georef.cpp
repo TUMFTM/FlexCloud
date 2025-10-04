@@ -51,6 +51,7 @@ pcd_georef::pcd_georef(
   this->config_.shift_ind_dist = config["shift_ind_dist"].as<std::vector<double>>();
   this->config_.fake_ind = config["fake_ind"].as<std::vector<int64_t>>();
   this->config_.fake_ind_dist = config["fake_ind_dist"].as<std::vector<double>>();
+  this->config_.fake_ind_height = config["fake_ind_height"].as<std::vector<double>>();
   this->config_.use_threading = config["use_threading"].as<bool>();
   this->config_.num_cores = config["num_cores"].as<int>();
   this->config_.customZeroPoint = config["customZeroPoint"].as<bool>();

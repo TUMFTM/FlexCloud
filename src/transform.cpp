@@ -86,8 +86,10 @@ bool transform::select_control_points(
   if (config.shift_ind.size() != config.shift_ind_dist.size()) {
     std::cout << "Sizes of shift_ind and shift_ind_dist do not match!" << std::endl;
   }
-  if (config.fake_ind.size() != config.fake_ind_dist.size()) {
-    std::cout << "Sizes of fake_ind and fake_ind_dist do not match!" << std::endl;
+  if (
+    config.fake_ind.size() != config.fake_ind_dist.size() ||
+    config.fake_ind.size() != config.fake_ind_height.size()) {
+    std::cout << "Sizes of fake_ind, fake_ind_dist and fake_ind_height do not match!" << std::endl;
   }
   // Set interval for control point selection
   int traj_split = static_cast<int>(target.size()) / config.rs_num_controlPoints;
@@ -198,7 +200,7 @@ bool transform::select_control_points(
     if (std::find(config.fake_ind.begin(), config.fake_ind.end(), idx) != config.fake_ind.end()) {  // NOLINT
       // Fake point
       Eigen::Vector2d pt_pcd_shift = Eigen::Vector2d(target[idx].pos.x(), target[idx].pos.y()) + direction.normalized() * real_offset;  // NOLINT
-      pt_pcd << pt_pcd_shift(0), pt_pcd_shift(1), target[idx].pos.z();
+      pt_pcd << pt_pcd_shift(0), pt_pcd_shift(1), target[idx].pos.z() + config.fake_ind_height[ind];  // NOLINT
     } else {
       pt_pcd << target[idx].pos.x(), target[idx].pos.y(), target[idx].pos.z();
     }

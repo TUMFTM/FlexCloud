@@ -137,24 +137,23 @@ void KeyframeInterpolation::load(
       "Unknown odometry format: " + this->odom_format_ + ". Supported formats are: kitti, glim");
     return;
   }
-  // // Load pcd cloud filenames
-  // std::cout << "Loading pcd-clouds from " << pcd_dir << std::endl;
-  // std::vector<std::string> pcd_filenames = file_io_->load_clouds(pcd_dir);
-  // // Check if sizes match
-  // if (pcd_filenames.size() != poses.size()) {
-  //   std::cerr << "Number of pcd files and poses do not match: " << pcd_filenames.size() << " vs "
-  //             << poses.size() << std::endl;
-  //   return;
-  // }
+  // Load pcd cloud filenames
+  std::cout << "Loading pcd-clouds from " << pcd_dir << std::endl;
+  std::vector<std::string> pcd_filenames = file_io_->load_clouds(pcd_dir);
+  // Check if sizes match
+  if (pcd_filenames.size() != poses.size()) {
+    std::cerr << "Number of pcd files and poses do not match: " << pcd_filenames.size() << " vs "
+              << poses.size() << std::endl;
+    return;
+  }
 
   // Load pcd files and creates frames
   for (size_t i = 0; i < poses.size(); ++i) {
-    // auto frame = OdometryFrame::load(pcd_filenames[i], poses[i], this->downsample_resolution_);
-    // if (frame == nullptr) {
-    //   continue;
-    // }
-    // this->frames_.push_back(frame);
-    this->frames_.push_back(OdometryFrame::from_pose_and_timestamp(poses[i], timestamps[i]));
+    auto frame = OdometryFrame::load(pcd_filenames[i], poses[i], this->downsample_resolution_);
+    if (frame == nullptr) {
+      continue;
+    }
+    this->frames_.push_back(frame);
   }
   std::cout << "Loaded " << this->frames_.size() << " odometry frames" << std::endl;
 }

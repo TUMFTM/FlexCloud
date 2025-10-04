@@ -9,6 +9,7 @@ shift_ind: [0]                    # shift given control point at index by distan
 shift_ind_dist: [0.0]             # distance to shift given control point at index defined in shift_ind (shift applied to reference trajectory coordinates of control point in lateral direction (2D) - left is positive)
 fake_ind: [0]                    # fake given control point at index by distance specified in fake_ind_dist
 fake_ind_dist: [0.0]             # distance to fake given control point at index defined in fake_ind (shift applied to reference trajectory coordinates of control point in lateral direction (2D) - left is positive)
+fake_ind_height: [0.0]           # height offset to fake given control point at index defined in fake_ind (only used for 3D transformations)
 # Pointcloud transformation
 transform_pcd: true              # transform corresponding point cloud map to poses - requires pcd_path as input
 use_threading: true               # Activate threading for faster processing
