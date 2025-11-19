@@ -89,10 +89,10 @@ private:
   FlexCloudConfig config_{};
 
   // Module classes
-  std::shared_ptr<file_io> file_io_;
-  transform transform_;
-  std::shared_ptr<visualization> viz_;
-  std::shared_ptr<analysis> analysis_;
+  transform transform_{};
+  std::shared_ptr<file_io> file_io_ = std::make_shared<file_io>();
+  std::shared_ptr<visualization> viz_ = std::make_shared<visualization>();
+  std::shared_ptr<analysis> analysis_ = std::make_shared<analysis>();
 
   // Objects
   std::vector<PointStdDevStamped> pos_global_;

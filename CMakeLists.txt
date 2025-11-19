@@ -56,16 +56,16 @@ target_link_libraries(file_io
 ####################################
 # map_transformation
 ####################################
-add_library(transform SHARED
+add_library(transform_core SHARED
   src/transform.cpp
 )
 
-target_include_directories(transform
+target_include_directories(transform_core
   PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/flexcloud>
     $<INSTALL_INTERFACE:include>)
 
-target_link_libraries(transform
+target_link_libraries(transform_core
   Eigen3::Eigen
   ${PCL_LIBRARIES}
   CGAL::CGAL)
@@ -139,7 +139,7 @@ install(
 install(TARGETS
   file_io
   keyframe_interpolation
-  transform
+  transform_core
   visualization
   analysis
   EXPORT export_${PROJECT_NAME}
@@ -182,7 +182,7 @@ target_include_directories(pcd_georef
 target_link_libraries(pcd_georef
   yaml-cpp::yaml-cpp
   file_io
-  transform
+  transform_core
   visualization
   analysis)
 
