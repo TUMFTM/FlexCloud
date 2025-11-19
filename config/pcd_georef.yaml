@@ -10,8 +10,7 @@ fake_ind: [0]                    # fake given control point at index by distance
 fake_ind_dist: [0.0]             # distance to fake given control point at index defined in fake_ind (shift applied to reference trajectory coordinates of control point in lateral direction (2D) - left is positive)
 fake_ind_height: [0.0]           # height offset to fake given control point at index defined in fake_ind (only used for 3D transformations)
 # Pointcloud transformation
-use_threading: true               # Activate threading for faster processing
 num_cores: 10                     # Number of cores used for transforming pcd using multithreading
 # GPS zero coordinate
-customZeroPoint: false            # only used if transform_traj = TRUE -> false - use first GPS data as zero point, true - set custom zero point with zeroLat/zeroLong
-zeroPoint: [0.0, 0.0, 0.0]             # custom zero point in lat/lon/ele
+custom_origin: false            # only used if transform_traj = TRUE -> false - use first GPS data as zero point, true - set custom zero point with zeroLat/zeroLong
+origin: [0.0, 0.0, 0.0]             # custom zero point in lat/lon/ele

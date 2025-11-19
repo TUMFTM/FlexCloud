@@ -166,10 +166,10 @@ std::vector<PointStdDevStamped> file_io::load_pos(
     }
 
     Eigen::Vector3d orig{0.0, 0.0, 0.0};
-    if (config.customZeroPoint) {
-      orig.x() = config.zeroPoint[0];
-      orig.y() = config.zeroPoint[1];
-      orig.z() = config.zeroPoint[2];
+    if (config.custom_origin) {
+      orig.x() = config.origin[0];
+      orig.y() = config.origin[1];
+      orig.z() = config.origin[2];
     } else {
       orig = points_gps[0].pos;
     }
@@ -177,7 +177,7 @@ std::vector<PointStdDevStamped> file_io::load_pos(
     std::cout << "\033[33mMap origin: " << orig.x() << " " << orig.y() << " " << orig.z()
               << "\033[0m" << std::endl;
 
-    config.zeroPoint = {orig.x(), orig.y(), orig.z()};
+    config.origin = {orig.x(), orig.y(), orig.z()};
 
     // initialize GeographicLib origins and ellipsoids
     const GeographicLib::NormalGravity & earth_WGS84 = GeographicLib::NormalGravity::WGS84();

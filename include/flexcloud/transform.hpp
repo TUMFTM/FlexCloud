@@ -128,24 +128,6 @@ public:
     const std::shared_ptr<Delaunay> & triag);
 
   /**
-   * @brief transform point cloud map with Umeyama and Rubber-Sheeting trafo
-   *
-   * @param[in] node                - rclcpp::Node:
-   *                                  reference to node
-   * @param[in] umeyama             - std::shared_ptr<Umeyama>:
-   *                                  pointer to Umeyama transformation
-   * @param[in] triag               - std::shared_ptr<Delaunay>:
-   *                                  pointer to triangulation
-   * @param[in] pcm                 - pcl::PointCloud<pcl::PointXYZ>::Ptr:
-   *                                  pointer to point cloud map
-   * @param[out]                    - bool:
-   *                                  true if function executed
-   */
-  bool transform_pcd(
-    const std::shared_ptr<Umeyama> & umeyama, const std::shared_ptr<Delaunay> & triag,
-    const pcl::PointCloud<pcl::PointXYZI>::Ptr & pcm);
-
-  /**
    * @brief transform point cloud map with Umeyama and Rubber-Sheeting trafo using multi-threading
    *
    * @param[in] node                - rclcpp::Node:

@@ -51,8 +51,8 @@ pcd_georef::pcd_georef(
   this->config_.fake_ind_height = config["fake_ind_height"].as<std::vector<double>>();
   this->config_.use_threading = config["use_threading"].as<bool>();
   this->config_.num_cores = config["num_cores"].as<int>();
-  this->config_.customZeroPoint = config["customZeroPoint"].as<bool>();
-  this->config_.zeroPoint = config["zeroPoint"].as<std::vector<double>>();
+  this->config_.custom_origin = config["custom_origin"].as<bool>();
+  this->config_.origin = config["origin"].as<std::vector<double>>();
 
   this->umeyama_ = std::make_shared<Umeyama>();
   this->triag_ = std::make_shared<Delaunay>();
@@ -138,8 +138,7 @@ void pcd_georef::load_data()
 void pcd_georef::align_traj()
 {
   // Calculate transformation
-  bool bumeyama =
-    transform_.get_umeyama(this->pos_global_, this->poses_, this->umeyama_);
+  bool bumeyama = transform_.get_umeyama(this->pos_global_, this->poses_, this->umeyama_);
 
   // Transform poses and lanelet2 map (3D)
   bool btrans_umeyama =
@@ -184,12 +183,7 @@ void pcd_georef::rubber_sheeting()
 
   // Transform point cloud map if desired by user
   if (this->config_.pcd_path != "") {
-    if (this->config_.use_threading) {
-      transform_.transform_pcd(
-        this->umeyama_, this->triag_, this->pcd_map_, this->config_.num_cores);
-    } else {
-      transform_.transform_pcd(this->umeyama_, this->triag_, this->pcd_map_);
-    }
+    transform_.transform_pcd(this->umeyama_, this->triag_, this->pcd_map_, this->config_.num_cores);
   }
 
   if (btrans_rs) {

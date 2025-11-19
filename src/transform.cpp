@@ -195,7 +195,7 @@ bool transform::select_control_points(
       Eigen::Vector2d pt_pcd_shift = Eigen::Vector2d(target[idx].pose.pose.translation().x(), target[idx].pose.pose.translation().y()) + direction.normalized() * real_offset;  // NOLINT
       pt_pcd << pt_pcd_shift(0), pt_pcd_shift(1), target[idx].pose.pose.translation().z() + config.fake_ind_height[ind];  // NOLINT
     } else {
-      pt_pcd << target[idx].pose.pose.translation().x(), target[idx].pose.pose.translation().y(), target[idx].pose.pose.translation().z();
+      pt_pcd << target[idx].pose.pose.translation().x(), target[idx].pose.pose.translation().y(), target[idx].pose.pose.translation().z();  // NOLINT
     }
     cp_inter.push_back(pt_pcd);
     ControlPoint P(cp_inter[0], cp_inter[1]);
@@ -291,56 +291,6 @@ bool transform::transform_ls_rs(
     pose_t.pose.pose = pose_eigen;
     ls_trans.push_back(pose_t);
   }
-  return true;
-}
-/**
- * @brief transform point cloud map with Umeyama and Rubber-Sheeting trafo
- *
- * @param[in] node                - rclcpp::Node:
- *                                  reference to node
- * @param[in] umeyama             - std::shared_ptr<Umeyama>:
- *                                  pointer to Umeyama transformation
- * @param[in] triag               - std::shared_ptr<Delaunay>:
- *                                  pointer to triangulation
- * @param[in] pcm                 - pcl::PointCloud<pcl::PointXYZ>::Ptr:
- *                                  pointer to point cloud map
- * @param[out]                    - bool:
- *                                  true if function executed
- */
-bool transform::transform_pcd(
-  const std::shared_ptr<Umeyama> & umeyama, const std::shared_ptr<Delaunay> & triag,
-  const pcl::PointCloud<pcl::PointXYZI>::Ptr & pcm)
-{
-  // Check if the input pointer is valid
-  if (!pcm) {
-    return false;
-  }
-
-  // Transform points and write into output cloud
-  pcl::PointIndices::Ptr outliers(new pcl::PointIndices());
-  int ind_pt = 0;
-  for (const auto & point : *pcm) {
-    // Align point with alignment transformation matrix
-    Eigen::Vector3d pt_al(point.x, point.y, point.z);
-    umeyama->transformPoint(pt_al);
-    Eigen::Vector3d pt_rs(pt_al(0), pt_al(1), pt_al(2));
-    triag->transformPoint(pt_rs);
-
-    if (pt_rs.norm() < 1.0e-3) {
-      // Point outside of triangulation
-      outliers->indices.push_back(ind_pt);
-    } else {
-      pcm->points[ind_pt].x = pt_rs(0);
-      pcm->points[ind_pt].y = pt_rs(1);
-      pcm->points[ind_pt].z = pt_rs(2);
-    }
-    ++ind_pt;
-  }
-  pcl::ExtractIndices<pcl::PointXYZI> extract;
-  extract.setInputCloud(pcm);
-  extract.setIndices(outliers);
-  extract.setNegative(true);
-  extract.filter(*pcm);
   return true;
 }
 /**

@@ -42,7 +42,7 @@ struct FlexCloudConfig
   bool use_threading{true};
   int num_cores{4};
   // Zero point
-  bool customZeroPoint{false};
-  std::vector<double> zeroPoint{0.0, 0.0, 0.0};
+  bool custom_origin{false};
+  std::vector<double> origin{0.0, 0.0, 0.0};
 };
 }  // namespace flexcloud

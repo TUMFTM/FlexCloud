@@ -182,12 +182,12 @@ void analysis::save_config(
     file << "num_cores=" << config.num_cores << std::endl;
 
     // Write zero point parameters
-    file << "customZeroPoint=" << (config.customZeroPoint ? "true" : "false") << std::endl;
+    file << "custom_origin=" << (config.custom_origin ? "true" : "false") << std::endl;
 
     file << "zeroPoint=";
-    for (size_t i = 0; i < config.zeroPoint.size(); ++i) {
-      file << config.zeroPoint[i];
-      if (i < config.zeroPoint.size() - 1) file << ",";
+    for (size_t i = 0; i < config.origin.size(); ++i) {
+      file << config.origin[i];
+      if (i < config.origin.size() - 1) file << ",";
     }
     file << std::endl;
     file.close();
