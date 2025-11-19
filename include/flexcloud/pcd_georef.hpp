@@ -40,7 +40,7 @@ class pcd_georef
 public:
   // pcd_georef package constructor
   pcd_georef(
-    const std::string & config_path, const std::string & ref_path, const std::string & slam_path,
+    const std::string & config_path, const std::string & pos_global_path, const std::string & poses_path,
     const std::string & pcd_path);
   // Functions
   /**
@@ -77,7 +77,7 @@ public:
   /**
    * @brief write pcd map to file
    */
-  void write_map();
+  void save_map();
 
   /**
    * @brief do evaluation calculations and write to txt-files
@@ -95,16 +95,15 @@ private:
   std::shared_ptr<analysis> analysis_;
 
   // Objects
-  // Trajectories
-  std::vector<PointStdDev> traj_proj;
-  std::vector<PointStdDev> traj_SLAM;
-  std::vector<PointStdDev> traj_align;
-  std::vector<PointStdDev> traj_rs;
+  std::vector<PointStdDevStamped> pos_global_;
+  std::vector<PoseStamped> poses_;
+  std::vector<PoseStamped> poses_align_;
+  std::vector<PoseStamped> poses_rs_;
   // PCD map
-  pcl::PointCloud<pcl::PointXYZI>::Ptr pcd_map;
+  pcl::PointCloud<pcl::PointXYZI>::Ptr pcd_map_;
 
   // Transformation
-  std::vector<ControlPoint> control_points;
+  std::vector<ControlPoint> control_points_;
   std::shared_ptr<Umeyama> umeyama_;
   std::shared_ptr<Delaunay> triag_;
 

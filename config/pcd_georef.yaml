@@ -1,5 +1,4 @@
 # Trajectory matching
-dim: 3                            # dimension of transformation - 2 (2D) or 3 (3D)
 transform_traj: false             # transform reference trajectory from lat/lon to local coordinates (ENU) or not (already cartesian coordinates)
 rs_num_controlPoints: 10         # Number of control points for rubber-sheeting
 stddev_threshold: 0.05            # threshold for maximum standard deviation of reference trajectory when using automatic control point selection

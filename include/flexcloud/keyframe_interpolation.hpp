@@ -81,21 +81,21 @@ private:
   /**
    * @brief Search closest PointStdDevStamped for a given frame
    *
-   * @param[in] frame              - std::shared_ptr<OdometryFrame>:
+   * @param[in] frame              - PoseStamped:
    *                                 frame to search for
    * @return PointStdDevStamped    - PointStdDevStamped:
    *                                 closest PointStdDevStamped
    */
-  PointStdDevStamped search_closest(const std::shared_ptr<OdometryFrame> & frame);
+  PointStdDevStamped search_closest(const PoseStamped & frame);
   /**
    * @brief Interpolate PointStdDevStamped for a given frame
    *
-   * @param[in] frame              - std::shared_ptr<OdometryFrame>:
+   * @param[in] frame              - PoseStamped:
    *                                 frame to interpolate
    * @return PointStdDevStamped     - PointStdDevStamped:
    *                                 interpolated PointStdDevStamped
    */
-  PointStdDevStamped interpolate_pos(const std::shared_ptr<OdometryFrame> & frame);
+  PointStdDevStamped interpolate_pos(const PoseStamped & frame);
   /**
    * @brief Set parameters from config
    */
@@ -106,10 +106,10 @@ private:
   std::shared_ptr<file_io> file_io_;
 
   // Data
-  std::vector<std::shared_ptr<OdometryFrame>> frames_;
-  std::vector<PointStdDevStamped> pos_frames_;
-  std::vector<std::shared_ptr<OdometryFrame>> keyframes_;
-  std::vector<PointStdDevStamped> pos_keyframes_;
+  std::vector<PoseStamped> poses_;
+  std::vector<PointStdDevStamped> positions_;
+  std::vector<PoseStamped> key_poses_;
+  std::vector<PointStdDevStamped> key_positions_;
 
   // Visualization
   std::shared_ptr<visualization> viz_;

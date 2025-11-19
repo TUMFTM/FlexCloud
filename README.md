@@ -78,7 +78,6 @@ If you are struggling with their installation, you can have a look at the proces
 | ----------- | ----------- |
 | global positions (usually from GNSS or an EKF using GNSS) | individual `.txt` files per position in a directory specify position in `xpos ypos zpos x_stddev y_stddev z_stddev`. The files are named according to the UTC-timestamp of the position in the format `sec_nanosec`. |
 | inertial LiDAR trajectory (usually from a LiDAR odometry/SLAM algorithm) | single `.txt` file in KITTI-format: `r1 r2 r3 x r4 r5 r6 y r7 r8 r9 z` |
-| point cloud frames corresponding to LiDAR trajectory | individual `.pcd` files per cloud in a directory. The files are named according to the UTC-timestamp of the position in the format `sec_nanosec`. |
 <!-- markdownlint-enable MD013 -->
 
 * the executable selects keyframes from the LiDAR trajectory (keyframes are based on minimum longitudinal distance

@@ -44,13 +44,13 @@ public:
    *
    * @param[in] config              - FlexCloudConfig:
    *                                  config struct
-   * @param[in] src                 - std::vector<PointStdDev>:
+   * @param[in] src                 - std::vector<PointStdDevStamped>:
    *                                  source trajectory
-   * @param[in] target              - std::vector<PointStdDev>:
+   * @param[in] target              - std::vector<PoseStamped>:
    *                                  target trajectory
-   * @param[in] target_al           - std::vector<PointStdDev>:
+   * @param[in] target_al           - std::vector<PoseStamped>:
    *                                  target trajectory after Umeyama trafo
-   * @param[in] target_rs           - std::vector<PointStdDev>:
+   * @param[in] target_rs           - std::vector<PoseStamped>:
    *                                  target trajectory after rubber-sheeting
    * @param[in] triag               - std::shared_ptr<Delaunay>:
    *                                  pointer to triangulation
@@ -62,9 +62,9 @@ public:
    *                                  difference of rubber-sheeted trajectory to source trajectory
    */
   bool traj_matching(
-    FlexCloudConfig & config, const std::vector<PointStdDev> & src,
-    const std::vector<PointStdDev> & target, const std::vector<PointStdDev> & target_al,
-    const std::vector<PointStdDev> & target_rs, const std::shared_ptr<Delaunay> & triag,
+    FlexCloudConfig & config, const std::vector<PointStdDevStamped> & src,
+    const std::vector<PoseStamped> & target, const std::vector<PoseStamped> & target_al,
+    const std::vector<PoseStamped> & target_rs, const std::shared_ptr<Delaunay> & triag,
     const std::vector<ControlPoint> & cps, std::vector<double> & diff_al,
     std::vector<double> & diff_rs);
 
@@ -74,16 +74,16 @@ private:
    *
    * @param[in] config              - FlexCloudConfig:
    *                                  config struct
-   * @param[in] src                 - std::vector<PointStdDev>:
+   * @param[in] src                 - std::vector<PointStdDevStamped>:
    *                                  source trajectory
-   * @param[in] target              - std::vector<PointStdDev>:
+   * @param[in] target              - std::vector<PoseStamped>:
    *                                  target trajectory
    * @param[in] diff                - std::vector<double>:
    *                                  difference between trajectories (euclidean distance)
    */
   void calc_diff(
-    FlexCloudConfig & config, const std::vector<PointStdDev> & src,
-    const std::vector<PointStdDev> & target, std::vector<double> & diff);
+    FlexCloudConfig & config, const std::vector<PointStdDevStamped> & src,
+    const std::vector<PoseStamped> & target, std::vector<double> & diff);
   /**
    * @brief Save FlexCloudConfig to a text file
    * @param config The configuration to save
@@ -95,14 +95,26 @@ private:
   /**
    * @brief write a linestring to .txt file
    *
-   * @param[in] ls                  - std::vector<PointStdDev>:
+   * @param[in] ls                  - std::vector<PointStdDevStamped>:
    *                                  linestring
    * @param[in] dir_path            - std::string:
    *                                  name of output directory
    * @param[in] file_name           - std::string:
    *                                  name of output file
    */
-  void write_ls(const std::vector<PointStdDev> & ls, const std::string & dir_path,
+  void write_ls(const std::vector<PointStdDevStamped> & ls, const std::string & dir_path,
+    const std::string & file_name);
+  /**
+   * @brief write a linestring to .txt file
+   *
+   * @param[in] ls                  - std::vector<PoseStamped>:
+   *                                  linestring
+   * @param[in] dir_path            - std::string:
+   *                                  name of output directory
+   * @param[in] file_name           - std::string:
+   *                                  name of output file
+   */
+  void write_ls(const std::vector<PoseStamped> & ls, const std::string & dir_path,
     const std::string & file_name);
   /**
    * @brief write a linestrings to .txt file

@@ -24,12 +24,9 @@ namespace flexcloud
 {
 struct FlexCloudConfig
 {
-  std::string traj_path{};
+  std::string pos_global_path{};
   std::string poses_path{};
   std::string pcd_path{};
-  std::string pcd_out_path{};
-  // Transformation GPS - Poses
-  int64_t dim{3};
   // Trajectory Alignment
   bool transform_traj{true};
   int rs_num_controlPoints{10};

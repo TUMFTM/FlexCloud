@@ -53,8 +53,8 @@ public:
    * @param[in] name                - std::string:
    *                                  namespace of linestring
    */
-  void odom2rerun(
-    const std::vector<std::shared_ptr<OdometryFrame>> & odom, rerun::RecordingStream & stream,
+  void pose2rerun(
+    const std::vector<PoseStamped> & odom, rerun::RecordingStream & stream,
     const std::string color, const std::string name);
   /**
    * @brief visualize pos frames in rerun
@@ -74,7 +74,7 @@ public:
   /**
    * @brief visualize linestring in rerun
    *
-   * @param[in] ls                  - std::vector<PointStdDev>:
+   * @param[in] ls                  - std::vector<PointStdDevStamped>:
    *                                  controlpoints
    * @param[in] stream              - rerun::RecordingStream:
    *                                  stream to add linestring to
@@ -84,7 +84,22 @@ public:
    *                                  namespace of linestring
    */
   void linestring2rerun(
-    const std::vector<PointStdDev> & ls, rerun::RecordingStream & stream, const std::string color,
+    const std::vector<PointStdDevStamped> & ls, rerun::RecordingStream & stream, const std::string color,
+    const std::string name);
+  /**
+   * @brief visualize linestring in rerun
+   *
+   * @param[in] ls                  - std::vector<PoseStamped>:
+   *                                  controlpoints
+   * @param[in] stream              - rerun::RecordingStream:
+   *                                  stream to add linestring to
+   * @param[in] color               - std_msgs::msg::ColorRGBA:
+   *                                  color of array
+   * @param[in] name                - std::string:
+   *                                  namespace of linestring
+   */
+  void linestring2rerun(
+    const std::vector<PoseStamped> & ls, rerun::RecordingStream & stream, const std::string color,
     const std::string name);
   /**
    * @brief visualize rubber-sheeting geometry in rerun

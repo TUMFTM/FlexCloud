@@ -26,7 +26,7 @@ namespace flexcloud
 /**
  * @brief visualize odom frames in rerun
  *
- * @param[in] odom                 - std::vector<std::shared_ptr<OdometryFrame>>:
+ * @param[in] pose                 - std::vector<PoseStamped>:
  *                                  odom points
  * @param[in] stream              - rerun::RecordingStream:
  *                                  stream to add linestring to
@@ -35,17 +35,17 @@ namespace flexcloud
  * @param[in] name                - std::string:
  *                                  namespace of linestring
  */
-void visualization::odom2rerun(
-  const std::vector<std::shared_ptr<OdometryFrame>> & odom, rerun::RecordingStream & stream,
-  const std::string color, const std::string name)
+void visualization::pose2rerun(
+  const std::vector<PoseStamped> & poses, rerun::RecordingStream & stream, const std::string color,
+  const std::string name)
 {
   // Convert to rerun
   TUMcolor col(color);
   std::vector<rerun::Position3D> positions{};
-  positions.reserve(odom.size());
-  for (const auto & p : odom) {
+  positions.reserve(poses.size());
+  for (const auto & p : poses) {
     positions.push_back(rerun::Position3D(
-      p->pose.translation().x(), p->pose.translation().y(), p->pose.translation().z()));
+      p.pose.pose.translation().x(), p.pose.pose.translation().y(), p.pose.pose.translation().z()));
   }
   stream.log(name, rerun::Points3D(positions).with_colors(rerun::Color(col.r, col.g, col.b)));
 }
@@ -77,7 +77,7 @@ void visualization::pos2rerun(
 /**
  * @brief visualize linestring in rerun
  *
- * @param[in] ls                  - std::vector<PointStdDev>:
+ * @param[in] ls                  - std::vector<PointStdDevStamped>:
  *                                  controlpoints
  * @param[in] stream              - rerun::RecordingStream:
  *                                  stream to add linestring to
@@ -87,14 +87,47 @@ void visualization::pos2rerun(
  *                                  namespace of linestring
  */
 void visualization::linestring2rerun(
-  const std::vector<PointStdDev> & ls, rerun::RecordingStream & stream, const std::string color,
+  const std::vector<PointStdDevStamped> & ls, rerun::RecordingStream & stream,
+  const std::string color, const std::string name)
+{
+  TUMcolor col(color);
+  std::vector<rerun::Position3D> positions{};
+  positions.reserve(ls.size());
+  for (const auto & p : ls) {
+    positions.push_back(rerun::Position3D(p.point.pos.x(), p.point.pos.y(), p.point.pos.z()));
+  }
+  std::vector<rerun::LineStrip3D> lines;
+  std::vector<rerun::components::Text> labels;
+  for (size_t i = 0; i < positions.size() - 1; ++i) {
+    lines.emplace_back(rerun::LineStrip3D({positions[i].xyz, positions[i + 1].xyz}));
+    labels.emplace_back(rerun::components::Text(std::to_string(i)));
+  }
+  stream.log(
+    name.c_str(),
+    rerun::LineStrips3D(lines).with_colors(rerun::Color(col.r, col.g, col.b)).with_labels(labels));
+}
+/**
+ * @brief visualize linestring in rerun
+ *
+ * @param[in] ls                  - std::vector<PoseStamped>:
+ *                                  controlpoints
+ * @param[in] stream              - rerun::RecordingStream:
+ *                                  stream to add linestring to
+ * @param[in] color               - std_msgs::msg::ColorRGBA:
+ *                                  color of array
+ * @param[in] name                - std::string:
+ *                                  namespace of linestring
+ */
+void visualization::linestring2rerun(
+  const std::vector<PoseStamped> & ls, rerun::RecordingStream & stream, const std::string color,
   const std::string name)
 {
   TUMcolor col(color);
   std::vector<rerun::Position3D> positions{};
   positions.reserve(ls.size());
   for (const auto & p : ls) {
-    positions.push_back(rerun::Position3D(p.pos.x(), p.pos.y(), p.pos.z()));
+    positions.push_back(rerun::Position3D(
+      p.pose.pose.translation().x(), p.pose.pose.translation().y(), p.pose.pose.translation().z()));
   }
   std::vector<rerun::LineStrip3D> lines;
   std::vector<rerun::components::Text> labels;
@@ -129,10 +162,10 @@ void visualization::rs2rerun(
   std::vector<rerun::Position3D> positions_cps{};
   positions_cps.reserve(cps.size());
   for (const auto & cp : cps) {
-    const PointStdDev source = cp.get_source_point();
-    const PointStdDev target = cp.get_target_point();
-    positions_cps.push_back(rerun::Position3D(source.pos.x(), source.pos.y(), source.pos.z()));
-    positions_cps.push_back(rerun::Position3D(target.pos.x(), target.pos.y(), target.pos.z()));
+    const Eigen::Vector3d source = cp.source;
+    const Eigen::Vector3d target = cp.target;
+    positions_cps.push_back(rerun::Position3D(source.x(), source.y(), source.z()));
+    positions_cps.push_back(rerun::Position3D(target.x(), target.y(), target.z()));
   }
   stream.log(
     "control_points", rerun::Points3D(positions_cps)
@@ -141,12 +174,12 @@ void visualization::rs2rerun(
 
   // Triangulation
   TUMcolor col_edges("WEBBlueLight");
-  std::vector<std::vector<PointStdDev>> edges = triag->getEdges();
+  std::vector<std::vector<Eigen::Vector3d>> edges = triag->getEdges();
   std::vector<rerun::Position3D> positions_edges{};
   positions_edges.reserve(edges.size() * 2);
   for (const auto & edge : edges) {
     for (const auto & pt : edge) {
-      positions_edges.push_back(rerun::Position3D(pt.pos.x(), pt.pos.y(), pt.pos.z()));
+      positions_edges.push_back(rerun::Position3D(pt.x(), pt.y(), pt.z()));
     }
   }
   std::vector<rerun::LineStrip3D> lines;

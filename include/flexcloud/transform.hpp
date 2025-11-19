@@ -30,10 +30,10 @@
 #include <string>
 #include <vector>
 
+#include "param_pcd_georef.hpp"
 #include "triangulation.hpp"
 #include "umeyama.hpp"
 #include "utility.hpp"
-#include "param_pcd_georef.hpp"
 namespace flexcloud
 {
 /**
@@ -47,29 +47,26 @@ public:
   /**
    * @brief calculate Umeyama transformation from source and target trajectory
    *
-   * @param[in] node                - rclcpp::Node:
-   *                                  reference to node
-   * @param[in] src                 - std::vector<PointStdDev>:
+   * @param[in] src                 - std::vector<PointStdDevStamped>:
    *                                  source trajectory
-   * @param[in] target              - std::vector<PointStdDev>:
+   * @param[in] target              - std::vector<PoseStamped>:
    *                                  target trajectory
    * @param[in] umeyama             - std::shared_ptr<Umeyama>:
    *                                  pointer to Umeyama transformation
    * @param[out]                    - bool:
    *                                  true if function executed
    */
-  bool get_umeyama(
-    FlexCloudConfig & config, const std::vector<PointStdDev> & src, const std::vector<PointStdDev> & target,
-    const std::shared_ptr<Umeyama> & umeyama);
+  bool get_umeyama(const std::vector<PointStdDevStamped> & src,
+    const std::vector<PoseStamped> & target, const std::shared_ptr<Umeyama> & umeyama);
 
   /**
    * @brief select control points automatically or manually
    *
    * @param[in] node                - rclcpp::Node:
    *                                  reference to node
-   * @param[in] src                 - std::vector<PointStdDev>:
+   * @param[in] src                 - std::vector<PointStdDevStamped>:
    *                                  source trajectory
-   * @param[in] target              - std::vector<PointStdDev>:
+   * @param[in] target              - std::vector<PointStdDevStamped>:
    *                                  target trajectory
    * @param[in] cps                 - std::vector<ControlPoint>:
    *                                  selected control points
@@ -77,15 +74,15 @@ public:
    *                                  true if function executed
    */
   bool select_control_points(
-    FlexCloudConfig & config, const std::vector<PointStdDev> & src, const std::vector<PointStdDev> & target,
-    std::vector<ControlPoint> & cps);
+    FlexCloudConfig & config, const std::vector<PointStdDevStamped> & src,
+    const std::vector<PoseStamped> & target, std::vector<ControlPoint> & cps);
 
   /**
    * @brief calculate Rubber-Sheet transformation from target trajectory and selected control points
    *
    * @param[in] node                - rclcpp::Node:
    *                                  reference to node
-   * @param[in] target              - std::vector<PointStdDev>:
+   * @param[in] target              - std::vector<PointStdDevStamped>:
    *                                  target trajectory
    * @param[in] cps                 - std::vector<ControlPoint>:
    *                                  control points
@@ -95,15 +92,15 @@ public:
    *                                  true if function executed
    */
   bool get_rubber_sheeting(
-    FlexCloudConfig & config, const std::vector<PointStdDev> & target, std::vector<ControlPoint> & cps,
-    const std::shared_ptr<Delaunay> & triag);
+    FlexCloudConfig & config, const std::vector<PoseStamped> & target,
+    std::vector<ControlPoint> & cps, const std::shared_ptr<Delaunay> & triag);
 
   /**
    * @brief transform linestring with Umeyama trafo
    *
-   * @param[in] ls                  - std::vector<PointStdDev>:
+   * @param[in] ls                  - std::vector<PoseStamped>:
    *                                  input linestring
-   * @param[in] ls_trans            - std::vector<PointStdDev>:
+   * @param[in] ls_trans            - std::vector<PoseStamped>:
    *                                  transformed linestring
    * @param[in] umeyama             - std::shared_ptr<Umeyama>:
    *                                  pointer to Umeyama transformation
@@ -111,15 +108,15 @@ public:
    *                                  true if function executed
    */
   bool transform_ls_al(
-    const std::vector<PointStdDev> & ls, std::vector<PointStdDev> & ls_trans,
+    const std::vector<PoseStamped> & ls, std::vector<PoseStamped> & ls_trans,
     const std::shared_ptr<Umeyama> & umeyama);
 
   /**
    * @brief transform linestring with Rubber-Sheeting trafo
    *
-   * @param[in] ls                  - std::vector<PointStdDev>:
+   * @param[in] ls                  - std::vector<PoseStamped>:
    *                                  input linestring
-   * @param[in] ls_trans            - std::vector<PointStdDev>:
+   * @param[in] ls_trans            - std::vector<PoseStamped>:
    *                                  transformed linestring
    * @param[in] triag               - std::shared_ptr<Delaunay>:
    *                                  pointer to triangulation
@@ -127,7 +124,7 @@ public:
    *                                  true if function executed
    */
   bool transform_ls_rs(
-    const std::vector<PointStdDev> & ls, std::vector<PointStdDev> & ls_trans,
+    const std::vector<PoseStamped> & ls, std::vector<PoseStamped> & ls_trans,
     const std::shared_ptr<Delaunay> & triag);
 
   /**
@@ -145,8 +142,8 @@ public:
    *                                  true if function executed
    */
   bool transform_pcd(
-    const std::shared_ptr<Umeyama> & umeyama,
-    const std::shared_ptr<Delaunay> & triag, const pcl::PointCloud<pcl::PointXYZI>::Ptr & pcm);
+    const std::shared_ptr<Umeyama> & umeyama, const std::shared_ptr<Delaunay> & triag,
+    const pcl::PointCloud<pcl::PointXYZI>::Ptr & pcm);
 
   /**
    * @brief transform point cloud map with Umeyama and Rubber-Sheeting trafo using multi-threading
@@ -165,24 +162,13 @@ public:
    *                                  true if function executed
    */
   bool transform_pcd(
-    const std::shared_ptr<Umeyama> & umeyama,
-    const std::shared_ptr<Delaunay> & triag, pcl::PointCloud<pcl::PointXYZI>::Ptr & pcm,
-    const int num_cores);
+    const std::shared_ptr<Umeyama> & umeyama, const std::shared_ptr<Delaunay> & triag,
+    pcl::PointCloud<pcl::PointXYZI>::Ptr & pcm, const int num_cores);
 
 private:
   // Variables for multi-threading
   std::vector<int> currentProgress;
   std::vector<bool> threadsFinished;
-
-  /**
-   * @brief get closest point on a linestring for a given point
-   *
-   * @param[in] pt                    - PointStdDev:
-   *                                    input point to be modified
-   * @param[in] ls                    - std::vector<PointStdDev>:
-   *                                    linestring to match point to
-   */
-  void closest_on_ls(PointStdDev & pt, const std::vector<PointStdDev> & ls);
 
   /**
    * @brief transform sub point cloud map one one thread
