@@ -68,7 +68,7 @@ If you are struggling with their installation, you can have a look at the proces
 
 <h3> Keyframe Interpolation</h3>
 
-* set parameters in `/config/select_keyframes.yaml`
+* set parameters in `/config/keyframe_interpolation.yaml`
 
 1. Necessary input parameters:
    * `config_path` => path to [config-file](./config/select_keyframes.yaml)
@@ -81,8 +81,8 @@ If you are struggling with their installation, you can have a look at the proces
 <!-- markdownlint-disable MD013 -->
 | Description | Format |
 | ----------- | ----------- |
-| global positions (usually from GNSS or an EKF using GNSS) | individual `.txt` files per position in a directory specify position in `xpos ypos zpos x_stddev y_stddev z_stddev`. The files are named according to the UTC-timestamp of the position in the format `sec_nanosec`. |
-| inertial LiDAR trajectory (usually from a LiDAR odometry/SLAM algorithm) | single `.txt` file in KITTI-format: `r1 r2 r3 x r4 r5 r6 y r7 r8 r9 z` |
+| global positions (usually from GNSS or an EKF using GNSS) | individual `.txt` files per position in a directory specify position in `stamp xpos ypos zpos x_stddev y_stddev z_stddev`. The files are named according to the UTC-timestamp of the position in the format `sec_nanosec`. |
+| inertial LiDAR trajectory (currently the API is designed for [glim](https://github.com/koide3/glim)) | single `.txt` file in KITTI-format: `stamp xpos ypos zpos xquat yquat zquat wquat` |
 <!-- markdownlint-enable MD013 -->
 
 * the executable selects keyframes from the LiDAR trajectory (keyframes are based on minimum longitudinal distance
@@ -110,21 +110,19 @@ computed in two ways (based on the parameter `interpolated`):
 
 1. Necessary input parameters:
    * `config_path` => path to [config-file](./config/pcd_georef.yaml)
-   * `traj_path` => path to GNSS/reference trajectory of the vehicle (format: single txt-file with `lat, lon, ele, lat_stddev, lon_stddev, ele_stddev` or `x, y, z, x_stddev, y_stddev, z_stddev`, if the reference trajectory is already in local coordinates)
+   * `positions_path` => path to GNSS/reference trajectory of the vehicle (format: single txt-file with `lat, lon, ele, lat_stddev, lon_stddev, ele_stddev` or `x, y, z, x_stddev, y_stddev, z_stddev`, if the reference trajectory is already in local coordinates)
    * `poses_path` => path to SLAM trajectory of the vehicle (KITTI-format)
    * `pcd_path` => path to point cloud map corresponding to poses trajectory (OPTIONAL - only if yout want to transform the pointcloud)
 
 2. Start the package
 
    ```bash
-   Usage: ./build/georeferencing <config_path> <reference_path> <slam_path> <(optional) pcd_path>>
+   Usage: ./build/georeferencing <config_path> <positions> <poses_path> <(optional) pcd_path>>
    ```
-
-   To use the provided test data (only trajectories, no application on point cloud map -> set parameter `transform_pcd` to `false`)
 
    ```bash
    cd flexcloud/
-   ./build/pcd_georef src/flexcloud/config/pcd_georef.yaml src/flexcloud/test/poseData.txt src/flexcloud/test/poses_map.txt 
+   ./build/pcd_georef src/flexcloud/config/pcd_georef.yaml src/flexcloud/test/positions_interpolated.txt src/flexcloud/test/poses_keyframes.txt 
    ```
 
 3. Inspect results
