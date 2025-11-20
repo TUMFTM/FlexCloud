@@ -6,6 +6,11 @@ Georeferencing of Point Cloud Maps
 
 [![Linux](https://img.shields.io/badge/os-linux-blue.svg)](https://www.linux.org/)
 [![Docker](https://badgen.net/badge/icon/docker?icon=docker&label)](https://www.docker.com/)
+![C++](https://img.shields.io/badge/-C++-blue?logo=cplusplus)
+![License](https://img.shields.io/badge/license-Apache%202.0-blue)
+[![arXiv](https://img.shields.io/badge/arXiv-1234.56789-b31b1b.svg)](https://arxiv.org/abs/2502.00395)
+[![DOI:10.5220/0013405400003941](https://img.shields.io/badge/DOI-10.5220/0013405400003941-00629B.svg)](https://doi.org/10.5220/0013359600003941)
+
 
 <img src="doc/viz.gif" width="800"/>
 </div>
@@ -68,7 +73,7 @@ If you are struggling with their installation, you can have a look at the proces
 1. Necessary input parameters:
    * `config_path` => path to [config-file](./config/select_keyframes.yaml)
    * `pos_dir_path` => path to raw GNSS/reference trajectory of the vehicle (format: txt-file with `lat, lon, ele, lat_stddev, lon_stddev, ele_stddev` or `x, y, z, x_stddev, y_stddev, z_stddev`, if the reference trajectory is already in local coordinates)
-   * `kitti_odom_path` => path to SLAM trajectory of the vehicle (KITTI-format)
+   * `poses_path` => path to SLAM trajectory of the vehicle (GLIM-format)
    * `dst_dir_path` => path to output trajectory
 
 * make sure the data follows the following format/requirements:
@@ -95,7 +100,7 @@ computed in two ways (based on the parameter `interpolated`):
 * to run the keyframe interpolation, simply execute the executable with the necessary data and config as arguments:
 
 ```bash
-./keyframe_interpolation <config_path> <pos_dir_path> <kitti_odom_path> <dst_dir_path>
+./keyframe_interpolation <config_path> <pos_dir_path> <poses_path> <dst_dir_path>
 ```
 
 * the output of the Keyframe Interpolation is designed to be compatible with the georeferencing.
