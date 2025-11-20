@@ -91,26 +91,6 @@ target_link_libraries(visualization
   rerun_sdk)
 
 ####################################
-# keyframe_interpolation
-####################################
-
-add_library(keyframe_interpolation SHARED
-src/keyframe_interpolation.cpp
-)
-
-target_include_directories(keyframe_interpolation
-PUBLIC
-  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/flexcloud>
-  $<INSTALL_INTERFACE:include>)
-
-target_link_libraries(keyframe_interpolation
-  file_io
-  visualization
-  Eigen3::Eigen
-  yaml-cpp::yaml-cpp
-  ${PCL_LIBRARIES})
-
-####################################
 # analysis
 ####################################
 
@@ -138,7 +118,6 @@ install(
 
 install(TARGETS
   file_io
-  keyframe_interpolation
   transform_core
   visualization
   analysis
@@ -155,31 +134,31 @@ install(TARGETS
 ####################################
 
 # select_keyframes
-add_executable(select_keyframes
-  src/select_keyframes.cpp
+add_executable(keyframe_interpolation
+  src/keyframe_interpolation.cpp
 )
 
-target_include_directories(select_keyframes
+target_include_directories(keyframe_interpolation
   PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/flexcloud>
     $<INSTALL_INTERFACE:include>)
 
-target_link_libraries(select_keyframes
+target_link_libraries(keyframe_interpolation
+  yaml-cpp::yaml-cpp
   file_io
-  keyframe_interpolation
   visualization)
 
 # pcd_georef
-add_executable(pcd_georef
-  src/pcd_georef.cpp
+add_executable(georeferencing
+  src/georeferencing.cpp
 )
 
-target_include_directories(pcd_georef
+target_include_directories(georeferencing
   PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/flexcloud>
     $<INSTALL_INTERFACE:include>)
 
-target_link_libraries(pcd_georef
+target_link_libraries(georeferencing
   yaml-cpp::yaml-cpp
   file_io
   transform_core
@@ -187,6 +166,6 @@ target_link_libraries(pcd_georef
   analysis)
 
 install(TARGETS
-  pcd_georef
-  select_keyframes
+  georeferencing
+  keyframe_interpolation
   DESTINATION flexcloud)

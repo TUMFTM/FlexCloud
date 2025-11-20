@@ -29,7 +29,6 @@
 #include <utility>
 #include <vector>
 
-#include "param_pcd_georef.hpp"
 #include "triangulation.hpp"
 #include "utility.hpp"
 namespace flexcloud
@@ -72,8 +71,6 @@ private:
   /**
    * @brief calculate difference of a target trajectory to a source trajectory
    *
-   * @param[in] config              - FlexCloudConfig:
-   *                                  config struct
    * @param[in] src                 - std::vector<PointStdDevStamped>:
    *                                  source trajectory
    * @param[in] target              - std::vector<PoseStamped>:
@@ -82,8 +79,8 @@ private:
    *                                  difference between trajectories (euclidean distance)
    */
   void calc_diff(
-    FlexCloudConfig & config, const std::vector<PointStdDevStamped> & src,
-    const std::vector<PoseStamped> & target, std::vector<double> & diff);
+    const std::vector<PointStdDevStamped> & src, const std::vector<PoseStamped> & target,
+    std::vector<double> & diff);
   /**
    * @brief Save FlexCloudConfig to a text file
    * @param config The configuration to save
@@ -102,7 +99,8 @@ private:
    * @param[in] file_name           - std::string:
    *                                  name of output file
    */
-  void write_ls(const std::vector<PointStdDevStamped> & ls, const std::string & dir_path,
+  void write_ls(
+    const std::vector<PointStdDevStamped> & ls, const std::string & dir_path,
     const std::string & file_name);
   /**
    * @brief write a linestring to .txt file
@@ -114,7 +112,8 @@ private:
    * @param[in] file_name           - std::string:
    *                                  name of output file
    */
-  void write_ls(const std::vector<PoseStamped> & ls, const std::string & dir_path,
+  void write_ls(
+    const std::vector<PoseStamped> & ls, const std::string & dir_path,
     const std::string & file_name);
   /**
    * @brief write a linestrings to .txt file
@@ -128,8 +127,9 @@ private:
    * @param[in] file_name           - std::string:
    *                                  name of output file
    */
-  void write_lss(const std::vector<std::vector<PointStdDev>> & lss,
-    const std::string & dir_path, const std::string & file_name);
+  void write_lss(
+    const std::vector<std::vector<PointStdDev>> & lss, const std::string & dir_path,
+    const std::string & file_name);
   /**
    * @brief write a double vector to .txt file
    *
@@ -140,8 +140,8 @@ private:
    * @param[in] file_name           - std::string:
    *                                  name of output file
    */
-  void write_double_vec(const std::vector<double> & vec, const std::string & dir_path,
-    const std::string & file_name);
+  void write_double_vec(
+    const std::vector<double> & vec, const std::string & dir_path, const std::string & file_name);
 
   /**
    * @brief write triangulation vertices to file
@@ -153,7 +153,8 @@ private:
    * @param[in] file_name           - std::string:
    *                                  name of output file
    */
-  void write_triag(const std::shared_ptr<Delaunay> & triag, const std::string & dir_path,
+  void write_triag(
+    const std::shared_ptr<Delaunay> & triag, const std::string & dir_path,
     const std::string & file_name);
   /**
    * @brief write controlpoints to file
@@ -165,7 +166,8 @@ private:
    * @param[in] file_name           - std::string:
    *                                  name of output file
    */
-  void write_cp(const std::vector<ControlPoint> & cps, const std::string & dir_path,
+  void write_cp(
+    const std::vector<ControlPoint> & cps, const std::string & dir_path,
     const std::string & file_name);
 };
 }  // namespace flexcloud

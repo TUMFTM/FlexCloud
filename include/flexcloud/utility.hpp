@@ -125,6 +125,32 @@ public:
   std::int64_t stamp;
 };
 /**
+ * @brief configuration struct for FlexCloud packages
+ */
+struct FlexCloudConfig
+{
+  std::string pos_global_path{};
+  std::string poses_path{};
+  std::string pcd_path{};
+  // Trajectory Alignment
+  bool transform_traj{true};
+  int rs_num_controlPoints{10};
+  double stddev_threshold{0.5};
+  std::vector<double> square_size{0.1, 0.1, 10.0};
+  // PCD Georeferencing
+  std::vector<int64_t> exclude_ind{};
+  std::vector<int64_t> shift_ind{};
+  std::vector<double> shift_ind_dist{};
+  std::vector<int64_t> fake_ind{};
+  std::vector<double> fake_ind_dist{};
+  std::vector<double> fake_ind_height{};
+  bool use_threading{true};
+  int num_cores{4};
+  // Zero point
+  bool custom_origin{false};
+  std::vector<double> origin{0.0, 0.0, 0.0};
+};
+/**
  * @brief struct to get TUMcolor code from string
  *
  * @param[in] name                  - std::string:

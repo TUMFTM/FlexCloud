@@ -16,7 +16,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "pcd_georef.hpp"
+#include "georeferencing.hpp"
 
 #include <iostream>
 #include <memory>
@@ -28,7 +28,7 @@ namespace flexcloud
 {
 // Constructor
 // pcd_georef package constructor
-pcd_georef::pcd_georef(
+Georeferencing::Georeferencing(
   const std::string & config_path, const std::string & pos_global_path,
   const std::string & poses_path, const std::string & pcd_path = "")
 {
@@ -86,7 +86,7 @@ pcd_georef::pcd_georef(
 /**
  * @brief check if all necessary paths exist
  */
-bool pcd_georef::paths_valid()
+bool Georeferencing::paths_valid()
 {
   bool valid = true;
 
@@ -110,7 +110,7 @@ bool pcd_georef::paths_valid()
 /**
  * @brief load trajectories and pcd map
  */
-void pcd_georef::load_data()
+void Georeferencing::load_data()
 {
   // GPS trajectory
   this->pos_global_ = file_io_->load_pos(this->config_.pos_global_path, this->config_);
@@ -124,7 +124,7 @@ void pcd_georef::load_data()
 
   // PCD map
   if (this->config_.pcd_path != "") {
-    if (file_io_->load_pcd(this->config_, this->config_.pcd_path, this->pcd_map_)) {
+    if (file_io_->load_pcd(this->config_.pcd_path, this->pcd_map_)) {
       std::cout << "\033[1;36mPoint Cloud with " << pcd_map_->width * pcd_map_->height
                 << " points: Loaded!\033[0m" << std::endl;
     } else {
@@ -135,7 +135,7 @@ void pcd_georef::load_data()
 /**
  * @brief align trajectories with Umeyama algorithm
  */
-void pcd_georef::align_traj()
+void Georeferencing::align_traj()
 {
   // Calculate transformation
   bool bumeyama = transform_.get_umeyama(this->pos_global_, this->poses_, this->umeyama_);
@@ -154,7 +154,7 @@ void pcd_georef::align_traj()
 /**
  * @brief publish resulting trajectories from alignment
  */
-void pcd_georef::visualize_traj()
+void Georeferencing::visualize_traj()
 {
   // Spawn a rerun stream
   this->rec_.spawn().exit_on_failure();
@@ -168,7 +168,7 @@ void pcd_georef::visualize_traj()
  * @brief apply automatic or manual rubber-sheet trafo and transform map
  *        and trajectories
  */
-void pcd_georef::rubber_sheeting()
+void Georeferencing::rubber_sheeting()
 {
   // Get controlpoints from RVIZ
   transform_.select_control_points(
@@ -195,7 +195,7 @@ void pcd_georef::rubber_sheeting()
 /**
  * @brief publish results from rubber-sheeting including transformed map
  */
-void pcd_georef::visualize_rs()
+void Georeferencing::visualize_rs()
 {
   // Visualize in rerun
   this->viz_->rs2rerun(this->control_points_, this->triag_, this->rec_, "Blue");
@@ -209,7 +209,7 @@ void pcd_georef::visualize_rs()
 /**
  * @brief write pcd map to file
  */
-void pcd_georef::save_map()
+void Georeferencing::save_map()
 {
   if (this->config_.pcd_path != "") {
     std::string path =
@@ -226,11 +226,11 @@ void pcd_georef::save_map()
 /**
  * @brief do evaluation calculations and write to txt-files
  */
-void pcd_georef::evaluation()
+void Georeferencing::evaluation()
 {
   std::vector<double> diff_al;
   std::vector<double> diff_rs;
-  bool saved = this->analysis_->traj_matching(
+  this->analysis_->traj_matching(
     this->config_, this->pos_global_, this->poses_, this->poses_align_, this->poses_rs_,
     this->triag_, this->control_points_, diff_al, diff_rs);
 
@@ -253,9 +253,9 @@ int main(int argc, char * argv[])
     return 1;
   }
   if (argc == 4) {
-    flexcloud::pcd_georef pcd_georef(argv[1], argv[2], argv[3], "");
+    flexcloud::Georeferencing georef(argv[1], argv[2], argv[3], "");
   } else if (argc == 5) {
-    flexcloud::pcd_georef pcd_georef(argv[1], argv[2], argv[3], argv[4]);
+    flexcloud::Georeferencing georef(argv[1], argv[2], argv[3], argv[4]);
   } else {
     std::cerr << "Too many arguments" << std::endl;
     return 1;

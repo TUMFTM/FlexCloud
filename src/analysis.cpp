@@ -56,8 +56,8 @@ bool analysis::traj_matching(
   diff_al.clear();
   diff_rs.clear();
 
-  calc_diff(config, src, target_al, diff_al);
-  calc_diff(config, src, target_rs, diff_rs);
+  calc_diff(src, target_al, diff_al);
+  calc_diff(src, target_rs, diff_rs);
 
   // Set working directory to current path
   const std::string dir = "./traj_matching";
@@ -79,8 +79,6 @@ bool analysis::traj_matching(
 /**
  * @brief calculate difference of a target trajectory to a source trajectory
  *
- * @param[in] config              - FlexCloudConfig:
- *                                  config struct
  * @param[in] src                 - std::vector<PointStdDevStamped>:
  *                                  source trajectory
  * @param[in] target              - std::vector<PoseStamped>:
@@ -89,8 +87,8 @@ bool analysis::traj_matching(
  *                                  difference between trajectories (euclidean distance)
  */
 void analysis::calc_diff(
-  FlexCloudConfig & config, const std::vector<PointStdDevStamped> & src,
-  const std::vector<PoseStamped> & target, std::vector<double> & diff)
+  const std::vector<PointStdDevStamped> & src, const std::vector<PoseStamped> & target,
+  std::vector<double> & diff)
 {
   diff.clear();
   int i = 0;

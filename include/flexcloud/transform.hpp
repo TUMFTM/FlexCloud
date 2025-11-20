@@ -30,7 +30,6 @@
 #include <string>
 #include <vector>
 
-#include "param_pcd_georef.hpp"
 #include "triangulation.hpp"
 #include "umeyama.hpp"
 #include "utility.hpp"
@@ -149,8 +148,8 @@ public:
 
 private:
   // Variables for multi-threading
-  std::vector<int> currentProgress;
-  std::vector<bool> threadsFinished;
+  std::vector<int> progress;
+  std::vector<bool> threads_finished;
 
   /**
    * @brief transform sub point cloud map one one thread
@@ -177,6 +176,6 @@ private:
    * @param[in] num_threads         - size_t:
    *                                  number of thread
    */
-  void prepThreading(size_t num_threads);
+  void prepare_threading(size_t num_threads);
 };
 }  // namespace flexcloud

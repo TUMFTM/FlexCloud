@@ -27,19 +27,18 @@
 
 #include "analysis.hpp"
 #include "file_io.hpp"
-#include "param_pcd_georef.hpp"
 #include "transform.hpp"
 #include "visualization.hpp"
 namespace flexcloud
 {
 /**
- * @brief basic class for flexcloud::pcd_georef package
+ * @brief basic class for flexcloud::Georeferencing package
  */
-class pcd_georef
+class Georeferencing
 {
 public:
-  // pcd_georef package constructor
-  pcd_georef(
+  // Georeferencing package constructor
+  Georeferencing(
     const std::string & config_path, const std::string & pos_global_path, const std::string & poses_path,
     const std::string & pcd_path);
   // Functions

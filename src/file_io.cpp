@@ -39,8 +39,6 @@ std::vector<PointStdDevStamped> file_io::load_pos_frames(
 {
   std::vector<PointStdDevStamped> pos_frames{};
   std::cout << "Loading position frames from " << directory << std::endl;
-  boost::filesystem::directory_iterator dir_itr(directory);
-  boost::filesystem::directory_iterator end;
 
   // Count number of files
   int count = 0;
@@ -55,12 +53,12 @@ std::vector<PointStdDevStamped> file_io::load_pos_frames(
     std::cerr << "Error accessing directory: " << ex.what() << std::endl;
   }
 
-  for (dir_itr; dir_itr != end; dir_itr++) {
-    if (dir_itr->path().extension() != ".txt") {
+  for (boost::filesystem::directory_iterator it(dirPath), it_end; it != it_end; ++it) {
+    if (it->path().extension() != ".txt") {
       continue;
     }
 
-    std::string filePath = directory + "/" + dir_itr->path().stem().string() + ".txt";
+    std::string filePath = directory + "/" + it->path().stem().string() + ".txt";
     std::ifstream inputFile(filePath);
     if (!inputFile.is_open()) {
       std::cerr << "Unable to open file" << std::endl;
@@ -221,16 +219,12 @@ std::vector<PointStdDevStamped> file_io::load_pos(
 /**
  * @brief read pcd map from file
  *
- * @param[in] config              - FlexCloudConfig:
- *                                  config struct
  * @param[in] pcd_path            - std::string:
  *                                  absolute path to file
  * @param[in] pcm                 - pcl::PointCloud<pcl::PointXYZ>::Ptr:
  *                                  pointer on pointcloud map
  */
-bool file_io::load_pcd(
-  FlexCloudConfig & config, const std::string & pcd_path,
-  pcl::PointCloud<pcl::PointXYZI>::Ptr & pcm)
+bool file_io::load_pcd(const std::string & pcd_path, pcl::PointCloud<pcl::PointXYZI>::Ptr & pcm)
 {
   // Check for valid filename
   if (pcd_path.substr(pcd_path.length() - 4) != ".pcd") {

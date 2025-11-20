@@ -30,14 +30,13 @@
 #include <boost/filesystem.hpp>
 #include <boost/format.hpp>
 #include <fstream>
+#include <iomanip>
 #include <iostream>
 #include <memory>
 #include <sstream>
 #include <string>
 #include <vector>
-#include <iomanip>
 
-#include "param_pcd_georef.hpp"
 #include "utility.hpp"
 namespace flexcloud
 {
@@ -80,16 +79,12 @@ public:
   /**
    * @brief read pcd map from file
    *
-   * @param[in] node                - rclcpp::Node:
-   *                                  Node reference
    * @param[in] pcd_path            - std::string:
    *                                  absolute path to file
    * @param[in] pcm                 - pcl::PointCloud<pcl::PointXYZ>::Ptr:
    *                                  pointer on pointcloud map
    */
-  bool load_pcd(
-    FlexCloudConfig & config, const std::string & pcd_path,
-    pcl::PointCloud<pcl::PointXYZI>::Ptr & pcm);
+  bool load_pcd(const std::string & pcd_path, pcl::PointCloud<pcl::PointXYZI>::Ptr & pcm);
   /**
    * @brief save kitti odometry to file
    *

@@ -325,7 +325,7 @@ bool transform::transform_pcd(
   size_t numPoints = pcm->size();
   size_t quotient = numPoints / num_threads;
   size_t remainder = numPoints % num_threads;
-  this->prepThreading(num_threads);
+  this->prepare_threading(num_threads);
 
   // Create number of sub pointclouds for threading
   std::vector<pcl::PointCloud<pcl::PointXYZI>::Ptr> cloud_in_array;
@@ -391,7 +391,7 @@ bool transform::transform_pcd(
     // Check if all threads finished
     bool finished = true;
     for (size_t i = 0; i < num_threads; ++i) {
-      if (!this->threadsFinished[i]) {
+      if (!this->threads_finished[i]) {
         finished = false;
       }
     }
@@ -399,7 +399,7 @@ bool transform::transform_pcd(
     // Sum current progress
     int processedPoints = 0;
     for (size_t i = 0; i < num_threads; ++i) {
-      processedPoints += this->currentProgress[i];
+      processedPoints += this->progress[i];
     }
 
     float progress = static_cast<float>(processedPoints) / static_cast<float>(numPoints);
@@ -486,7 +486,7 @@ void transform::transform_sub_pcd(
     // Keep intensity
     cloud_out->points[ind_pt].intensity = point.intensity;
     ++ind_pt;
-    this->currentProgress[threadNum] = ind_pt;
+    this->progress[threadNum] = ind_pt;
   }
   pcl::ExtractIndices<pcl::PointXYZI> extract;
   extract.setInputCloud(cloud_out);
@@ -494,7 +494,7 @@ void transform::transform_sub_pcd(
   extract.setNegative(true);
   extract.filter(*cloud_out);
 
-  this->threadsFinished[threadNum] = true;
+  this->threads_finished[threadNum] = true;
 }
 /**
  * @brief set class variables to preprare threading
@@ -502,13 +502,13 @@ void transform::transform_sub_pcd(
  * @param[in] num_threads         - size_t:
  *                                  number of thread
  */
-void transform::prepThreading(size_t num_threads)
+void transform::prepare_threading(size_t num_threads)
 {
-  this->threadsFinished.resize(num_threads);
-  this->currentProgress.resize(num_threads);
+  this->threads_finished.resize(num_threads);
+  this->progress.resize(num_threads);
   for (size_t i = 0; i < num_threads; ++i) {
-    this->threadsFinished[i] = false;
-    this->currentProgress[i] = 0;
+    this->threads_finished[i] = false;
+    this->progress[i] = 0;
   }
 }
 }  // namespace flexcloud

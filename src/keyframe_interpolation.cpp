@@ -101,6 +101,7 @@ bool KeyframeInterpolation::save(const std::string & dst_directory) const
         dst_directory + "/positions_interpolated.txt", this->key_positions_)) {
     return false;
   }
+  return true;
 }
 /**
  * @brief Select keyframes
@@ -297,3 +298,26 @@ void KeyframeInterpolation::visualize()
   viz_->pose2rerun(this->key_poses_, this->rec_, "Green", "odom_keyframes");
 }
 }  // namespace flexcloud
+/**
+ * @brief initialize package
+ */
+int main(int argc, char * argv[])
+{
+  // Check the number of arguments
+  if (argc < 5) {
+    // Tell the user how to run the program
+    std::cerr << "Usage: " << argv[0]
+              << " <config_path> <pos_dir_path> <kitti_odom_path> <dst_dir_path>"
+              << std::endl;
+    return 1;
+  }
+  if (argc == 5) {
+    // Only interpolation without accumulating clouds
+    flexcloud::KeyframeInterpolation set_frames(argv[1], argv[2], argv[3], argv[4]);
+    set_frames.visualize();
+  } else {
+    std::cerr << "Too many arguments" << std::endl;
+    return 1;
+  }
+  return 0;
+}
