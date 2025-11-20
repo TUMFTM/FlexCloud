@@ -41,7 +41,7 @@ public:
   /**
    * @brief write all data relevant for evaluation of trajectory matching
    *
-   * @param[in] config              - FlexCloudConfig:
+   * @param[in] config              - GeoreferencingConfig:
    *                                  config struct
    * @param[in] src                 - std::vector<PointStdDevStamped>:
    *                                  source trajectory
@@ -61,7 +61,7 @@ public:
    *                                  difference of rubber-sheeted trajectory to source trajectory
    */
   bool traj_matching(
-    FlexCloudConfig & config, const std::vector<PointStdDevStamped> & src,
+    GeoreferencingConfig & config, const std::vector<PointStdDevStamped> & src,
     const std::vector<PoseStamped> & target, const std::vector<PoseStamped> & target_al,
     const std::vector<PoseStamped> & target_rs, const std::shared_ptr<Delaunay> & triag,
     const std::vector<ControlPoint> & cps, std::vector<double> & diff_al,
@@ -82,13 +82,13 @@ private:
     const std::vector<PointStdDevStamped> & src, const std::vector<PoseStamped> & target,
     std::vector<double> & diff);
   /**
-   * @brief Save FlexCloudConfig to a text file
+   * @brief Save GeoreferencingConfig to a text file
    * @param config The configuration to save
    * @param filepath Path to save the configuration file
    * @return true if successful, false otherwise
    */
   void save_config(
-    const FlexCloudConfig & config, const std::string & dir_path, const std::string & file_name);
+    const GeoreferencingConfig & config, const std::string & dir_path, const std::string & file_name);
   /**
    * @brief write a linestring to .txt file
    *

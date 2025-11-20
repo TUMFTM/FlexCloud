@@ -70,7 +70,7 @@ bool transform::get_umeyama(
  *                                  true if function executed
  */
 bool transform::select_control_points(
-  FlexCloudConfig & config, const std::vector<PointStdDevStamped> & src,
+  GeoreferencingConfig & config, const std::vector<PointStdDevStamped> & src,
   const std::vector<PoseStamped> & target, std::vector<ControlPoint> & cps)
 {
   cps.clear();
@@ -98,7 +98,9 @@ bool transform::select_control_points(
     bool use_ind = true;
     if (!config.exclude_ind.empty() || static_cast<int>(config.exclude_ind.size()) % 2 != 0) {
       for (int i = 0; i < static_cast<int>(config.exclude_ind.size()) / 2; ++i) {
-        if (idx >= config.exclude_ind[2 * i] && idx <= config.exclude_ind[2 * i + 1]) {
+        if (
+          idx >= static_cast<size_t>(config.exclude_ind[2 * i]) &&
+          idx <= static_cast<size_t>(config.exclude_ind[2 * i + 1])) {
           use_ind = false;
           break;
         }
@@ -144,7 +146,7 @@ bool transform::select_control_points(
       Eigen::Vector3d forward = src[idx + 1].point.pos;
       vincinity =
         std::vector<Eigen::Vector3d>{Eigen::Vector3d(0.0, 0.0, 0.0), forward - current};
-    } else if (idx + 1 == static_cast<int>(src.size())) {
+    } else if (idx + 1 == src.size()) {
       Eigen::Vector3d backward = src[idx - 1].point.pos;
       vincinity =
         std::vector<Eigen::Vector3d>{current - backward, Eigen::Vector3d(0.0, 0.0, 0.0)};
@@ -173,7 +175,7 @@ bool transform::select_control_points(
     const auto epsilon{1.e-5};
     if (idx == 0) {
       perpendicular = Eigen::Vector2d(vincinity.back()(0), vincinity.back()(1));
-    } else if (idx + 1 == static_cast<int>(src.size())) {
+    } else if (idx + 1 == src.size()) {
       perpendicular = Eigen::Vector2d(vincinity.front()(0), vincinity.front()(1));
     } else {
       perpendicular = Eigen::Vector2d(vincinity.back()(0), vincinity.back()(1)).normalized() +
@@ -222,7 +224,7 @@ bool transform::select_control_points(
  *                                  true if function executed
  */
 bool transform::get_rubber_sheeting(
-  FlexCloudConfig & config, const std::vector<PoseStamped> & target,
+  GeoreferencingConfig & config, const std::vector<PoseStamped> & target,
   std::vector<ControlPoint> & cps, const std::shared_ptr<Delaunay> & triag)
 {
   // Convert target trajectory to Eigen format and insert into triangulation

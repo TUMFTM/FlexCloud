@@ -85,7 +85,7 @@ public:
 
 private:
   // Config
-  FlexCloudConfig config_{};
+  GeoreferencingConfig config_{};
 
   // Module classes
   transform transform_{};

@@ -27,7 +27,7 @@ namespace flexcloud
 /**
  * @brief write all data relevant for evaluation of trajectory matching
  *
- * @param[in] config              - FlexCloudConfig:
+ * @param[in] config              - GeoreferencingConfig:
  *                                  config struct
  * @param[in] src                 - std::vector<PointStdDevStamped>:
  *                                  source trajectory
@@ -47,7 +47,7 @@ namespace flexcloud
  *                                  difference of rubber-sheeted trajectory to source trajectory
  */
 bool analysis::traj_matching(
-  FlexCloudConfig & config, const std::vector<PointStdDevStamped> & src,
+  GeoreferencingConfig & config, const std::vector<PointStdDevStamped> & src,
   const std::vector<PoseStamped> & target, const std::vector<PoseStamped> & target_al,
   const std::vector<PoseStamped> & target_rs, const std::shared_ptr<Delaunay> & triag,
   const std::vector<ControlPoint> & cps, std::vector<double> & diff_al,
@@ -99,13 +99,13 @@ void analysis::calc_diff(
   }
 }
 /**
- * @brief Save FlexCloudConfig to a text file
+ * @brief Save GeoreferencingConfig to a text file
  * @param config The configuration to save
  * @param filepath Path to save the configuration file
  * @return true if successful, false otherwise
  */
 void analysis::save_config(
-  const FlexCloudConfig & config, const std::string & dir_path, const std::string & file_name)
+  const GeoreferencingConfig & config, const std::string & dir_path, const std::string & file_name)
 {
   const std::string file_path = dir_path + "/" + file_name;
   std::ofstream file(file_path);
@@ -176,7 +176,6 @@ void analysis::save_config(
     file << std::endl;
 
     // Write threading parameters
-    file << "use_threading=" << (config.use_threading ? "true" : "false") << std::endl;
     file << "num_cores=" << config.num_cores << std::endl;
 
     // Write zero point parameters

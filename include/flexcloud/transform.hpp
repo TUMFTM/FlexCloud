@@ -73,7 +73,7 @@ public:
    *                                  true if function executed
    */
   bool select_control_points(
-    FlexCloudConfig & config, const std::vector<PointStdDevStamped> & src,
+    GeoreferencingConfig & config, const std::vector<PointStdDevStamped> & src,
     const std::vector<PoseStamped> & target, std::vector<ControlPoint> & cps);
 
   /**
@@ -91,7 +91,7 @@ public:
    *                                  true if function executed
    */
   bool get_rubber_sheeting(
-    FlexCloudConfig & config, const std::vector<PoseStamped> & target,
+    GeoreferencingConfig & config, const std::vector<PoseStamped> & target,
     std::vector<ControlPoint> & cps, const std::shared_ptr<Delaunay> & triag);
 
   /**

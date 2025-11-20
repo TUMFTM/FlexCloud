@@ -67,13 +67,13 @@ void KeyframeInterpolation::load(const std::string & pos_dir, const std::string 
 {
   // Load position frames
   this->positions_.clear();
-  this->positions_ = file_io_->load_pos_frames(pos_dir, this->stddev_threshold_);
+  this->positions_ = file_io_->load_positions_dir(pos_dir, this->stddev_threshold_);
 
   // Load odometry frames
   this->poses_.clear();
   // Load kitti odometry file
   std::cout << "Loading odometry poses from " << odom_path << std::endl;
-  this->poses_ = file_io_->load_glim_odom(odom_path);
+  this->poses_ = file_io_->load_poses(odom_path);
   std::cout << "Loaded " << this->poses_.size() << " odometry frames" << std::endl;
 }
 /**

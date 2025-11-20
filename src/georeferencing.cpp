@@ -49,7 +49,6 @@ Georeferencing::Georeferencing(
   this->config_.fake_ind = config["fake_ind"].as<std::vector<int64_t>>();
   this->config_.fake_ind_dist = config["fake_ind_dist"].as<std::vector<double>>();
   this->config_.fake_ind_height = config["fake_ind_height"].as<std::vector<double>>();
-  this->config_.use_threading = config["use_threading"].as<bool>();
   this->config_.num_cores = config["num_cores"].as<int>();
   this->config_.custom_origin = config["custom_origin"].as<bool>();
   this->config_.origin = config["origin"].as<std::vector<double>>();
@@ -113,12 +112,12 @@ bool Georeferencing::paths_valid()
 void Georeferencing::load_data()
 {
   // GPS trajectory
-  this->pos_global_ = file_io_->load_pos(this->config_.pos_global_path, this->config_);
+  this->pos_global_ = file_io_->load_positions(this->config_.pos_global_path, this->config_);
   std::cout << "\033[1;36m===> Trajectory with " << this->pos_global_.size()
             << " points: Loaded!\033[0m" << std::endl;
 
   // Map poses
-  this->poses_ = file_io_->load_glim_odom(this->config_.poses_path);
+  this->poses_ = file_io_->load_poses(this->config_.poses_path);
   std::cout << "\033[1;36m===> Poses with " << this->poses_.size() << " points: Loaded!\033[0m"
             << std::endl;
 

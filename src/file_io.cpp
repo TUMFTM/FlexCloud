@@ -34,7 +34,7 @@ namespace flexcloud
  * @return std::vector<PointStdDevStamped>:
  *                                  vector of position frames
  */
-std::vector<PointStdDevStamped> file_io::load_pos_frames(
+std::vector<PointStdDevStamped> file_io::load_positions_dir(
   const std::string & directory, const float stddev_threshold)
 {
   std::vector<PointStdDevStamped> pos_frames{};
@@ -104,44 +104,15 @@ std::vector<PointStdDevStamped> file_io::load_pos_frames(
   return pos_frames;
 }
 /**
- * @brief Load glim odometry from a file
- */
-std::vector<PoseStamped> file_io::load_glim_odom(const std::string & file_path)
-{
-  std::vector<PoseStamped> poses{};
-  std::ifstream input_file(file_path);
-  if (!input_file.is_open()) {
-    std::cerr << "Unable to open file" << std::endl;
-    return poses;
-  }
-
-  std::string line;
-  // Read poses
-  double x, y, z, stamp;
-  float qx, qy, qz, qw;
-
-  while (std::getline(input_file, line)) {
-    std::istringstream iss(line);
-
-    if (!(iss >> stamp >> x >> y >> z >> qx >> qy >> qz >> qw)) {
-      std::cerr << "Error during extraction of odometry pose" << std::endl;
-    }
-    Pose pose(x, y, z, qx, qy, qz, qw);
-    poses.push_back(PoseStamped(pose, stamp));
-  }
-  input_file.close();
-  return poses;
-}
-/**
  * @brief read traj from txt file
  *
- * @param[in] config              - FlexCloudConfig:
+ * @param[in] config              - GeoreferencingConfig:
  *                                  config struct
  * @param[in] path                 - std::string:
  *                                  absolute path to file
  */
-std::vector<PointStdDevStamped> file_io::load_pos(
-  const std::string & path, FlexCloudConfig & config)
+std::vector<PointStdDevStamped> file_io::load_positions(
+  const std::string & path, GeoreferencingConfig & config)
 {
   std::vector<PointStdDevStamped> points_local{};
   if (config.transform_traj) {
@@ -217,6 +188,35 @@ std::vector<PointStdDevStamped> file_io::load_pos(
   return points_local;
 }
 /**
+ * @brief Load glim odometry from a file
+ */
+std::vector<PoseStamped> file_io::load_poses(const std::string & file_path)
+{
+  std::vector<PoseStamped> poses{};
+  std::ifstream input_file(file_path);
+  if (!input_file.is_open()) {
+    std::cerr << "Unable to open file" << std::endl;
+    return poses;
+  }
+
+  std::string line;
+  // Read poses
+  double x, y, z, stamp;
+  float qx, qy, qz, qw;
+
+  while (std::getline(input_file, line)) {
+    std::istringstream iss(line);
+
+    if (!(iss >> stamp >> x >> y >> z >> qx >> qy >> qz >> qw)) {
+      std::cerr << "Error during extraction of odometry pose" << std::endl;
+    }
+    Pose pose(x, y, z, qx, qy, qz, qw);
+    poses.push_back(PoseStamped(pose, stamp));
+  }
+  input_file.close();
+  return poses;
+}
+/**
  * @brief read pcd map from file
  *
  * @param[in] pcd_path            - std::string:
@@ -240,6 +240,36 @@ bool file_io::load_pcd(const std::string & pcd_path, pcl::PointCloud<pcl::PointX
     return -1;
   }
   pcm = cloud;
+  return true;
+}
+/**
+ * @brief save position frames to file
+ *
+ * @param[in] filename            - std::string:
+ *                                  absolute path to file
+ * @param[in] keyframes           - std::vector<std::shared_ptr<PoseStamped>>:
+ *                                  vector of keyframes
+ */
+bool file_io::save_positions(
+  const std::string & filename, const std::vector<PointStdDevStamped> & positions)
+{
+  std::ofstream ofs(filename);
+  if (!ofs) {
+    return false;
+  }
+  // clang-format off
+  for (const auto & pos : positions) {
+    ofs << std::fixed << std::setprecision(14) << pos.stamp * 1.0e-9 << " "
+        << std::fixed << std::setprecision(14) << pos.point.pos.x() << " "
+        << std::fixed << std::setprecision(14) << pos.point.pos.y() << " "
+        << std::fixed << std::setprecision(14) << pos.point.pos.z() << " "
+        << std::fixed << std::setprecision(14) << pos.point.stddev.x() << " "
+        << std::fixed << std::setprecision(14) << pos.point.stddev.y() << " "
+        << std::fixed << std::setprecision(14) << pos.point.stddev.z() << " " << std::endl;
+  }
+  // clang-format on
+  ofs.close();
+
   return true;
 }
 /**
@@ -267,28 +297,10 @@ bool file_io::save_poses(const std::string & filename, const std::vector<PoseSta
 
   return true;
 }
-bool file_io::save_positions(
-  const std::string & filename, const std::vector<PointStdDevStamped> & positions)
-{
-  std::ofstream ofs(filename);
-  if (!ofs) {
-    return false;
-  }
-  for (const auto & pos : positions) {
-    ofs << std::fixed << std::setprecision(14) << pos.point.pos.x() << " " << std::fixed
-        << std::setprecision(14) << pos.point.pos.y() << " " << std::fixed << std::setprecision(14)
-        << pos.point.pos.z() << " " << std::fixed << std::setprecision(14) << pos.point.stddev.x()
-        << " " << std::fixed << std::setprecision(14) << pos.point.stddev.y() << " " << std::fixed
-        << std::setprecision(14) << pos.point.stddev.z() << " " << std::endl;
-  }
-  ofs.close();
-
-  return true;
-}
 /**
  * @brief write pcd map to file
  *
- * @param[in] config              - FlexCloudConfig:
+ * @param[in] config              - GeoreferencingConfig:
  *                                  config struct
  * @param[in] pcd_out_path        - std::string:
  *                                  absolute path to file

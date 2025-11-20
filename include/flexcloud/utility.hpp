@@ -127,7 +127,7 @@ public:
 /**
  * @brief configuration struct for FlexCloud packages
  */
-struct FlexCloudConfig
+struct GeoreferencingConfig
 {
   std::string pos_global_path{};
   std::string poses_path{};
@@ -144,7 +144,6 @@ struct FlexCloudConfig
   std::vector<int64_t> fake_ind{};
   std::vector<double> fake_ind_dist{};
   std::vector<double> fake_ind_height{};
-  bool use_threading{true};
   int num_cores{4};
   // Zero point
   bool custom_origin{false};

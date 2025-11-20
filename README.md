@@ -95,7 +95,7 @@ computed in two ways (based on the parameter `interpolated`):
 * to run the keyframe interpolation, simply execute the executable with the necessary data and config as arguments:
 
 ```bash
-./select_keyframes <config_path> <pos_dir_path> <kitti_odom_path> <dst_dir_path>
+./keyframe_interpolation <config_path> <pos_dir_path> <kitti_odom_path> <dst_dir_path>
 ```
 
 * the output of the Keyframe Interpolation is designed to be compatible with the georeferencing.
@@ -112,7 +112,7 @@ computed in two ways (based on the parameter `interpolated`):
 2. Start the package
 
    ```bash
-   Usage: ./build/pcd_georef <config_path> <reference_path> <slam_path> <(optional) pcd_path>>
+   Usage: ./build/georeferencing <config_path> <reference_path> <slam_path> <(optional) pcd_path>>
    ```
 
    To use the provided test data (only trajectories, no application on point cloud map -> set parameter `transform_pcd` to `false`)

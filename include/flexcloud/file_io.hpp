@@ -55,8 +55,16 @@ public:
    * @return std::vector<PointStdDevStamped>:
    *                                 vector of frames
    */
-  std::vector<PointStdDevStamped> load_pos_frames(
+  std::vector<PointStdDevStamped> load_positions_dir(
     const std::string & directory, const float stddev_threshold);
+  /**
+   * @brief read traj from txt file
+   *
+   * @param[in] traj_path           - std::string:
+   *                                  absolute path to file
+   */
+  std::vector<PointStdDevStamped> load_positions(
+    const std::string & traj_path, GeoreferencingConfig & config);
   /**
    * @brief Load glim odometry from a file
    *
@@ -65,16 +73,7 @@ public:
    * @return std::vector<Eigen::Isometry3d>:
    *                                 vector of poses
    */
-  std::vector<PoseStamped> load_glim_odom(const std::string & file_path);
-  /**
-   * @brief read traj from txt file
-   *
-   * @param[in] node                - rclcpp::Node:
-   *                                  Node reference
-   * @param[in] traj_path           - std::string:
-   *                                  absolute path to file
-   */
-  std::vector<PointStdDevStamped> load_pos(const std::string & traj_path, FlexCloudConfig & config);
+  std::vector<PoseStamped> load_poses(const std::string & file_path);
 
   /**
    * @brief read pcd map from file
@@ -86,15 +85,6 @@ public:
    */
   bool load_pcd(const std::string & pcd_path, pcl::PointCloud<pcl::PointXYZI>::Ptr & pcm);
   /**
-   * @brief save kitti odometry to file
-   *
-   * @param[in] filename            - std::string:
-   *                                  absolute path to file
-   * @param[in] keyframes           - std::vector<std::shared_ptr<OdometryFrame>>:
-   *                                  vector of keyframes
-   */
-  bool save_poses(const std::string & filename, const std::vector<PoseStamped> & poses);
-  /**
    * @brief save position frames to file
    *
    * @param[in] filename            - std::string:
@@ -104,6 +94,15 @@ public:
    */
   bool save_positions(
     const std::string & filename, const std::vector<PointStdDevStamped> & positions);
+  /**
+   * @brief save kitti odometry to file
+   *
+   * @param[in] filename            - std::string:
+   *                                  absolute path to file
+   * @param[in] keyframes           - std::vector<std::shared_ptr<OdometryFrame>>:
+   *                                  vector of keyframes
+   */
+  bool save_poses(const std::string & filename, const std::vector<PoseStamped> & poses);
 
   /**
    * @brief write pcd map to file
