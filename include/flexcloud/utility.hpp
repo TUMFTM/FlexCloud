@@ -110,9 +110,10 @@ public:
 struct PoseStamped
 {
 public:
-  PoseStamped(const Pose & pose, const std::int64_t stamp)
-  : pose(pose), stamp(stamp)
+  PoseStamped(const Pose & pose, const double sec)
+  : pose(pose)
   {
+    stamp = static_cast<std::int64_t>(sec * 1e9);
   }
   PoseStamped(const Pose & pose, const std::int64_t sec, const std::int64_t nsec)
   : pose(pose)

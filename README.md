@@ -206,9 +206,9 @@ Detailed documentation of the modules can be found below.
 
 <h2>📈 Test Data </h2>
 
-The data was recorded by the [TUM Autonomous Motorsport Team](https://www.mos.ed.tum.de/ftm/forschungsfelder/team-av-perception/tum-autonomous-motorsport/) during the [Abu Dhabi Autonomous Racing League](https://a2rl.io/) 2024.
-The SLAM trajectory is created using [KISS-ICP](https://github.com/PRBonn/kiss-icp) in combination with [Interactive SLAM](https://github.com/SMRT-AIST/interactive_slam).
-The reference trajectory presents post-processed data from the RTK-corrected GNSS-signal of the vehicle.
+The data was recorded by the [TUM Autonomous Motorsport Team](https://www.mos.ed.tum.de/ftm/forschungsfelder/team-av-perception/tum-autonomous-motorsport/) during the [Abu Dhabi Autonomous Racing League](https://a2rl.io/) 2025.
+The LiDAR/SLAM trajectory is created using [glim](https://github.com/koide3/glim).
+The reference trajectory presents raw data from the RTK-corrected GNSS-signal of the vehicle.
 
 <h2>📇 Developers </h2>
 

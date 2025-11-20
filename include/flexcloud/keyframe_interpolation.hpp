@@ -120,7 +120,6 @@ private:
   float stddev_threshold_{1.0f};
   float keyframe_delta_x_{1.0f};
   float keyframe_delta_angle_{10.0f};
-  float downsample_resolution_{0.1f};
   bool interpolate_{false};
   float pos_delta_xyz_{1.0f};
   std::int64_t global_time_diff_{};

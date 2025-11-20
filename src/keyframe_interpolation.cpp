@@ -40,7 +40,6 @@ KeyframeInterpolation::KeyframeInterpolation(
   this->stddev_threshold_ = config["stddev_threshold"].as<float>();
   this->keyframe_delta_x_ = config["keyframe_delta_x"].as<float>();
   this->keyframe_delta_angle_ = config["keyframe_delta_angle"].as<float>();
-  this->downsample_resolution_ = config["downsample_resolution"].as<float>();
   this->interpolate_ = config["interpolate"].as<bool>();
   this->pos_delta_xyz_ = config["interp_pos_delta_xyz"].as<float>();
 
@@ -93,7 +92,7 @@ bool KeyframeInterpolation::save(const std::string & dst_directory) const
     boost::filesystem::create_directories(dst_directory);
   }
 
-  if (!file_io_->save_poses(dst_directory + "/poses_interpolated.txt", this->key_poses_)) {
+  if (!file_io_->save_poses(dst_directory + "/poses_keyframes.txt", this->key_poses_)) {
     return false;
   }
 
@@ -291,11 +290,11 @@ void KeyframeInterpolation::visualize()
   this->rec_.spawn().exit_on_failure();
 
   // Visualize PosFrames
-  viz_->pos2rerun(this->positions_, this->rec_, "Orange", "pos_frames");
-  viz_->pos2rerun(this->key_positions_, this->rec_, "Green", "pos_keyframes");
+  viz_->pos2rerun(this->positions_, this->rec_, "Orange", "positions");
+  viz_->pos2rerun(this->key_positions_, this->rec_, "Green", "positions_inter");
 
-  viz_->pose2rerun(this->poses_, this->rec_, "Orange", "odom_frames");
-  viz_->pose2rerun(this->key_poses_, this->rec_, "Green", "odom_keyframes");
+  viz_->pose2rerun(this->poses_, this->rec_, "Orange", "poses");
+  viz_->pose2rerun(this->key_poses_, this->rec_, "Green", "poses_key");
 }
 }  // namespace flexcloud
 /**
