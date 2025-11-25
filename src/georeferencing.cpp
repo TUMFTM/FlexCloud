@@ -23,7 +23,6 @@
 #include <string>
 #include <vector>
 
-#include "yaml-cpp/yaml.h"
 namespace flexcloud
 {
 // Constructor
@@ -53,9 +52,6 @@ Georeferencing::Georeferencing(
   this->config_.custom_origin = config["custom_origin"].as<bool>();
   this->config_.origin = config["origin"].as<std::vector<double>>();
 
-  this->umeyama_ = std::make_shared<Umeyama>();
-  this->triag_ = std::make_shared<Delaunay>();
-
   // Check if all paths contain data
   if (!paths_valid()) return;
 
@@ -78,7 +74,7 @@ Georeferencing::Georeferencing(
   save_map();
 
   // Analysis and save
-  evaluation();
+  evaluation(config);
 
   std::cout << "\033[1;36m===> Done!\033[0m" << std::endl;
 }
@@ -224,14 +220,28 @@ void Georeferencing::save_map()
 }
 /**
  * @brief do evaluation calculations and write to txt-files
+ * 
+ * @param[in] config               - YAML::Node:
+ *                                  configuration node
  */
-void Georeferencing::evaluation()
+void Georeferencing::evaluation(const YAML::Node & config)
 {
-  std::vector<double> diff_al;
-  std::vector<double> diff_rs;
-  this->analysis_->traj_matching(
-    this->config_, this->pos_global_, this->poses_, this->poses_align_, this->poses_rs_,
-    this->triag_, this->control_points_, diff_al, diff_rs);
+  // Create output directory
+  // Set working directory to current path
+  const std::string dir = "./georeferencing_output";
+  // Create if not a directory
+  if (!std::filesystem::is_directory(dir)) {
+    std::filesystem::create_directories(dir);
+  }
+
+  // Dump config file to output directory
+  std::ofstream fout(dir + "/georeferencing_config.yaml");
+  fout << config;
+  fout.close();
+
+  // Trajectory matching analysis and export
+  this->analysis_->traj_matching(dir, this->pos_global_, this->poses_, this->poses_align_, this->poses_rs_,
+    this->triag_, this->control_points_);
 
   std::cout << "\033[1;36m===> Analysis calculations saved in Output directory!\033[0m"
             << std::endl;

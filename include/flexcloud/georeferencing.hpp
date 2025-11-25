@@ -25,6 +25,8 @@
 #include <utility>
 #include <vector>
 
+#include "yaml-cpp/yaml.h"
+
 #include "analysis.hpp"
 #include "file_io.hpp"
 #include "transform.hpp"
@@ -80,8 +82,11 @@ public:
 
   /**
    * @brief do evaluation calculations and write to txt-files
+   * 
+   * @param[in] config               - YAML::Node:
+   *                                  configuration node
    */
-  void evaluation();
+  void evaluation(const YAML::Node & config);
 
 private:
   // Config
@@ -94,17 +99,17 @@ private:
   std::shared_ptr<analysis> analysis_ = std::make_shared<analysis>();
 
   // Objects
-  std::vector<PointStdDevStamped> pos_global_;
-  std::vector<PoseStamped> poses_;
-  std::vector<PoseStamped> poses_align_;
-  std::vector<PoseStamped> poses_rs_;
+  std::vector<PointStdDevStamped> pos_global_{};
+  std::vector<PoseStamped> poses_{};
+  std::vector<PoseStamped> poses_align_{};
+  std::vector<PoseStamped> poses_rs_{};
   // PCD map
-  pcl::PointCloud<pcl::PointXYZI>::Ptr pcd_map_;
+  pcl::PointCloud<pcl::PointXYZI>::Ptr pcd_map_{};
 
   // Transformation
   std::vector<ControlPoint> control_points_;
-  std::shared_ptr<Umeyama> umeyama_;
-  std::shared_ptr<Delaunay> triag_;
+  std::shared_ptr<Umeyama> umeyama_ = std::make_shared<Umeyama>();
+  std::shared_ptr<Delaunay> triag_ = std::make_shared<Delaunay>();
 
   // Visualization
   rerun::RecordingStream rec_ = rerun::RecordingStream("flexcloud");

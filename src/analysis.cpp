@@ -27,8 +27,8 @@ namespace flexcloud
 /**
  * @brief write all data relevant for evaluation of trajectory matching
  *
- * @param[in] config              - GeoreferencingConfig:
- *                                  config struct
+ * @param[in] dir                 - std::string:
+ *                                  name of output directory
  * @param[in] src                 - std::vector<PointStdDevStamped>:
  *                                  source trajectory
  * @param[in] target              - std::vector<PoseStamped>:
@@ -41,39 +41,20 @@ namespace flexcloud
  *                                  pointer to triangulation
  * @param[in] cps                 - std::vector<ControlPoint>:
  *                                  vector of control points
- * @param[in] diff_al             - std::vector<double>:
- *                                  difference of aligned trajectory to source trajectory
- * @param[in] diff_rs             - std::vector<double>:
- *                                  difference of rubber-sheeted trajectory to source trajectory
  */
-bool analysis::traj_matching(
-  GeoreferencingConfig & config, const std::vector<PointStdDevStamped> & src,
+bool analysis::traj_matching(const std::string & dir, const std::vector<PointStdDevStamped> & src,
   const std::vector<PoseStamped> & target, const std::vector<PoseStamped> & target_al,
   const std::vector<PoseStamped> & target_rs, const std::shared_ptr<Delaunay> & triag,
-  const std::vector<ControlPoint> & cps, std::vector<double> & diff_al,
-  std::vector<double> & diff_rs)
+  const std::vector<ControlPoint> & cps)
 {
-  diff_al.clear();
-  diff_rs.clear();
-
-  calc_diff(src, target_al, diff_al);
-  calc_diff(src, target_rs, diff_rs);
-
-  // Set working directory to current path
-  const std::string dir = "./traj_matching";
-  // Create if not a directory
-  if (!std::filesystem::is_directory(dir)) {
-    std::filesystem::create_directories(dir);
-  }
-  save_config(config, dir, "config.txt");
   write_ls(src, dir, "source.txt");
   write_ls(target, dir, "target.txt");
   write_ls(target_al, dir, "target_al.txt");
   write_ls(target_rs, dir, "target_rs.txt");
   write_triag(triag, dir, "triag.txt");
   write_cp(cps, dir, "controlPoints.txt");
-  write_double_vec(diff_al, dir, "diff_al.txt");
-  write_double_vec(diff_rs, dir, "diff_rs.txt");
+  write_double_vec(calc_diff(src, target_al), dir, "diff_al.txt");
+  write_double_vec(calc_diff(src, target_rs), dir, "diff_rs.txt");
   return true;
 }
 /**
@@ -83,115 +64,20 @@ bool analysis::traj_matching(
  *                                  source trajectory
  * @param[in] target              - std::vector<PoseStamped>:
  *                                  target trajectory
- * @param[in] diff                - std::vector<double>:
+ * @return std::vector<double>    - std::vector<double>:
  *                                  difference between trajectories (euclidean distance)
  */
-void analysis::calc_diff(
-  const std::vector<PointStdDevStamped> & src, const std::vector<PoseStamped> & target,
-  std::vector<double> & diff)
+std::vector<double> analysis::calc_diff(
+  const std::vector<PointStdDevStamped> & src, const std::vector<PoseStamped> & target)
 {
-  diff.clear();
+  std::vector<double> diff;
   int i = 0;
   for (const auto & pt : target) {
     double dist = (pt.pose.pose.translation() - src[i].point.pos).norm();
     diff.push_back(dist);
     ++i;
   }
-}
-/**
- * @brief Save GeoreferencingConfig to a text file
- * @param config The configuration to save
- * @param filepath Path to save the configuration file
- * @return true if successful, false otherwise
- */
-void analysis::save_config(
-  const GeoreferencingConfig & config, const std::string & dir_path, const std::string & file_name)
-{
-  const std::string file_path = dir_path + "/" + file_name;
-  std::ofstream file(file_path);
-
-  if (file.is_open()) {
-    // Set precision for floating-point values
-    file << std::fixed << std::setprecision(6);
-
-    // Write basic string paths
-    file << "pos_global_path=" << config.pos_global_path << std::endl;
-    file << "poses_path=" << config.poses_path << std::endl;
-    file << "pcd_path=" << config.pcd_path << std::endl;
-
-    // Write trajectory alignment parameters
-    file << "transform_traj=" << (config.transform_traj ? "true" : "false") << std::endl;
-    file << "rs_num_controlPoints=" << config.rs_num_controlPoints << std::endl;
-    file << "stddev_threshold=" << config.stddev_threshold << std::endl;
-
-    // Write vector fields with comma separation
-    file << "square_size=";
-    for (size_t i = 0; i < config.square_size.size(); ++i) {
-      file << config.square_size[i];
-      if (i < config.square_size.size() - 1) file << ",";
-    }
-    file << std::endl;
-
-    // Write PCD georeferencing parameters
-    file << "exclude_ind=";
-    for (size_t i = 0; i < config.exclude_ind.size(); ++i) {
-      file << config.exclude_ind[i];
-      if (i < config.exclude_ind.size() - 1) file << ",";
-    }
-    file << std::endl;
-
-    file << "shift_ind=";
-    for (size_t i = 0; i < config.shift_ind.size(); ++i) {
-      file << config.shift_ind[i];
-      if (i < config.shift_ind.size() - 1) file << ",";
-    }
-    file << std::endl;
-
-    file << "shift_ind_dist=";
-    for (size_t i = 0; i < config.shift_ind_dist.size(); ++i) {
-      file << config.shift_ind_dist[i];
-      if (i < config.shift_ind_dist.size() - 1) file << ",";
-    }
-    file << std::endl;
-
-    file << "fake_ind=";
-    for (size_t i = 0; i < config.fake_ind.size(); ++i) {
-      file << config.fake_ind[i];
-      if (i < config.fake_ind.size() - 1) file << ",";
-    }
-    file << std::endl;
-
-    file << "fake_ind_dist=";
-    for (size_t i = 0; i < config.fake_ind_dist.size(); ++i) {
-      file << config.fake_ind_dist[i];
-      if (i < config.fake_ind_dist.size() - 1) file << ",";
-    }
-    file << std::endl;
-
-    file << "fake_ind_height=";
-    for (size_t i = 0; i < config.fake_ind_height.size(); ++i) {
-      file << config.fake_ind_height[i];
-      if (i < config.fake_ind_height.size() - 1) file << ",";
-    }
-    file << std::endl;
-
-    // Write threading parameters
-    file << "num_cores=" << config.num_cores << std::endl;
-
-    // Write zero point parameters
-    file << "custom_origin=" << (config.custom_origin ? "true" : "false") << std::endl;
-
-    file << "zeroPoint=";
-    for (size_t i = 0; i < config.origin.size(); ++i) {
-      file << config.origin[i];
-      if (i < config.origin.size() - 1) file << ",";
-    }
-    file << std::endl;
-    file.close();
-  } else {
-    std::cout << "\033[1;31m!! Unable to open " << file_path << " !!\033[0m" << std::endl;
-  }
-  return;
+  return diff;
 }
 /**
  * @brief write a linestring to .txt file

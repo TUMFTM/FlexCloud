@@ -41,8 +41,8 @@ public:
   /**
    * @brief write all data relevant for evaluation of trajectory matching
    *
-   * @param[in] config              - GeoreferencingConfig:
-   *                                  config struct
+   * @param[in] dir                 - std::string:
+   *                                  name of output directory
    * @param[in] src                 - std::vector<PointStdDevStamped>:
    *                                  source trajectory
    * @param[in] target              - std::vector<PoseStamped>:
@@ -55,17 +55,12 @@ public:
    *                                  pointer to triangulation
    * @param[in] cps                 - std::vector<ControlPoint>:
    *                                  vector of control points
-   * @param[in] diff_al             - std::vector<double>:
-   *                                  difference of aligned trajectory to source trajectory
-   * @param[in] diff_rs             - std::vector<double>:
-   *                                  difference of rubber-sheeted trajectory to source trajectory
    */
   bool traj_matching(
-    GeoreferencingConfig & config, const std::vector<PointStdDevStamped> & src,
+    const std::string & dir, const std::vector<PointStdDevStamped> & src,
     const std::vector<PoseStamped> & target, const std::vector<PoseStamped> & target_al,
     const std::vector<PoseStamped> & target_rs, const std::shared_ptr<Delaunay> & triag,
-    const std::vector<ControlPoint> & cps, std::vector<double> & diff_al,
-    std::vector<double> & diff_rs);
+    const std::vector<ControlPoint> & cps);
 
 private:
   /**
@@ -75,20 +70,11 @@ private:
    *                                  source trajectory
    * @param[in] target              - std::vector<PoseStamped>:
    *                                  target trajectory
-   * @param[in] diff                - std::vector<double>:
+   * @return std::vector<double>    - std::vector<double>:
    *                                  difference between trajectories (euclidean distance)
    */
-  void calc_diff(
-    const std::vector<PointStdDevStamped> & src, const std::vector<PoseStamped> & target,
-    std::vector<double> & diff);
-  /**
-   * @brief Save GeoreferencingConfig to a text file
-   * @param config The configuration to save
-   * @param filepath Path to save the configuration file
-   * @return true if successful, false otherwise
-   */
-  void save_config(
-    const GeoreferencingConfig & config, const std::string & dir_path, const std::string & file_name);
+  std::vector<double> calc_diff(
+    const std::vector<PointStdDevStamped> & src, const std::vector<PoseStamped> & target);
   /**
    * @brief write a linestring to .txt file
    *
