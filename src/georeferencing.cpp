@@ -22,7 +22,6 @@
 #include <memory>
 #include <string>
 #include <vector>
-
 namespace flexcloud
 {
 // Constructor
@@ -38,6 +37,10 @@ Georeferencing::Georeferencing(
   this->config_.pos_global_path = pos_global_path;
   this->config_.poses_path = poses_path;
   this->config_.pcd_path = pcd_path;
+  // Use plural key from YAML (include_labels) for label support
+  if (config["include_labels"]) {
+    this->config_.include_label = config["include_labels"].as<bool>();
+  }
   this->config_.transform_traj = config["transform_traj"].as<bool>();
   this->config_.rs_num_controlPoints = config["rs_num_controlPoints"].as<int>();
   this->config_.stddev_threshold = config["stddev_threshold"].as<double>();
@@ -119,9 +122,22 @@ void Georeferencing::load_data()
 
   // PCD map
   if (this->config_.pcd_path != "") {
-    if (file_io_->load_pcd(this->config_.pcd_path, this->pcd_map_)) {
-      std::cout << "\033[1;36mPoint Cloud with " << pcd_map_->width * pcd_map_->height
-                << " points: Loaded!\033[0m" << std::endl;
+    bool loading_successfull = false;
+    if (this->config_.include_label) {
+      loading_successfull =
+        file_io_->load_pcd<PointXYZIL>(this->config_.pcd_path, this->pcd_map_il_);
+    } else {
+      loading_successfull =
+        file_io_->load_pcd<pcl::PointXYZI>(this->config_.pcd_path, this->pcd_map_);
+    }
+    if (loading_successfull) {
+      if (this->config_.include_label && pcd_map_il_) {
+        std::cout << "\033[1;36mPoint Cloud with " << pcd_map_il_->width * pcd_map_il_->height
+                  << " points: Loaded!\033[0m" << std::endl;
+      } else if (pcd_map_) {
+        std::cout << "\033[1;36mPoint Cloud with " << pcd_map_->width * pcd_map_->height
+                  << " points: Loaded!\033[0m" << std::endl;
+      }
     } else {
       std::cout << "!! Error during PCD loading !!" << std::endl;
     }
@@ -178,13 +194,19 @@ void Georeferencing::rubber_sheeting()
 
   // Transform point cloud map if desired by user
   if (this->config_.pcd_path != "") {
-    transform_.transform_pcd(this->umeyama_, this->triag_, this->pcd_map_, this->config_.num_cores);
-  }
+    if (this->config_.include_label) {
+      transform_.transform_pcd<PointXYZIL>(
+        this->umeyama_, this->triag_, this->pcd_map_il_, this->config_.num_cores);
+    } else {
+      transform_.transform_pcd<pcl::PointXYZI>(
+        this->umeyama_, this->triag_, this->pcd_map_, this->config_.num_cores);
+    }
 
-  if (btrans_rs) {
-    std::cout << "\033[1;36m===> Finished Rubber-Sheeting!\033[0m" << std::endl;
-  } else {
-    std::cout << "!! Error during Rubber-Sheeting !!" << std::endl;
+    if (btrans_rs) {
+      std::cout << "\033[1;36m===> Finished Rubber-Sheeting!\033[0m" << std::endl;
+    } else {
+      std::cout << "!! Error during Rubber-Sheeting !!" << std::endl;
+    }
   }
 }
 /**
@@ -198,7 +220,11 @@ void Georeferencing::visualize_rs()
 
   // PCD map
   if (this->config_.pcd_path != "") {
-    this->viz_->pc_map2rerun(this->pcd_map_, this->rec_);
+    if (this->config_.include_label && this->pcd_map_il_) {
+      this->viz_->pc_map2rerun(this->pcd_map_il_, this->rec_);
+    } else if (this->pcd_map_) {
+      this->viz_->pc_map2rerun(this->pcd_map_, this->rec_);
+    }
   }
 }
 /**
@@ -211,7 +237,16 @@ void Georeferencing::save_map()
       this->config_.pcd_path.substr(0, this->config_.pcd_path.find_last_of("\\/")) + "/georef_" +
       this->config_.pcd_path.substr(this->config_.pcd_path.find_last_of("/\\") + 1);
 
-    if (file_io_->save_pcd(path, this->pcd_map_)) {
+    bool saved_successfully = false;
+    if (this->config_.include_label) {
+      saved_successfully = file_io_->save_pcd<PointXYZIL>(path, this->pcd_map_il_);
+      std::cout << "Including labels: true" << std::endl;
+    } else {
+      saved_successfully = file_io_->save_pcd<pcl::PointXYZI>(path, this->pcd_map_);
+      std::cout << "Including labels: false" << std::endl;
+    }
+
+    if (saved_successfully) {
       std::cout << "\033[1;36mPoint Cloud Map written to " << path << "!\033[0m" << std::endl;
     } else {
       std::cout << "!! Error during Map writing !!" << std::endl;
@@ -220,7 +255,7 @@ void Georeferencing::save_map()
 }
 /**
  * @brief do evaluation calculations and write to txt-files
- * 
+ *
  * @param[in] config               - YAML::Node:
  *                                  configuration node
  */
@@ -240,8 +275,9 @@ void Georeferencing::evaluation(const YAML::Node & config)
   fout.close();
 
   // Trajectory matching analysis and export
-  this->analysis_->traj_matching(dir, this->pos_global_, this->poses_, this->poses_align_, this->poses_rs_,
-    this->triag_, this->control_points_);
+  this->analysis_->traj_matching(
+    dir, this->pos_global_, this->poses_, this->poses_align_, this->poses_rs_, this->triag_,
+    this->control_points_);
 
   std::cout << "\033[1;36m===> Analysis calculations saved in Output directory!\033[0m"
             << std::endl;

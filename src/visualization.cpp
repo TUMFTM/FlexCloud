@@ -18,7 +18,13 @@
 
 #include "visualization.hpp"
 
+#include "point_types.hpp"
+
+// PCL template implementations for custom point types
 #include <memory>
+#include <pcl/filters/impl/approximate_voxel_grid.hpp>
+#include <pcl/filters/impl/filter.hpp>
+#include <pcl/impl/pcl_base.hpp>
 #include <string>
 #include <vector>
 namespace flexcloud
@@ -44,8 +50,10 @@ void visualization::pose2rerun(
   std::vector<rerun::Position3D> positions{};
   positions.reserve(poses.size());
   for (const auto & p : poses) {
-    positions.push_back(rerun::Position3D(
-      p.pose.pose.translation().x(), p.pose.pose.translation().y(), p.pose.pose.translation().z()));
+    positions.push_back(
+      rerun::Position3D(
+        p.pose.pose.translation().x(), p.pose.pose.translation().y(),
+        p.pose.pose.translation().z()));
   }
   stream.log(name, rerun::Points3D(positions).with_colors(rerun::Color(col.r, col.g, col.b)));
 }
@@ -126,8 +134,10 @@ void visualization::linestring2rerun(
   std::vector<rerun::Position3D> positions{};
   positions.reserve(ls.size());
   for (const auto & p : ls) {
-    positions.push_back(rerun::Position3D(
-      p.pose.pose.translation().x(), p.pose.pose.translation().y(), p.pose.pose.translation().z()));
+    positions.push_back(
+      rerun::Position3D(
+        p.pose.pose.translation().x(), p.pose.pose.translation().y(),
+        p.pose.pose.translation().z()));
   }
   std::vector<rerun::LineStrip3D> lines;
   std::vector<rerun::components::Text> labels;
@@ -210,6 +220,23 @@ void visualization::pc_map2rerun(
   grid.filter(*cloud_filtered);
 
   // Convert to rerun
+  TUMcolor col("White");
+  std::vector<rerun::Position3D> positions{};
+  positions.reserve(cloud_filtered->size());
+  for (const auto & p : cloud_filtered->points) {
+    positions.push_back(rerun::Position3D(p.x, p.y, p.z));
+  }
+  stream.log("pcd_map", rerun::Points3D(positions).with_colors(rerun::Color(col.r, col.g, col.b)));
+}
+void visualization::pc_map2rerun(
+  const pcl::PointCloud<PointXYZIL>::Ptr & pcd_map, rerun::RecordingStream & stream)
+{
+  pcl::PointCloud<PointXYZIL>::Ptr cloud_filtered(new pcl::PointCloud<PointXYZIL>());
+  pcl::ApproximateVoxelGrid<PointXYZIL> grid;
+  grid.setInputCloud(pcd_map);
+  grid.setLeafSize(3.0, 3.0, 3.0);
+  grid.filter(*cloud_filtered);
+
   TUMcolor col("White");
   std::vector<rerun::Position3D> positions{};
   positions.reserve(cloud_filtered->size());

@@ -25,12 +25,12 @@
 #include <utility>
 #include <vector>
 
-#include "yaml-cpp/yaml.h"
-
 #include "analysis.hpp"
 #include "file_io.hpp"
+#include "point_types.hpp"
 #include "transform.hpp"
 #include "visualization.hpp"
+#include "yaml-cpp/yaml.h"
 namespace flexcloud
 {
 /**
@@ -41,8 +41,8 @@ class Georeferencing
 public:
   // Georeferencing package constructor
   Georeferencing(
-    const std::string & config_path, const std::string & pos_global_path, const std::string & poses_path,
-    const std::string & pcd_path);
+    const std::string & config_path, const std::string & pos_global_path,
+    const std::string & poses_path, const std::string & pcd_path);
   // Functions
   /**
    * @brief check if all necessary paths exist
@@ -82,7 +82,7 @@ public:
 
   /**
    * @brief do evaluation calculations and write to txt-files
-   * 
+   *
    * @param[in] config               - YAML::Node:
    *                                  configuration node
    */
@@ -105,6 +105,7 @@ private:
   std::vector<PoseStamped> poses_rs_{};
   // PCD map
   pcl::PointCloud<pcl::PointXYZI>::Ptr pcd_map_{};
+  pcl::PointCloud<PointXYZIL>::Ptr pcd_map_il_{};
 
   // Transformation
   std::vector<ControlPoint> control_points_;

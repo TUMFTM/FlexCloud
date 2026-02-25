@@ -34,7 +34,7 @@
 
 #include "triangulation.hpp"
 #include "utility.hpp"
-#include "visualization.hpp"
+#include "point_types.hpp"
 namespace flexcloud
 {
 class visualization
@@ -54,8 +54,8 @@ public:
    *                                  namespace of linestring
    */
   void pose2rerun(
-    const std::vector<PoseStamped> & odom, rerun::RecordingStream & stream,
-    const std::string color, const std::string name);
+    const std::vector<PoseStamped> & odom, rerun::RecordingStream & stream, const std::string color,
+    const std::string name);
   /**
    * @brief visualize pos frames in rerun
    *
@@ -84,8 +84,8 @@ public:
    *                                  namespace of linestring
    */
   void linestring2rerun(
-    const std::vector<PointStdDevStamped> & ls, rerun::RecordingStream & stream, const std::string color,
-    const std::string name);
+    const std::vector<PointStdDevStamped> & ls, rerun::RecordingStream & stream,
+    const std::string color, const std::string name);
   /**
    * @brief visualize linestring in rerun
    *
@@ -128,5 +128,7 @@ public:
    */
   void pc_map2rerun(
     const pcl::PointCloud<pcl::PointXYZI>::Ptr & pcd_map, rerun::RecordingStream & stream);
+  void pc_map2rerun(
+    const pcl::PointCloud<PointXYZIL>::Ptr & pcd_map, rerun::RecordingStream & stream);
 };
 }  // namespace flexcloud

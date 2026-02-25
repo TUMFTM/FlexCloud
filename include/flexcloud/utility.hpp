@@ -25,7 +25,6 @@
 #include <memory>
 #include <string>
 #include <vector>
-
 namespace flexcloud
 {
 /**
@@ -101,6 +100,7 @@ public:
     pose.linear() = rotation;
     pose.translation() << x, y, z;
   }
+
 public:
   Eigen::Isometry3d pose;
 };
@@ -110,13 +110,11 @@ public:
 struct PoseStamped
 {
 public:
-  PoseStamped(const Pose & pose, const double sec)
-  : pose(pose)
+  PoseStamped(const Pose & pose, const double sec) : pose(pose)
   {
     stamp = static_cast<std::int64_t>(sec * 1e9);
   }
-  PoseStamped(const Pose & pose, const std::int64_t sec, const std::int64_t nsec)
-  : pose(pose)
+  PoseStamped(const Pose & pose, const std::int64_t sec, const std::int64_t nsec) : pose(pose)
   {
     stamp = sec * 1e9 + nsec;
   }
@@ -133,6 +131,8 @@ struct GeoreferencingConfig
   std::string pos_global_path{};
   std::string poses_path{};
   std::string pcd_path{};
+  // Point cloud options
+  bool include_label{false};
   // Trajectory Alignment
   bool transform_traj{true};
   int rs_num_controlPoints{10};

@@ -37,6 +37,7 @@
 #include <string>
 #include <vector>
 
+#include "point_types.hpp"
 #include "utility.hpp"
 namespace flexcloud
 {
@@ -80,10 +81,12 @@ public:
    *
    * @param[in] pcd_path            - std::string:
    *                                  absolute path to file
-   * @param[in] pcm                 - pcl::PointCloud<pcl::PointXYZ>::Ptr:
+   * @param[in] pcm                 - pcl::PointCloud<PointT>::Ptr:
    *                                  pointer on pointcloud map
    */
-  bool load_pcd(const std::string & pcd_path, pcl::PointCloud<pcl::PointXYZI>::Ptr & pcm);
+  template <typename PointT>
+  bool load_pcd(const std::string & pcd_path, typename pcl::PointCloud<PointT>::Ptr & pcm);
+
   /**
    * @brief save position frames to file
    *
@@ -111,11 +114,12 @@ public:
    *                                  Node reference
    * @param[in] pcd_out_path        - std::string:
    *                                  absolute path to file
-   * @param[in] pcm                 - pcl::PointCloud<pcl::PointXYZ>::Ptr:
+   * @param[in] pcm                 - pcl::PointCloud<PointT>::Ptr:
    *                                  pointer on pointcloud map
    */
+  template <typename PointT>
   bool save_pcd(
-    const std::string & pcd_out_path, const pcl::PointCloud<pcl::PointXYZI>::Ptr & pcd_map);
+    const std::string & pcd_out_path, const typename pcl::PointCloud<PointT>::Ptr & pcd_map);
 
 private:
 };

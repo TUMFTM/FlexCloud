@@ -221,10 +221,11 @@ std::vector<PoseStamped> file_io::load_poses(const std::string & file_path)
  *
  * @param[in] pcd_path            - std::string:
  *                                  absolute path to file
- * @param[in] pcm                 - pcl::PointCloud<pcl::PointXYZ>::Ptr:
+ * @param[in] pcm                 - pcl::PointCloud<PointT>::Ptr:
  *                                  pointer on pointcloud map
  */
-bool file_io::load_pcd(const std::string & pcd_path, pcl::PointCloud<pcl::PointXYZI>::Ptr & pcm)
+template <typename PointT>
+bool file_io::load_pcd(const std::string & pcd_path, typename pcl::PointCloud<PointT>::Ptr & pcm)
 {
   // Check for valid filename
   if (pcd_path.substr(pcd_path.length() - 4) != ".pcd") {
@@ -233,9 +234,9 @@ bool file_io::load_pcd(const std::string & pcd_path, pcl::PointCloud<pcl::PointX
   }
 
   // Read input cloud based on provided file path
-  pcl::PointCloud<pcl::PointXYZI>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZI>);
+  typename pcl::PointCloud<PointT>::Ptr cloud(new pcl::PointCloud<PointT>);
 
-  if (pcl::io::loadPCDFile<pcl::PointXYZI>(pcd_path, *cloud) == -1) {
+  if (pcl::io::loadPCDFile<PointT>(pcd_path, *cloud) == -1) {
     PCL_ERROR("Couldn't read file Point cloud!\n");
     return -1;
   }
@@ -304,14 +305,24 @@ bool file_io::save_poses(const std::string & filename, const std::vector<PoseSta
  *                                  config struct
  * @param[in] pcd_out_path        - std::string:
  *                                  absolute path to file
- * @param[in] pcm                 - pcl::PointCloud<pcl::PointXYZ>::Ptr:
+ * @param[in] pcm                 - pcl::PointCloud<PointT>::Ptr:
  *                                  pointer on pointcloud map
  */
+template <typename PointT>
 bool file_io::save_pcd(
-  const std::string & pcd_out_path, const pcl::PointCloud<pcl::PointXYZI>::Ptr & pcd_map)
+  const std::string & pcd_out_path, const typename pcl::PointCloud<PointT>::Ptr & pcd_map)
 {
   // write to file
   pcl::io::savePCDFileBinary(pcd_out_path, *pcd_map);
   return true;
 }
+// Explicit instantiations for point types used
+template bool file_io::load_pcd<pcl::PointXYZI>(
+  const std::string & pcd_path, typename pcl::PointCloud<pcl::PointXYZI>::Ptr & pcm);
+template bool file_io::save_pcd<pcl::PointXYZI>(
+  const std::string & pcd_out_path, const typename pcl::PointCloud<pcl::PointXYZI>::Ptr & pcd_map);
+template bool file_io::load_pcd<PointXYZIL>(
+  const std::string & pcd_path, typename pcl::PointCloud<PointXYZIL>::Ptr & pcm);
+template bool file_io::save_pcd<PointXYZIL>(
+  const std::string & pcd_out_path, const typename pcl::PointCloud<PointXYZIL>::Ptr & pcd_map);
 }  // namespace flexcloud

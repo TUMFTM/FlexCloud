@@ -18,10 +18,22 @@
 
 #include "transform.hpp"
 
+#include "point_types.hpp"
+// Custom point type with intensity + label
 #include <algorithm>
 #include <iostream>
 #include <memory>
+#include <thread>
+#include <type_traits>
 #include <vector>
+
+// PCL template implementations for custom point types
+#include <pcl/filters/impl/extract_indices.hpp>
+#include <pcl/filters/impl/filter.hpp>
+#include <pcl/filters/impl/filter_indices.hpp>
+#include <pcl/impl/pcl_base.hpp>
+
+#include "point_types.hpp"
 namespace flexcloud
 {
 /**
@@ -311,9 +323,10 @@ bool transform::transform_ls_rs(
  * @param[out]                    - bool:
  *                                  true if function executed
  */
+template <typename PointT>
 bool transform::transform_pcd(
   const std::shared_ptr<Umeyama> & umeyama, const std::shared_ptr<Delaunay> & triag,
-  pcl::PointCloud<pcl::PointXYZI>::Ptr & pcm, const int num_cores)
+  pcl::PointCloud<PointT>::Ptr & pcm, const int num_cores)
 {
   // Let's run threading
   int num_max_cores = std::thread::hardware_concurrency();
@@ -330,9 +343,9 @@ bool transform::transform_pcd(
   this->prepare_threading(num_threads);
 
   // Create number of sub pointclouds for threading
-  std::vector<pcl::PointCloud<pcl::PointXYZI>::Ptr> cloud_in_array;
+  std::vector<typename pcl::PointCloud<PointT>::Ptr> cloud_in_array;
   for (size_t i = 0; i < num_threads; ++i) {
-    pcl::PointCloud<pcl::PointXYZI>::Ptr cloud_in(new pcl::PointCloud<pcl::PointXYZI>);
+    typename pcl::PointCloud<PointT>::Ptr cloud_in(new pcl::PointCloud<PointT>);
     cloud_in_array.push_back(cloud_in);
   }
 
@@ -361,9 +374,9 @@ bool transform::transform_pcd(
     pcl::copyPointCloud(*pcm, indices[i], *cloud_in_array[i]);
   }
   // Configure every pcd
-  std::vector<pcl::PointCloud<pcl::PointXYZI>::Ptr> cloud_out_array;
+  std::vector<typename pcl::PointCloud<PointT>::Ptr> cloud_out_array;
   for (size_t i = 0; i < num_threads; ++i) {
-    pcl::PointCloud<pcl::PointXYZI>::Ptr cloud_out(new pcl::PointCloud<pcl::PointXYZI>);
+    typename pcl::PointCloud<PointT>::Ptr cloud_out(new pcl::PointCloud<PointT>);
     cloud_out->is_dense = false;
     cloud_out->height = 1;
 
@@ -381,7 +394,7 @@ bool transform::transform_pcd(
   std::vector<std::thread> threads;
   for (size_t i = 0; i < num_threads; ++i) {
     threads.emplace_back(
-      &transform::transform_sub_pcd, this, i, umeyama, triag, cloud_in_array[i],
+      &transform::transform_sub_pcd<PointT>, this, i, umeyama, triag, cloud_in_array[i],
       cloud_out_array[i]);
   }
 
@@ -446,6 +459,23 @@ bool transform::transform_pcd(
   }
   return true;
 }
+// Helpers to detect optional point fields at compile time
+template <typename T, typename = void>
+struct has_intensity : std::false_type
+{
+};
+template <typename T>
+struct has_intensity<T, std::void_t<decltype(std::declval<T>().intensity)>> : std::true_type
+{
+};
+template <typename T, typename = void>
+struct has_label : std::false_type
+{
+};
+template <typename T>
+struct has_label<T, std::void_t<decltype(std::declval<T>().label)>> : std::true_type
+{
+};
 /**
  * @brief transform sub point cloud map one one thread
  *
@@ -455,15 +485,16 @@ bool transform::transform_pcd(
  *                                  pointer to Umeyama transformation
  * @param[in] triag               - std::shared_ptr<Delaunay>:
  *                                  pointer to triangulation
- * @param[in] cloud_in            - pcl::PointCloud<pcl::PointXYZ>::Ptr:
+ * @param[in] cloud_in            - pcl::PointCloud<PointT>::Ptr:
  *                                  pointer to input point cloud map
- * @param[in] cloud_out           - pcl::PointCloud<pcl::PointXYZ>::Ptr:
+ * @param[in] cloud_out           - pcl::PointCloud<PointT>::Ptr:
  *                                  pointer to output point cloud map
  */
+template <typename PointT>
 void transform::transform_sub_pcd(
   const int threadNum, const std::shared_ptr<Umeyama> & umeyama,
-  const std::shared_ptr<Delaunay> & triag, const pcl::PointCloud<pcl::PointXYZI>::Ptr & cloud_in,
-  const pcl::PointCloud<pcl::PointXYZI>::Ptr & cloud_out)
+  const std::shared_ptr<Delaunay> & triag, const typename pcl::PointCloud<PointT>::Ptr & cloud_in,
+  const typename pcl::PointCloud<PointT>::Ptr & cloud_out)
 {
   // Transformation begin
   pcl::PointIndices::Ptr outliers(new pcl::PointIndices());
@@ -485,12 +516,17 @@ void transform::transform_sub_pcd(
       cloud_out->points[ind_pt].y = pt_rs(1);
       cloud_out->points[ind_pt].z = pt_rs(2);
     }
-    // Keep intensity
-    cloud_out->points[ind_pt].intensity = point.intensity;
+    if constexpr (has_intensity<PointT>::value) {
+      cloud_out->points[ind_pt].intensity = point.intensity;
+    }
+    if constexpr (has_label<PointT>::value) {
+      cloud_out->points[ind_pt].label = point.label;
+    }
     ++ind_pt;
     this->progress[threadNum] = ind_pt;
   }
-  pcl::ExtractIndices<pcl::PointXYZI> extract;
+
+  pcl::ExtractIndices<PointT> extract;
   extract.setInputCloud(cloud_out);
   extract.setIndices(outliers);
   extract.setNegative(true);
@@ -513,4 +549,13 @@ void transform::prepare_threading(size_t num_threads)
     this->progress[i] = 0;
   }
 }
+// Explicit instantiation for custom type with both intensity and label
+template bool transform::transform_pcd<pcl::PointXYZI>(
+  const std::shared_ptr<Umeyama> & umeyama, const std::shared_ptr<Delaunay> & triag,
+  pcl::PointCloud<pcl::PointXYZI>::Ptr & pcm, const int num_cores);
+
+template bool transform::transform_pcd<PointXYZIL>(
+  const std::shared_ptr<Umeyama> & umeyama, const std::shared_ptr<Delaunay> & triag,
+  pcl::PointCloud<PointXYZIL>::Ptr & pcm, const int num_cores);
+
 }  // namespace flexcloud

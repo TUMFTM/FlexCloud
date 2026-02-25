@@ -55,8 +55,9 @@ public:
    * @param[out]                    - bool:
    *                                  true if function executed
    */
-  bool get_umeyama(const std::vector<PointStdDevStamped> & src,
-    const std::vector<PoseStamped> & target, const std::shared_ptr<Umeyama> & umeyama);
+  bool get_umeyama(
+    const std::vector<PointStdDevStamped> & src, const std::vector<PoseStamped> & target,
+    const std::shared_ptr<Umeyama> & umeyama);
 
   /**
    * @brief select control points automatically or manually
@@ -127,7 +128,8 @@ public:
     const std::shared_ptr<Delaunay> & triag);
 
   /**
-   * @brief transform point cloud map with Umeyama and Rubber-Sheeting trafo using multi-threading
+   * @brief transform point cloud map with Umeyama and Rubber-Sheeting trafo using multi-threading.
+   *      Allowed types: PointXYZI (intensity point type) and PointXYZIL (intensity, label point type)
    *
    * @param[in] node                - rclcpp::Node:
    *                                  reference to node
@@ -135,16 +137,17 @@ public:
    *                                  pointer to Umeyama transformation
    * @param[in] triag               - std::shared_ptr<Delaunay>:
    *                                  pointer to triangulation
-   * @param[in] pcm                 - pcl::PointCloud<pcl::PointXYZ>::Ptr:
+   * @param[in] pcm                 - pcl::PointCloud<PointT>::Ptr:
    *                                  pointer to point cloud map
    * @param[in] num_cores           - int:
    *                                  amount of cores to be used
    * @param[out]                    - bool:
    *                                  true if function executed
    */
+  template <typename PointT>
   bool transform_pcd(
     const std::shared_ptr<Umeyama> & umeyama, const std::shared_ptr<Delaunay> & triag,
-    pcl::PointCloud<pcl::PointXYZI>::Ptr & pcm, const int num_cores);
+    pcl::PointCloud<PointT>::Ptr & pcm, const int num_cores);
 
 private:
   // Variables for multi-threading
@@ -152,7 +155,8 @@ private:
   std::vector<bool> threads_finished;
 
   /**
-   * @brief transform sub point cloud map one one thread
+   * @brief transform sub point cloud map one one thread.
+   *      Allowed types: PointXYZI (intensity point type) and PointXYZIL (intensity, label point type)
    *
    * @param[in] threadNum           - int:
    *                                  number of thread
@@ -160,15 +164,16 @@ private:
    *                                  pointer to Umeyama transformation
    * @param[in] triag               - std::shared_ptr<Delaunay>:
    *                                  pointer to triangulation
-   * @param[in] cloud_in            - pcl::PointCloud<pcl::PointXYZ>::Ptr:
+   * @param[in] cloud_in            - pcl::PointCloud<PointT>::Ptr:
    *                                  pointer to input point cloud map
-   * @param[in] cloud_out           - pcl::PointCloud<pcl::PointXYZ>::Ptr:
+   * @param[in] cloud_out           - pcl::PointCloud<PointT>::Ptr:
    *                                  pointer to output point cloud map
    */
+  template <typename PointT>
   void transform_sub_pcd(
     const int threadNum, const std::shared_ptr<Umeyama> & umeyama,
-    const std::shared_ptr<Delaunay> & triag, const pcl::PointCloud<pcl::PointXYZI>::Ptr & cloud_in,
-    const pcl::PointCloud<pcl::PointXYZI>::Ptr & cloud_out);
+    const std::shared_ptr<Delaunay> & triag, const pcl::PointCloud<PointT>::Ptr & cloud_in,
+    const pcl::PointCloud<PointT>::Ptr & cloud_out);
 
   /**
    * @brief set class variables to preprare threading

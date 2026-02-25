@@ -11,6 +11,7 @@ fake_ind_dist: [0.0]             # distance to fake given control point at index
 fake_ind_height: [0.0]           # height offset to fake given control point at index defined in fake_ind (only used for 3D transformations)
 # Pointcloud transformation
 num_cores: 10                     # Number of cores used for transforming pcd using multithreading
+include_labels: true              # include point labels when transforming point cloud 
 # GPS zero coordinate
 custom_origin: false            # only used if transform_traj = TRUE -> false - use first GPS data as zero point, true - set custom zero point with zeroLat/zeroLong
 origin: [0.0, 0.0, 0.0]             # custom zero point in lat/lon/ele
