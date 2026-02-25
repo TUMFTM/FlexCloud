@@ -20,7 +20,6 @@
 
 #include "point_types.hpp"
 
-// PCL template implementations for custom point types
 #include <memory>
 #include <pcl/filters/impl/approximate_voxel_grid.hpp>
 #include <pcl/filters/impl/filter.hpp>

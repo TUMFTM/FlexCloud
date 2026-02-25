@@ -131,7 +131,7 @@ struct GeoreferencingConfig
   std::string pos_global_path{};
   std::string poses_path{};
   std::string pcd_path{};
-  // Point cloud options
+  // Optional additional pc attributes
   bool include_label{false};
   // Trajectory Alignment
   bool transform_traj{true};

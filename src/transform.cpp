@@ -19,7 +19,6 @@
 #include "transform.hpp"
 
 #include "point_types.hpp"
-// Custom point type with intensity + label
 #include <algorithm>
 #include <iostream>
 #include <memory>
@@ -27,7 +26,6 @@
 #include <type_traits>
 #include <vector>
 
-// PCL template implementations for custom point types
 #include <pcl/filters/impl/extract_indices.hpp>
 #include <pcl/filters/impl/filter.hpp>
 #include <pcl/filters/impl/filter_indices.hpp>
@@ -549,7 +547,7 @@ void transform::prepare_threading(size_t num_threads)
     this->progress[i] = 0;
   }
 }
-// Explicit instantiation for custom type with both intensity and label
+
 template bool transform::transform_pcd<pcl::PointXYZI>(
   const std::shared_ptr<Umeyama> & umeyama, const std::shared_ptr<Delaunay> & triag,
   pcl::PointCloud<pcl::PointXYZI>::Ptr & pcm, const int num_cores);
