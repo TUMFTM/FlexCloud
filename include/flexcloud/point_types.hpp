@@ -16,7 +16,6 @@ struct EIGEN_ALIGN16 PointXYZIL
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 };
 
-// Register the PointXYZIL type so PCL
 POINT_CLOUD_REGISTER_POINT_STRUCT(
   PointXYZIL,
   (float, x, x)(float, y, y)(float, z, z)(float, intensity, intensity)(std::uint32_t, label, label))
