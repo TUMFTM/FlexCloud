@@ -31,7 +31,6 @@
 #include <pcl/filters/impl/filter_indices.hpp>
 #include <pcl/impl/pcl_base.hpp>
 
-#include "point_types.hpp"
 namespace flexcloud
 {
 /**
