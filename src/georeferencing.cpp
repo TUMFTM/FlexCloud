@@ -37,10 +37,7 @@ Georeferencing::Georeferencing(
   this->config_.pos_global_path = pos_global_path;
   this->config_.poses_path = poses_path;
   this->config_.pcd_path = pcd_path;
-  // Use plural key from YAML (include_labels) for label support
-  if (config["include_labels"]) {
-    this->config_.include_label = config["include_labels"].as<bool>();
-  }
+  this->config_.include_label = config["include_labels"].as<bool>();
   this->config_.transform_traj = config["transform_traj"].as<bool>();
   this->config_.rs_num_controlPoints = config["rs_num_controlPoints"].as<int>();
   this->config_.stddev_threshold = config["stddev_threshold"].as<double>();
