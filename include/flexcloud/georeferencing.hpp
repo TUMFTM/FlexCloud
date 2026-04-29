@@ -26,6 +26,7 @@
 #include <vector>
 
 #include "analysis.hpp"
+#include "cli/cli_config.hpp"
 #include "file_io.hpp"
 #include "point_types.hpp"
 #include "transform.hpp"
@@ -39,10 +40,7 @@ namespace flexcloud
 class Georeferencing
 {
 public:
-  // Georeferencing package constructor
-  Georeferencing(
-    const std::string & config_path, const std::string & pos_global_path,
-    const std::string & poses_path, const std::string & pcd_path);
+  explicit Georeferencing(config::GeoreferencingConfig cfg);
   // Functions
   /**
    * @brief check if all necessary paths exist
@@ -82,15 +80,12 @@ public:
 
   /**
    * @brief do evaluation calculations and write to txt-files
-   *
-   * @param[in] config               - YAML::Node:
-   *                                  configuration node
    */
-  void evaluation(const YAML::Node & config);
+  void evaluation();
 
 private:
   // Config
-  GeoreferencingConfig config_{};
+  config::GeoreferencingConfig config_{};
 
   // Module classes
   transform transform_{};

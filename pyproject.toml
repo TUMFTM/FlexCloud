@@ -1,0 +1,51 @@
+[build-system]
+requires = ["scikit-build-core"]
+build-backend = "scikit_build_core.build"
+
+[project]
+name = "flexcloud"
+version = "1.0.0"
+description = "Direct, modular georeferencing and drift-correction of point cloud maps"
+readme = "README.md"
+authors = [
+    { name = "Maximilian Leitenstern", email = "maxi.leitenstern@tum.de" },
+]
+requires-python = ">=3.10"
+keywords = [
+    "point cloud",
+    "georeferencing",
+    "GNSS",
+    "SLAM",
+    "C++",
+    "ROS2",
+    "PCL",
+]
+classifiers = [
+    "Intended Audience :: Developers",
+    "Intended Audience :: Education",
+    "Intended Audience :: Other Audience",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: C++",
+]
+dependencies = []
+
+[project.scripts]
+flexcloud-keyframe-interpolation = "package.wrapper:run_keyframe_interpolation"
+flexcloud-georeferencing = "package.wrapper:run_georeferencing"
+
+[project.urls]
+Homepage = "https://github.com/TUMFTM/FlexCloud"
+
+[tool.scikit-build]
+wheel.packages = ["package"]
+wheel.install-dir = "package"
+cmake.args = [
+    "-DBUILD_TESTING=OFF",
+    "-DCMAKE_BUILD_TYPE=Release",
+]
+
+[tool.scikit-build.cmake.define]
+CMAKE_INSTALL_BINDIR = "bin"
+CMAKE_INSTALL_LIBDIR = "lib"
