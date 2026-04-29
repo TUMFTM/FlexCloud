@@ -1,0 +1,164 @@
+name: Build, Test and Publish to PyPI
+
+on:
+  release:
+    types: [published]
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+
+jobs:
+  build-and-push-image:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+      attestations: write
+      id-token: write
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Login to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push latest docker
+        run: |
+          ./docker/build_docker.sh
+          docker push ghcr.io/tumftm/flexcloud:latest
+
+      - name: Tag and push release docker image
+        if: github.event_name == 'release'
+        run: |
+          docker pull ghcr.io/tumftm/flexcloud:latest
+          docker tag ghcr.io/tumftm/flexcloud:latest ghcr.io/tumftm/flexcloud:${{ github.event.release.tag_name }}
+          docker push ghcr.io/tumftm/flexcloud:${{ github.event.release.tag_name }}
+
+  build_wheel:
+    needs: [build-and-push-image]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - python_version: "3.12"
+            python_tag: "cp312"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Pull prebuilt image
+        run: docker pull ghcr.io/tumftm/flexcloud:latest
+
+      - name: Build wheel for Python ${{ matrix.python_version }}
+        run: |
+          docker run --rm \
+            --entrypoint /bin/bash \
+            -v "$PWD:/ros_ws" \
+            -w /ros_ws \
+            ghcr.io/tumftm/flexcloud:latest \
+            -c "
+              source /opt/ros/jazzy/setup.bash
+
+              apt-get update && apt-get install -y software-properties-common patchelf
+              add-apt-repository -y ppa:deadsnakes/ppa
+              apt-get update && apt-get install -y python${{ matrix.python_version }} python${{ matrix.python_version }}-venv python${{ matrix.python_version }}-dev
+
+              python${{ matrix.python_version }} -m venv /tmp/buildenv
+              source /tmp/buildenv/bin/activate
+
+              pip install --upgrade pip ninja scikit-build-core auditwheel build catkin_pkg pyyaml
+
+              python -m build --wheel --no-isolation -Cbuild-dir=/ros_ws/package/build
+
+              LD_LIBRARY_PATH=\$(find /ros_ws/package/build -name '*.so*' -exec dirname {} + | sort -u | tr '\n' ':'):\$LD_LIBRARY_PATH \
+              auditwheel repair /ros_ws/dist/*${{ matrix.python_tag }}*.whl -w /ros_ws/dist/auditwheel/
+            "
+
+      - name: Upload wheel artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: pypi-wheel-${{ matrix.python_tag }}
+          path: dist/auditwheel/*.whl
+          if-no-files-found: error
+          retention-days: 1
+
+  test_wheel:
+    needs: [build_wheel]
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - python_tag: "cp312"
+            ubuntu_version: "24.04"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download wheel
+        uses: actions/download-artifact@v4
+        with:
+          name: pypi-wheel-${{ matrix.python_tag }}
+          path: dist/auditwheel
+
+      - name: Smoke-test wheel on Ubuntu ${{ matrix.ubuntu_version }}
+        run: |
+          docker run --rm \
+            -v "$PWD:/ros_ws" \
+            -w /ros_ws \
+            ubuntu:${{ matrix.ubuntu_version }} \
+            /bin/bash -c "
+              set -e
+              apt-get update && apt-get install -y python3-pip python3-venv
+              python3 -m venv ~/.venv/flexcloud
+              source ~/.venv/flexcloud/bin/activate
+              pip3 install /ros_ws/dist/auditwheel/*.whl
+
+              echo '=== flexcloud-keyframe-interpolation --help ==='
+              flexcloud-keyframe-interpolation --help
+
+              echo '=== flexcloud-georeferencing --help ==='
+              flexcloud-georeferencing --help
+            "
+
+  publish_pypi:
+    name: Publish to PyPI
+    needs: [build_wheel, test_wheel]
+    if: github.event_name == 'release'
+    runs-on: ubuntu-latest
+
+    environment: pypi
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Download wheel artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: pypi-wheel-*
+          path: dist/auditwheel
+          merge-multiple: true
+
+      - name: Publish package distributions to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: dist/auditwheel

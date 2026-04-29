@@ -67,8 +67,8 @@ bool transform::get_umeyama(
 /**
  * @brief select control points automatically or manually
  *
- * @param[in] node                - rclcpp::Node:
- *                                  reference to node
+ * @param[in] cfg                 - config::GeoreferencingConfig:
+ *                                 reference to config
  * @param[in] src                 - std::vector<PointStdDev>:
  *                                  source trajectory
  * @param[in] target              - std::vector<PointStdDev>:
@@ -79,7 +79,7 @@ bool transform::get_umeyama(
  *                                  true if function executed
  */
 bool transform::select_control_points(
-  GeoreferencingConfig & config, const std::vector<PointStdDevStamped> & src,
+  config::GeoreferencingConfig & cfg, const std::vector<PointStdDevStamped> & src,
   const std::vector<PoseStamped> & target, std::vector<ControlPoint> & cps)
 {
   cps.clear();
@@ -87,16 +87,16 @@ bool transform::select_control_points(
   int cp_count = 0;
 
   // Santiy checks
-  if (config.shift_ind.size() != config.shift_ind_dist.size()) {
+  if (cfg.shift_ind.size() != cfg.shift_ind_dist.size()) {
     std::cout << "Sizes of shift_ind and shift_ind_dist do not match!" << std::endl;
   }
   if (
-    config.fake_ind.size() != config.fake_ind_dist.size() ||
-    config.fake_ind.size() != config.fake_ind_height.size()) {
+    cfg.fake_ind.size() != cfg.fake_ind_dist.size() ||
+    cfg.fake_ind.size() != cfg.fake_ind_height.size()) {
     std::cout << "Sizes of fake_ind, fake_ind_dist and fake_ind_height do not match!" << std::endl;
   }
   // Set interval for control point selection
-  int traj_split = static_cast<int>(target.size()) / config.rs_num_controlPoints;
+  int traj_split = static_cast<int>(target.size()) / cfg.rs_num_controlPoints;
   std::cout << "\033[33m~~~~~> LiDAR got " << target.size() << " poses!\033[0m" << std::endl;
   std::cout << "\033[33m~~~~~> Every " << traj_split
             << " st/nd/rd/th vertex is selected as control point\033[0m" << std::endl;
@@ -105,11 +105,11 @@ bool transform::select_control_points(
   for (size_t idx = 0; idx < static_cast<size_t>(target.size()); ++idx) {
     // Check if index is within manually excluded indices
     bool use_ind = true;
-    if (!config.exclude_ind.empty() || static_cast<int>(config.exclude_ind.size()) % 2 != 0) {
-      for (int i = 0; i < static_cast<int>(config.exclude_ind.size()) / 2; ++i) {
+    if (!cfg.exclude_ind.empty() || static_cast<int>(cfg.exclude_ind.size()) % 2 != 0) {
+      for (int i = 0; i < static_cast<int>(cfg.exclude_ind.size()) / 2; ++i) {
         if (
-          idx >= static_cast<size_t>(config.exclude_ind[2 * i]) &&
-          idx <= static_cast<size_t>(config.exclude_ind[2 * i + 1])) {
+          idx >= static_cast<size_t>(cfg.exclude_ind[2 * i]) &&
+          idx <= static_cast<size_t>(cfg.exclude_ind[2 * i + 1])) {
           use_ind = false;
           break;
         }
@@ -120,12 +120,12 @@ bool transform::select_control_points(
     }
     // clang-format off
     // Check if standard deviations of reference point are within threshold, otherwise skip point
-    if (sqrt(pow(src[idx].point.stddev.x(), 2) + pow(src[idx].point.stddev.y(), 2)) > config.stddev_threshold) {  // NOLINT
+    if (sqrt(pow(src[idx].point.stddev.x(), 2) + pow(src[idx].point.stddev.y(), 2)) > cfg.stddev_threshold) {  // NOLINT
       std::cout << "\033[31m!! Skipped control point due to high stddev !!\033[0m" << std::endl;
       continue;
     }
     // Check if index is used in regular split or faked
-    if (idx % traj_split == 0 && std::find(config.shift_ind.begin(), config.shift_ind.end(), idx) == config.shift_ind.end()) {  // NOLINT
+    if (idx % traj_split == 0 && std::find(cfg.shift_ind.begin(), cfg.shift_ind.end(), idx) == cfg.shift_ind.end()) {  // NOLINT
       // Point is a regular control point
       // Set unmodified reference point
       cp_inter.push_back(src[idx].point.pos);
@@ -138,8 +138,8 @@ bool transform::select_control_points(
     }
 
     // Now only continue of point is to be shifted or faked
-    if (std::find(config.shift_ind.begin(), config.shift_ind.end(), idx) == config.shift_ind.end() &&  // NOLINT
-        std::find(config.fake_ind.begin(), config.fake_ind.end(), idx) == config.fake_ind.end()) {  // NOLINT
+    if (std::find(cfg.shift_ind.begin(), cfg.shift_ind.end(), idx) == cfg.shift_ind.end() &&  // NOLINT
+        std::find(cfg.fake_ind.begin(), cfg.fake_ind.end(), idx) == cfg.fake_ind.end()) {  // NOLINT
       continue;
     }
     // Point configured to be shifted or fake => compute vincinity
@@ -165,17 +165,17 @@ bool transform::select_control_points(
       vincinity = std::vector<Eigen::Vector3d>{current - backward, forward - current};
     }
     // Check if point is configured to be shifted or faked
-    if (std::find(config.shift_ind.begin(), config.shift_ind.end(), idx) != config.shift_ind.end()) {  // NOLINT
-      ind = std::find(config.shift_ind.begin(), config.shift_ind.end(), idx) - config.shift_ind.begin();  // NOLINT
+    if (std::find(cfg.shift_ind.begin(), cfg.shift_ind.end(), idx) != cfg.shift_ind.end()) {  // NOLINT
+      ind = std::find(cfg.shift_ind.begin(), cfg.shift_ind.end(), idx) - cfg.shift_ind.begin();  // NOLINT
       std::cout << "\033[33m~~~~~> Shift reference point at index: " << idx << "with distance "
-      << config.shift_ind_dist[ind] << "\033[0m" << std::endl;
-      distance = config.shift_ind_dist[ind];
-    } else if (std::find(config.fake_ind.begin(), config.fake_ind.end(), idx) != config.fake_ind.end()) {  // NOLINT
-      ind = std::find(config.fake_ind.begin(), config.fake_ind.end(), idx) - config.fake_ind.begin();  // NOLINT
+      << cfg.shift_ind_dist[ind] << "\033[0m" << std::endl;
+      distance = cfg.shift_ind_dist[ind];
+    } else if (std::find(cfg.fake_ind.begin(), cfg.fake_ind.end(), idx) != cfg.fake_ind.end()) {  // NOLINT
+      ind = std::find(cfg.fake_ind.begin(), cfg.fake_ind.end(), idx) - cfg.fake_ind.begin();  // NOLINT
       // Fake point
       std::cout << "\033[33m~~~~~> Fake reference point at index: " << idx << "with distance "
-      << config.fake_ind_dist[ind] << "\033[0m" << std::endl;
-      distance = config.fake_ind_dist[ind];
+      << cfg.fake_ind_dist[ind] << "\033[0m" << std::endl;
+      distance = cfg.fake_ind_dist[ind];
     }
     // Create control point on reference trajectory
     // shift point laterally by specified distance
@@ -201,10 +201,10 @@ bool transform::select_control_points(
     // Point in LiDAR data
     // Check if point is configured to be faked
     Eigen::Vector3d pt_pcd{};
-    if (std::find(config.fake_ind.begin(), config.fake_ind.end(), idx) != config.fake_ind.end()) {  // NOLINT
+    if (std::find(cfg.fake_ind.begin(), cfg.fake_ind.end(), idx) != cfg.fake_ind.end()) {  // NOLINT
       // Fake point
       Eigen::Vector2d pt_pcd_shift = Eigen::Vector2d(target[idx].pose.pose.translation().x(), target[idx].pose.pose.translation().y()) + direction.normalized() * real_offset;  // NOLINT
-      pt_pcd << pt_pcd_shift(0), pt_pcd_shift(1), target[idx].pose.pose.translation().z() + config.fake_ind_height[ind];  // NOLINT
+      pt_pcd << pt_pcd_shift(0), pt_pcd_shift(1), target[idx].pose.pose.translation().z() + cfg.fake_ind_height[ind];  // NOLINT
     } else {
       pt_pcd << target[idx].pose.pose.translation().x(), target[idx].pose.pose.translation().y(), target[idx].pose.pose.translation().z();  // NOLINT
     }
@@ -221,8 +221,8 @@ bool transform::select_control_points(
 /**
  * @brief calculate Rubber-Sheet transformation from target trajectory and selected control points
  *
- * @param[in] node                - rclcpp::Node:
- *                                  reference to node
+ * @param[in] cfg                 - config::GeoreferencingConfig:
+ *                                  reference to config
  * @param[in] target              - std::vector<PointStdDev>:
  *                                  target trajectory
  * @param[in] cps                 - std::vector<ControlPoint>:
@@ -233,7 +233,7 @@ bool transform::select_control_points(
  *                                  true if function executed
  */
 bool transform::get_rubber_sheeting(
-  GeoreferencingConfig & config, const std::vector<PoseStamped> & target,
+  config::GeoreferencingConfig & cfg, const std::vector<PoseStamped> & target,
   std::vector<ControlPoint> & cps, const std::shared_ptr<Delaunay> & triag)
 {
   // Convert target trajectory to Eigen format and insert into triangulation
@@ -241,7 +241,7 @@ bool transform::get_rubber_sheeting(
   for (const auto & pose : target) {
     target_eigen.push_back(pose.pose.pose.translation());
   }
-  triag->enclosingControlPoints(config.square_size, target_eigen, cps);
+  triag->enclosingControlPoints(cfg.square_size, target_eigen, cps);
   // Insertion of control points into triangulation structure
   for (unsigned i = 0; i < cps.size(); i++) {
     triag->insertPoint(cps[i].target);
@@ -456,23 +456,6 @@ bool transform::transform_pcd(
   }
   return true;
 }
-// Helpers to detect optional point fields at compile time
-template <typename T, typename = void>
-struct has_intensity : std::false_type
-{
-};
-template <typename T>
-struct has_intensity<T, std::void_t<decltype(std::declval<T>().intensity)>> : std::true_type
-{
-};
-template <typename T, typename = void>
-struct has_label : std::false_type
-{
-};
-template <typename T>
-struct has_label<T, std::void_t<decltype(std::declval<T>().label)>> : std::true_type
-{
-};
 /**
  * @brief transform sub point cloud map one one thread
  *

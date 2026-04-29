@@ -30,11 +30,16 @@
 #include <string>
 #include <vector>
 
+#include "cli/cli_config.hpp"
 #include "triangulation.hpp"
 #include "umeyama.hpp"
 #include "utility.hpp"
 namespace flexcloud
 {
+namespace config
+{
+struct GeoreferencingConfig;  // defined in cli/cli_config.hpp
+}
 /**
  * @brief class to perform all transformations
  */
@@ -74,7 +79,7 @@ public:
    *                                  true if function executed
    */
   bool select_control_points(
-    GeoreferencingConfig & config, const std::vector<PointStdDevStamped> & src,
+    config::GeoreferencingConfig & cfg, const std::vector<PointStdDevStamped> & src,
     const std::vector<PoseStamped> & target, std::vector<ControlPoint> & cps);
 
   /**
@@ -92,7 +97,7 @@ public:
    *                                  true if function executed
    */
   bool get_rubber_sheeting(
-    GeoreferencingConfig & config, const std::vector<PoseStamped> & target,
+    config::GeoreferencingConfig & cfg, const std::vector<PoseStamped> & target,
     std::vector<ControlPoint> & cps, const std::shared_ptr<Delaunay> & triag);
 
   /**
@@ -129,7 +134,8 @@ public:
 
   /**
    * @brief transform point cloud map with Umeyama and Rubber-Sheeting trafo using multi-threading.
-   *      Allowed types: PointXYZI (intensity point type) and PointXYZIL (intensity, label point type)
+   *      Allowed types: PointXYZI (intensity point type) and PointXYZIL (intensity, label point
+   * type)
    *
    * @param[in] node                - rclcpp::Node:
    *                                  reference to node
@@ -156,7 +162,8 @@ private:
 
   /**
    * @brief transform sub point cloud map one one thread.
-   *      Allowed types: PointXYZI (intensity point type) and PointXYZIL (intensity, label point type)
+   *      Allowed types: PointXYZI (intensity point type) and PointXYZIL (intensity, label point
+   * type)
    *
    * @param[in] threadNum           - int:
    *                                  number of thread

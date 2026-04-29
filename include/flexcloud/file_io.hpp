@@ -37,6 +37,7 @@
 #include <string>
 #include <vector>
 
+#include "cli/cli_config.hpp"
 #include "point_types.hpp"
 #include "utility.hpp"
 namespace flexcloud
@@ -65,7 +66,7 @@ public:
    *                                  absolute path to file
    */
   std::vector<PointStdDevStamped> load_positions(
-    const std::string & traj_path, GeoreferencingConfig & config);
+    const std::string & traj_path, config::GeoreferencingConfig & cfg);
   /**
    * @brief Load glim odometry from a file
    *

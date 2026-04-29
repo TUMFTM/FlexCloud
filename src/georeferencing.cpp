@@ -21,37 +21,15 @@
 #include <iostream>
 #include <memory>
 #include <string>
+#include <utility>
 #include <vector>
+
+#include "CLI/CLI.hpp"
+#include "cli/cli_config.hpp"
 namespace flexcloud
 {
-// Constructor
-// pcd_georef package constructor
-Georeferencing::Georeferencing(
-  const std::string & config_path, const std::string & pos_global_path,
-  const std::string & poses_path, const std::string & pcd_path = "")
+Georeferencing::Georeferencing(config::GeoreferencingConfig cfg) : config_(std::move(cfg))
 {
-  // Load config from file
-  YAML::Node config = YAML::LoadFile(config_path);
-
-  // Set parameters
-  this->config_.pos_global_path = pos_global_path;
-  this->config_.poses_path = poses_path;
-  this->config_.pcd_path = pcd_path;
-  this->config_.include_label = config["include_labels"].as<bool>();
-  this->config_.transform_traj = config["transform_traj"].as<bool>();
-  this->config_.rs_num_controlPoints = config["rs_num_controlPoints"].as<int>();
-  this->config_.stddev_threshold = config["stddev_threshold"].as<double>();
-  this->config_.square_size = config["square_size"].as<std::vector<double>>();
-  this->config_.exclude_ind = config["exclude_ind"].as<std::vector<int64_t>>();
-  this->config_.shift_ind = config["shift_ind"].as<std::vector<int64_t>>();
-  this->config_.shift_ind_dist = config["shift_ind_dist"].as<std::vector<double>>();
-  this->config_.fake_ind = config["fake_ind"].as<std::vector<int64_t>>();
-  this->config_.fake_ind_dist = config["fake_ind_dist"].as<std::vector<double>>();
-  this->config_.fake_ind_height = config["fake_ind_height"].as<std::vector<double>>();
-  this->config_.num_cores = config["num_cores"].as<int>();
-  this->config_.custom_origin = config["custom_origin"].as<bool>();
-  this->config_.origin = config["origin"].as<std::vector<double>>();
-
   // Check if all paths contain data
   if (!paths_valid()) return;
 
@@ -74,7 +52,7 @@ Georeferencing::Georeferencing(
   save_map();
 
   // Analysis and save
-  evaluation(config);
+  evaluation();
 
   std::cout << "\033[1;36m===> Done!\033[0m" << std::endl;
 }
@@ -148,7 +126,7 @@ void Georeferencing::align_traj()
   // Calculate transformation
   bool bumeyama = transform_.get_umeyama(this->pos_global_, this->poses_, this->umeyama_);
 
-  // Transform poses and lanelet2 map (3D)
+  // Transform poses
   bool btrans_umeyama =
     transform_.transform_ls_al(this->poses_, this->poses_align_, this->umeyama_);
 
@@ -178,15 +156,13 @@ void Georeferencing::visualize_traj()
  */
 void Georeferencing::rubber_sheeting()
 {
-  // Get controlpoints from RVIZ
+  // Select control points for rubber-sheeting
   transform_.select_control_points(
     this->config_, this->pos_global_, this->poses_align_, this->control_points_);
 
-  // Calculate triangulation and transformation matrices
   bool btrans_rs = transform_.get_rubber_sheeting(
     this->config_, this->poses_align_, this->control_points_, this->triag_);
 
-  // Transform trajectory
   transform_.transform_ls_rs(this->poses_align_, this->poses_rs_, this->triag_);
 
   // Transform point cloud map if desired by user
@@ -211,11 +187,9 @@ void Georeferencing::rubber_sheeting()
  */
 void Georeferencing::visualize_rs()
 {
-  // Visualize in rerun
   this->viz_->rs2rerun(this->control_points_, this->triag_, this->rec_, "Blue");
   this->viz_->linestring2rerun(this->poses_rs_, this->rec_, "Orange", "Trajectory_RS");
 
-  // PCD map
   if (this->config_.pcd_path != "") {
     if (this->config_.include_label && this->pcd_map_il_) {
       this->viz_->pc_map2rerun(this->pcd_map_il_, this->rec_);
@@ -252,11 +226,8 @@ void Georeferencing::save_map()
 }
 /**
  * @brief do evaluation calculations and write to txt-files
- *
- * @param[in] config               - YAML::Node:
- *                                  configuration node
  */
-void Georeferencing::evaluation(const YAML::Node & config)
+void Georeferencing::evaluation()
 {
   // Create output directory
   // Set working directory to current path
@@ -266,9 +237,24 @@ void Georeferencing::evaluation(const YAML::Node & config)
     std::filesystem::create_directories(dir);
   }
 
-  // Dump config file to output directory
+  // Dump effective config to output directory
+  YAML::Node out;
+  out["transform_traj"] = this->config_.transform_traj;
+  out["rs_num_controlPoints"] = this->config_.rs_num_controlPoints;
+  out["stddev_threshold"] = this->config_.stddev_threshold;
+  out["square_size"] = this->config_.square_size;
+  out["num_cores"] = this->config_.num_cores;
+  out["include_labels"] = this->config_.include_label;
+  out["custom_origin"] = this->config_.custom_origin;
+  out["origin"] = this->config_.origin;
+  out["exclude_ind"] = this->config_.exclude_ind;
+  out["shift_ind"] = this->config_.shift_ind;
+  out["shift_ind_dist"] = this->config_.shift_ind_dist;
+  out["fake_ind"] = this->config_.fake_ind;
+  out["fake_ind_dist"] = this->config_.fake_ind_dist;
+  out["fake_ind_height"] = this->config_.fake_ind_height;
   std::ofstream fout(dir + "/georeferencing_config.yaml");
-  fout << config;
+  fout << out;
   fout.close();
 
   // Trajectory matching analysis and export
@@ -285,22 +271,31 @@ void Georeferencing::evaluation(const YAML::Node & config)
  */
 int main(int argc, char * argv[])
 {
-  // Check the number of arguments
-  if (argc < 4) {
-    // Tell the user how to run the program
-    std::cerr << "Usage: " << argv[0]
-              << " <config_path> <reference_path> <slam_path> <(optional) pcd_path> <(optional) "
-                 "pcd_out_path>"
-              << std::endl;
-    return 1;
-  }
-  if (argc == 4) {
-    flexcloud::Georeferencing georef(argv[1], argv[2], argv[3], "");
-  } else if (argc == 5) {
-    flexcloud::Georeferencing georef(argv[1], argv[2], argv[3], argv[4]);
-  } else {
-    std::cerr << "Too many arguments" << std::endl;
-    return 1;
-  }
+  CLI::App app{"Georeference a SLAM trajectory and (optionally) a corresponding point cloud "
+               "map by aligning it to a GNSS / reference trajectory using Umeyama and "
+               "rubber-sheeting."};
+  app.name("georeferencing");
+
+  flexcloud::config::GeoreferencingConfig cfg;
+  cfg.add_cli_options(&app);
+
+  app.footer(
+    "\nExamples:\n"
+    "  # cartesian reference, no point cloud, default parameters\n"
+    "  ros2 run flexcloud georeferencing positions_interpolated.txt poses_keyframes.txt\n\n"
+    "  # GPS reference, custom origin, transform a point cloud as well\n"
+    "  ros2 run flexcloud georeferencing reference.txt poses_keyframes.txt \\\n"
+    "      --pcd map.pcd --transform-traj --custom-origin \\\n"
+    "      --origin 48.262 11.667 0.0\n\n"
+    "  # supply index-based fine-tuning arrays via YAML\n"
+    "  ros2 run flexcloud georeferencing reference.txt poses_keyframes.txt \\\n"
+    "      --config-file georeferencing.yaml\n");
+
+  CLI11_PARSE(app, argc, argv);
+
+  // Overlay optional YAML for index-based fine-tuning arrays.
+  cfg.load_yaml_overlay();
+
+  flexcloud::Georeferencing georef(std::move(cfg));
   return 0;
 }

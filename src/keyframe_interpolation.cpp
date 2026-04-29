@@ -22,64 +22,54 @@
 #include <algorithm>
 #include <iostream>
 #include <memory>
+#include <optional>
+#include <rclcpp/rclcpp.hpp>
 #include <set>
 #include <string>
 #include <vector>
 
-#include "yaml-cpp/yaml.h"
+#include "CLI/CLI.hpp"
+#include "cli/cli_config.hpp"
 namespace flexcloud
 {
-KeyframeInterpolation::KeyframeInterpolation(
-  const std::string & config_path, const std::string & pos_dir, const std::string & odom_path,
-  const std::string & dst_directory)
+KeyframeInterpolation::KeyframeInterpolation(const config::KeyframeInterpolationConfig & cli_cfg)
 {
-  this->global_time_diff_ = 0.0f;
-  // Load config
-  YAML::Node config = YAML::LoadFile(config_path);
-
-  this->stddev_threshold_ = config["stddev_threshold"].as<float>();
-  this->keyframe_delta_x_ = config["keyframe_delta_x"].as<float>();
-  this->keyframe_delta_angle_ = config["keyframe_delta_angle"].as<float>();
-  this->interpolate_ = config["interpolate"].as<bool>();
-  this->pos_delta_xyz_ = config["interp_pos_delta_xyz"].as<float>();
-
   // Load
-  load(pos_dir, odom_path);
+  load(cli_cfg);
 
   // Interpolate keyframes
-  select_keyframes();
+  select_keyframes(cli_cfg);
 
   // Save keyframes
-  save(dst_directory);
+  save(cli_cfg.out_dir);
 }
 /**
- * @brief Load frames from a directory
- *
- * @param[in] pos_dir             - std::string:
- *                                 absolute path to directory
- * @param[in] kitti_path          - std::string:
- *                                path to kitti odometry
- * * @param[in] pcd_dir             - std::string:
- * *                                 absolute path to directory
+ * @brief Load frames based on CLI configuration.
  */
-void KeyframeInterpolation::load(const std::string & pos_dir, const std::string & odom_path)
+void KeyframeInterpolation::load(const config::KeyframeInterpolationConfig & cli_cfg)
 {
-  // Load position frames
+  // Load reference positions
   this->positions_.clear();
-  this->positions_ = file_io_->load_positions_dir(pos_dir, this->stddev_threshold_);
+  if (cli_cfg.use_bag()) {
+    std::optional<Eigen::Vector3d> origin;
+    if (cli_cfg.origin.size() == 3) {
+      origin = Eigen::Vector3d(cli_cfg.origin[0], cli_cfg.origin[1], cli_cfg.origin[2]);
+    }
+    rosbag_io io(
+      cli_cfg.pos_bag, cli_cfg.pos_topic, cli_cfg.target_frame, cli_cfg.stddev_threshold, origin);
+    this->positions_ = io.run();
+  } else {
+    this->positions_ = file_io_->load_positions_dir(cli_cfg.pos_dir, cli_cfg.stddev_threshold);
+  }
 
-  // Load odometry frames
+  // Load SLAM poses (GLIM format)
   this->poses_.clear();
-  // Load kitti odometry file
-  std::cout << "Loading odometry poses from " << odom_path << std::endl;
-  this->poses_ = file_io_->load_poses(odom_path);
+  std::cout << "Loading odometry poses from " << cli_cfg.poses_path << std::endl;
+  this->poses_ = file_io_->load_poses(cli_cfg.poses_path);
   std::cout << "Loaded " << this->poses_.size() << " odometry frames" << std::endl;
 }
 /**
  * @brief Save everything to directory
- *
- * @param[in] dst_directory       - std::string:
- *                                 absolute path to directory
  */
 bool KeyframeInterpolation::save(const std::string & dst_directory) const
 {
@@ -105,7 +95,7 @@ bool KeyframeInterpolation::save(const std::string & dst_directory) const
 /**
  * @brief Select keyframes
  */
-void KeyframeInterpolation::select_keyframes()
+void KeyframeInterpolation::select_keyframes(const config::KeyframeInterpolationConfig & cli_cfg)
 {
   if (this->positions_.empty() || this->poses_.empty()) {
     return;
@@ -116,11 +106,11 @@ void KeyframeInterpolation::select_keyframes()
 
   // Handle first frame
   this->key_poses_.push_back(this->poses_.front());
-  if (this->interpolate_) {
-    /* Interpolate position of frame */
-    this->key_positions_.push_back(interpolate_pos(this->poses_.front()));
+  if (cli_cfg.interpolate) {
+    // Interpolate position of frame
+    this->key_positions_.push_back(interpolate_pos(this->poses_.front(), cli_cfg.interp_pos_delta_xyz));
   } else {
-    /* Search GPS frame for first frame */
+    // Search GPS frame for first frame
     this->key_positions_.push_back(search_closest(this->poses_.front()));
   }
 
@@ -133,12 +123,12 @@ void KeyframeInterpolation::select_keyframes()
     double delta_x = delta.translation().norm();
     double delta_angle = Eigen::AngleAxisd(delta.linear()).angle();
 
-    if (delta_x > this->keyframe_delta_x_ || delta_angle > this->keyframe_delta_angle_) {
+    if (delta_x > cli_cfg.keyframe_delta_x || delta_angle > cli_cfg.keyframe_delta_angle) {
       this->key_poses_.push_back(frame);
 
-      if (this->interpolate_) {
+      if (cli_cfg.interpolate) {
         // Interpolate position of frame
-        this->key_positions_.push_back(interpolate_pos(frame));
+        this->key_positions_.push_back(interpolate_pos(frame, cli_cfg.interp_pos_delta_xyz));
       } else {
         // search for corresponding pos file that is closest (time) to frame
         this->key_positions_.push_back(search_closest(frame));
@@ -146,35 +136,33 @@ void KeyframeInterpolation::select_keyframes()
     }
   }
 
-  if (!this->interpolate_) {
+  if (!cli_cfg.interpolate) {
     // Output max time difference that occured during keyframe selection
     std::cout << "\033[1;32m"
-              << "Max time difference: " << (this->global_time_diff_ / 1000000) << " ms"
+              << "Max time difference: " << (this->max_time_diff_ / 1000000) << " ms"
               << "\033[0m" << std::endl;
   }
 }
 /**
  * @brief Search closest PointStdDevStamped for a given frame
  *
- * @param[in] frame              - std::shared_ptr<OdometryFrame>:
- *                                 frame to search for
+ * @param[in] pose               - PoseStamped:
+ *                                frame to search for
  * @return PointStdDevStamped    - PointStdDevStamped:
  *                                 closest PointStdDevStamped
  */
-PointStdDevStamped KeyframeInterpolation::search_closest(
-  const PoseStamped & pose)
+PointStdDevStamped KeyframeInterpolation::search_closest(const PoseStamped & pose)
 {
   auto closest_it = std::min_element(
     positions_.begin(), positions_.end(),
     [&pose](const PointStdDevStamped & a, const PointStdDevStamped & b) {
-      return std::abs(pose.stamp - a.stamp) <
-             std::abs(pose.stamp - b.stamp);
+      return std::abs(pose.stamp - a.stamp) < std::abs(pose.stamp - b.stamp);
     });
 
   std::int64_t minDiff = std::abs(pose.stamp - closest_it->stamp);
 
-  if (minDiff > this->global_time_diff_) {
-    this->global_time_diff_ = minDiff;
+  if (minDiff > this->max_time_diff_) {
+    this->max_time_diff_ = minDiff;
   }
 
   return *closest_it;
@@ -182,13 +170,13 @@ PointStdDevStamped KeyframeInterpolation::search_closest(
 /**
  * @brief Interpolate PointStdDevStamped for a given pose
  *
- * @param[in] frame              - std::shared_ptr<OdometryFrame>:
- *                                 frame to search for
+ * @param[in] pose                - PoseStamped:
+ *                                frame to interpolate for
  * @return PointStdDevStamped     - PointStdDevStamped:
  *                                 interpolated PointStdDevStamped
  */
 PointStdDevStamped KeyframeInterpolation::interpolate_pos(
-  const PoseStamped & pose)
+  const PoseStamped & pose, const double pos_delta_xyz)
 {
   const int numFrames = 2;
 
@@ -202,9 +190,7 @@ PointStdDevStamped KeyframeInterpolation::interpolate_pos(
                         ? 0
                         : std::distance(this->positions_.begin(), lowerBound - 1);
 
-  // Sanity check to check if enough pos frames before first keyframe
-  if (
-    lowerIndex < (numFrames - 1) || this->positions_[lowerIndex].stamp > pose.stamp) {
+  if (lowerIndex < (numFrames - 1) || this->positions_[lowerIndex].stamp > pose.stamp) {
     std::cout << std::fixed << std::setprecision(6);
     std::cout << "\033[31mNot enough Pos frames provided for smallest LiDAR frame with timestamp "
               << static_cast<double>(pose.stamp) / 1000000000 << "\033[0m" << std::endl;
@@ -217,8 +203,8 @@ PointStdDevStamped KeyframeInterpolation::interpolate_pos(
   // Search for PosFrames below lowerIndex with a euclidean distance of pos_delta_xyz
   for (int i = lowerIndex - 1; i >= 0 && selectedIndicesLow.size() < numFrames; --i) {
     if (
-      i == 0 || this->positions_[i].calc_dist(this->positions_[selectedIndicesLow.back()]) >=
-                  this->pos_delta_xyz_) {
+      i == 0 ||
+      this->positions_[i].calc_dist(this->positions_[selectedIndicesLow.back()]) >= pos_delta_xyz) {
       selectedIndicesLow.push_back(i);
     }
   }
@@ -228,7 +214,7 @@ PointStdDevStamped KeyframeInterpolation::interpolate_pos(
     if (
       i == this->positions_.size() - 1 ||
       this->positions_[i].calc_dist(this->positions_[selectedIndicesHigh.back()]) >=
-        this->pos_delta_xyz_) {
+        pos_delta_xyz) {
       selectedIndicesHigh.push_back(i);
     }
   }
@@ -302,21 +288,41 @@ void KeyframeInterpolation::visualize()
  */
 int main(int argc, char * argv[])
 {
-  // Check the number of arguments
-  if (argc < 5) {
-    // Tell the user how to run the program
-    std::cerr << "Usage: " << argv[0]
-              << " <config_path> <pos_dir_path> <kitti_odom_path> <dst_dir_path>"
-              << std::endl;
+  rclcpp::init(argc, argv);
+
+  CLI::App app{
+    "Select keyframes from a SLAM trajectory and interpolate the corresponding "
+    "reference positions, either from per-position txt files or from a ROS 2 bag "
+    "(NavSatFix or Odometry messages)."};
+  app.name("keyframe_interpolation");
+
+  flexcloud::config::KeyframeInterpolationConfig cfg;
+  cfg.add_cli_options(&app);
+
+  app.footer(
+    "\nExamples:\n"
+    "  # txt directory of per-position files (output to current directory)\n"
+    "  ros2 run flexcloud keyframe_interpolation /path/to/poses_kitti.txt \\\n"
+    "      --pos-dir /path/to/positions/\n\n"
+    "  # ROS 2 bag with NavSatFix on /sensor/gnss/fix\n"
+    "  ros2 run flexcloud keyframe_interpolation /path/to/poses_kitti.txt /path/to/out \\\n"
+    "      --pos-bag /path/to/bag.mcap --pos-topic /sensor/gnss/fix \\\n"
+    "      --target-frame base_link\n");
+
+  CLI11_PARSE(app, argc, argv);
+
+  if (cfg.pos_dir.empty() && cfg.pos_bag.empty()) {
+    std::cerr << "Either --pos-dir or --pos-bag must be provided." << std::endl;
     return 1;
   }
-  if (argc == 5) {
-    // Only interpolation without accumulating clouds
-    flexcloud::KeyframeInterpolation set_frames(argv[1], argv[2], argv[3], argv[4]);
-    set_frames.visualize();
-  } else {
-    std::cerr << "Too many arguments" << std::endl;
+  if (!cfg.pos_bag.empty() && cfg.pos_topic.empty()) {
+    std::cerr << "--pos-topic is required when --pos-bag is set." << std::endl;
     return 1;
   }
+
+  flexcloud::KeyframeInterpolation set_frames(cfg);
+  set_frames.visualize();
+
+  rclcpp::shutdown();
   return 0;
 }

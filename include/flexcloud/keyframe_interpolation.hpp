@@ -30,7 +30,9 @@
 #include <string>
 #include <vector>
 
+#include "cli/cli_config.hpp"
 #include "file_io.hpp"
+#include "rosbag_io.hpp"
 #include "utility.hpp"
 #include "visualization.hpp"
 namespace flexcloud
@@ -38,35 +40,14 @@ namespace flexcloud
 class KeyframeInterpolation
 {
 public:
-  KeyframeInterpolation(
-    const std::string & config_path, const std::string & pos_dir, const std::string & odom_path,
-    const std::string & dst_directory);
+  explicit KeyframeInterpolation(const config::KeyframeInterpolationConfig & cli_cfg);
   void visualize();
 
 private:
   /**
-   * @brief Load frames from a directory
-   *
-   * @param[in] pos_dir             - std::string:
-   *                                  absolute path to directory
-   * @param[in] kitti_path          - std::string:
-   *                                  path to kitti odometry
+   * @brief Load reference positions and SLAM poses based on the CLI configuration.
    */
-  void load(
-    const std::string & pos_dir, const std::string & odom_path);
-  /**
-   * @brief Load frames from a directory
-   *
-   * @param[in] pos_dir             - std::string:
-   *                                  absolute path to directory
-   * @param[in] kitti_path          - std::string:
-   *                                  path to kitti odometry
-   * @param[in] pcd_dir             - std::string:
-   *                                  absolute path to directory
-   */
-  void load(
-    const std::string & pos_dir, const std::string & odom_path,
-    const std::string & pcd_dir);
+  void load(const config::KeyframeInterpolationConfig & cli_cfg);
   /**
    * @brief Save everything to directory
    *
@@ -77,7 +58,7 @@ private:
   /**
    * @brief Select keyframes
    */
-  void select_keyframes();
+  void select_keyframes(const config::KeyframeInterpolationConfig & cli_cfg);
   /**
    * @brief Search closest PointStdDevStamped for a given frame
    *
@@ -95,33 +76,22 @@ private:
    * @return PointStdDevStamped     - PointStdDevStamped:
    *                                 interpolated PointStdDevStamped
    */
-  PointStdDevStamped interpolate_pos(const PoseStamped & frame);
-  /**
-   * @brief Set parameters from config
-   */
-  void set_params(const std::string & config_path);
+  PointStdDevStamped interpolate_pos(const PoseStamped & frame, const double pos_delta_xyz);
 
 private:
   // File IO
-  std::shared_ptr<file_io> file_io_;
+  std::shared_ptr<file_io> file_io_{std::make_shared<file_io>()};
 
   // Data
   std::vector<PoseStamped> poses_;
   std::vector<PointStdDevStamped> positions_;
   std::vector<PoseStamped> key_poses_;
   std::vector<PointStdDevStamped> key_positions_;
+  std::int64_t max_time_diff_{};
+
 
   // Visualization
-  std::shared_ptr<visualization> viz_;
+  std::shared_ptr<visualization> viz_{std::make_shared<visualization>()};
   rerun::RecordingStream rec_ = rerun::RecordingStream("keyframe_interpolation");
-
-  // Config parameters
-  std::string odom_format_{};
-  float stddev_threshold_{1.0f};
-  float keyframe_delta_x_{1.0f};
-  float keyframe_delta_angle_{10.0f};
-  bool interpolate_{false};
-  float pos_delta_xyz_{1.0f};
-  std::int64_t global_time_diff_{};
 };
 }  // namespace flexcloud

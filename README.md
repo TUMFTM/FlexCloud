@@ -21,7 +21,19 @@ Leveraging the concept of rubber-sheeting from cartography, the tool is also abl
 
 ![image](doc/flowchart.png)
 
-<h2>🐋 Installation</h2>
+<h2>📦 Installation via PyPI</h2>
+
+The simplest way to use FlexCloud is via the PyPI wheel — it bundles the C++ executables together with the ROS 2 runtime libraries they need, so you don't need a system ROS installation.
+
+```bash
+pip install flexcloud
+flexcloud-keyframe-interpolation --help
+flexcloud-georeferencing --help
+```
+
+The wheel ships with `flexcloud-keyframe-interpolation` and `flexcloud-georeferencing` console-scripts; both accept the CLI flags documented below.
+
+<h2>🐋 Installation via Docker</h2>
 
 1. Clone the repository by running
 
@@ -68,75 +80,122 @@ If you are struggling with their installation, you can have a look at the proces
 
 <h3> Keyframe Interpolation</h3>
 
-* set parameters in `/config/keyframe_interpolation.yaml`
+All algorithm parameters are CLI flags with reasonable defaults. Invoke either via the PyPI wheel (`flexcloud-keyframe-interpolation`) or, if the package is built from source as a colcon package, via `ros2 run flexcloud keyframe_interpolation`.
 
-1. Necessary input parameters:
-   * `config_path` => path to [config-file](./config/select_keyframes.yaml)
-   * `pos_dir_path` => path to raw GNSS/reference trajectory of the vehicle (format: txt-file with `lat, lon, ele, lat_stddev, lon_stddev, ele_stddev` or `x, y, z, x_stddev, y_stddev, z_stddev`, if the reference trajectory is already in local coordinates)
-   * `poses_path` => path to SLAM trajectory of the vehicle (GLIM-format)
-   * `dst_dir_path` => path to output trajectory
+The reference data (global positions of the vehicle) can be supplied either as a directory of per-position `.txt` files (legacy format) or directly from a ROS 2 bag (`.mcap` or `sqlite3`) that contains `sensor_msgs/msg/NavSatFix` or `nav_msgs/msg/Odometry` messages.
 
-* make sure the data follows the following format/requirements:
+```text
+flexcloud-keyframe-interpolation [OPTIONS] <poses-path> [out-dir]
 
-<!-- markdownlint-disable MD013 -->
-| Description | Format |
-| ----------- | ----------- |
-| global positions (usually from GNSS or an EKF using GNSS) | individual `.txt` files per position in a directory specify position in `stamp xpos ypos zpos x_stddev y_stddev z_stddev`. The files are named according to the UTC-timestamp of the position in the format `sec_nanosec`. |
-| inertial LiDAR trajectory (currently the API is designed for [glim](https://github.com/koide3/glim)) | single `.txt` file in KITTI-format: `stamp xpos ypos zpos xquat yquat zquat wquat` |
-<!-- markdownlint-enable MD013 -->
+Required positional arguments:
+  poses-path      SLAM trajectory in KITTI format
+                  (one row per pose: stamp xpos ypos zpos xquat yquat zquat wquat)
+  out-dir         Output directory for poses_keyframes.txt and positions_interpolated.txt
+                  (defaults to the current directory)
 
-* the executable selects keyframes from the LiDAR trajectory (keyframes are based on minimum longitudinal distance
-* `keyframe_delta_x` - or minimum angle - `keyframe_delta_angle`) based on the config and converts it together
-with the pcd-files to a format compatible with [interactive_slam](https://github.com/koide3/interactive_slam)
-* as the global positions correspond to the same tracjetory, the keyframes of the global position trajectory can be
-computed in two ways (based on the parameter `interpolated`):
-  * **Closest neighbor**: For each keyframe of the LiDAR trajectory, the global position frame with the
-  smallest timestamp difference is selected.
-  * **Spline interpolation**: For each keyframe of the LiDAR trajectory, the global position frame at the given
-  timestamp is interpolated based on a third-order spline. The parameter `interp_pos_delta_xyz` is used to select
-  two positions that are next to each other but have a minimum euclidean distance of that parameter.
-  `stddev_threshold` is used to sort out global positions that have a high covariance.
-
-* to run the keyframe interpolation, simply execute the executable with the necessary data and config as arguments:
-
-```bash
-./keyframe_interpolation <config_path> <pos_dir_path> <poses_path> <dst_dir_path>
+Reference data (one of --pos-dir or --pos-bag is required):
+  --pos-dir TEXT             Directory with per-position txt files
+                             (filenames named <sec>_<nanosec>.txt, content
+                             "x y z x_stddev y_stddev z_stddev")
+  --pos-bag TEXT             ROS 2 bag containing the reference messages
+  --pos-topic TEXT           Topic of NavSatFix or Odometry messages (required with --pos-bag)
+  -t,--target-frame TEXT     TF frame to transform positions into (uses /tf and /tf_static
+                             from the bag). Optional.
+  --origin LAT LON ALT       Custom origin for NavSatFix → local Cartesian projection.
+                             If omitted the first valid fix is used.
 ```
 
-* the output of the Keyframe Interpolation is designed to be compatible with the georeferencing.
+Examples:
+
+```bash
+# legacy: per-position txt files (output to current directory)
+flexcloud-keyframe-interpolation /path/to/poses_kitti.txt \
+    --pos-dir /path/to/positions/
+
+# rosbag with NavSatFix on /sensor/gnss/fix
+flexcloud-keyframe-interpolation /path/to/poses_kitti.txt /path/to/out \
+    --pos-bag /path/to/bag.mcap --pos-topic /sensor/gnss/fix \
+    --target-frame base_link
+
+# rosbag with Odometry
+flexcloud-keyframe-interpolation /path/to/poses_kitti.txt /path/to/out \
+    --pos-bag /path/to/bag.mcap --pos-topic /odom \
+    --target-frame base_link
+```
+
+Notes on bag input:
+* `NavSatFix` messages are projected to local Cartesian via [GeographicLib](https://geographiclib.sourceforge.io/2009-03/classGeographicLib_1_1LocalCartesian.html); standard deviations are taken from `position_covariance` (diagonal).
+* `Odometry` messages use `pose.pose` directly; standard deviations are taken from `pose.covariance` (diagonal).
+* When `--target-frame` is set, all `/tf` and `/tf_static` messages from the bag are pre-loaded into a TF buffer. For each message we then look up the **translation from the static** transform (the lever arm between the message's frame and the target frame) and the **orientation from the dynamic** transform at the message timestamp, and apply `rotation * static_translation` as the world-frame offset to the message position. This mirrors the behaviour of `rosbag_to_gnss` from `iac_map_loc`.
+
+The keyframe-selection algorithm itself is unchanged:
+* keyframes are selected from the LiDAR trajectory based on minimum longitudinal distance (`keyframe_delta_x`) or minimum angular delta (`keyframe_delta_angle`).
+* For each LiDAR keyframe, the corresponding reference position is computed in one of two ways (controlled by `interpolate`):
+  * **Closest neighbor** — pick the reference frame with the smallest timestamp delta.
+  * **Spline interpolation** — fit a third-order spline through neighboring reference points (selected so that consecutive supports have a minimum euclidean distance of `interp_pos_delta_xyz`) and evaluate at the keyframe timestamp.
+* `stddev_threshold` is used to drop reference frames with high covariance.
+
+The output is designed to be compatible with the georeferencing executable.
 
 <h3> PCD Georeferencing</h3>
-* set parameters in `/config/pcd_georef.yaml`
 
-1. Necessary input parameters:
-   * `config_path` => path to [config-file](./config/pcd_georef.yaml)
-   * `positions_path` => path to GNSS/reference trajectory of the vehicle (format: single txt-file with `lat, lon, ele, lat_stddev, lon_stddev, ele_stddev` or `x, y, z, x_stddev, y_stddev, z_stddev`, if the reference trajectory is already in local coordinates)
-   * `poses_path` => path to SLAM trajectory of the vehicle (KITTI-format)
-   * `pcd_path` => path to point cloud map corresponding to poses trajectory (OPTIONAL - only if yout want to transform the pointcloud)
+All parameters are CLI flags with sensible defaults; the only YAML config that remains is for the index-based fine-tuning arrays (`exclude_ind`, `shift_ind`, `shift_ind_dist`, `fake_ind`, `fake_ind_dist`, `fake_ind_height`) and is supplied via `--config-file`.
 
-2. Start the package
+```text
+flexcloud-georeferencing [OPTIONS] <positions-path> <poses-path>
 
-   ```bash
-   Usage: ./build/georeferencing <config_path> <positions> <poses_path> <(optional) pcd_path>>
-   ```
+Required positional arguments:
+  positions-path        GNSS / reference trajectory (lat,lon,ele,*_stddev or
+                        x,y,z,*_stddev if already cartesian)
+  poses-path            SLAM trajectory in KITTI format
 
-   ```bash
-   cd flexcloud/
-   ./build/pcd_georef src/flexcloud/config/pcd_georef.yaml src/flexcloud/test/positions_interpolated.txt src/flexcloud/test/poses_keyframes.txt 
-   ```
+Inputs:
+  --pcd PATH            Point cloud map to transform
+  --config-file PATH    Optional YAML for index-based fine-tuning arrays
 
-3. Inspect results
-   * results of the rubber-sheet transformation & the resulting, transformed point cloud map are visualized in [Rerun](https://rerun.io/).
-   * by default, the rerun viewer instance of the docker container is spawned. However, if you have problems with the viewer and your graphics drivers, you can also launch your viewer locally
-   * adjust the parameters if the results are satisfying
-   * see table for explanation of single topics
-   * follow the instructions below (Content->Analysis) to get a quantitative evaluation fo the georeferencing
-   * the results are automatically saved in the current working directory within the folder `output/traj_matching/`
-   * Quick usage (the directory output/traj_matching is automatically generated at the current working directory):
+Trajectory matching:
+  --transform-traj / --no-transform-traj   (default: --no-transform-traj)
+  --rs-num-control-points INT              (default: 10)
+  --stddev-threshold FLOAT                 (default: 0.05)
+  --square-size FLOAT FLOAT FLOAT          (default: 0.1 0.1 10.0)
 
-   ```bash
-       python3 plot_traj_matching.py /path/to/output/traj_matching/
-   ```
+Pointcloud transformation:
+  --num-cores INT                          (default: 10)
+  --include-labels / --no-include-labels   (default: --include-labels)
+
+Origin:
+  --custom-origin / --no-custom-origin     (default: --no-custom-origin)
+  --origin LAT LON ALT                     (default: 0.0 0.0 0.0)
+```
+
+Examples:
+
+```bash
+# defaults, cartesian reference, no point cloud
+flexcloud-georeferencing positions_interpolated.txt poses_keyframes.txt
+
+# transform a GPS trajectory and a point cloud, with a custom origin
+flexcloud-georeferencing reference.txt poses_keyframes.txt \
+    --pcd map.pcd --transform-traj --custom-origin --origin 48.262 11.667 0.0
+
+# supply index-based fine-tuning arrays via YAML
+flexcloud-georeferencing reference.txt poses_keyframes.txt \
+    --config-file config/georeferencing.yaml
+```
+
+Inspect results:
+
+* results of the rubber-sheet transformation & the resulting, transformed point cloud map are visualized in [Rerun](https://rerun.io/).
+* by default, the rerun viewer instance of the docker container is spawned. However, if you have problems with the viewer and your graphics drivers, you can also launch your viewer locally
+* adjust the parameters if the results are satisfying
+* see table for explanation of single topics
+* follow the instructions below (Content->Analysis) to get a quantitative evaluation fo the georeferencing
+* the results are automatically saved in the current working directory within the folder `output/traj_matching/`
+* Quick usage (the directory output/traj_matching is automatically generated at the current working directory):
+
+```bash
+python3 plot_traj_matching.py /path/to/output/traj_matching/
+```
 
 | Type | Description |
 | ----------- | ----------- |

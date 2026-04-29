@@ -112,10 +112,10 @@ std::vector<PointStdDevStamped> file_io::load_positions_dir(
  *                                  absolute path to file
  */
 std::vector<PointStdDevStamped> file_io::load_positions(
-  const std::string & path, GeoreferencingConfig & config)
+  const std::string & path, config::GeoreferencingConfig & cfg)
 {
   std::vector<PointStdDevStamped> points_local{};
-  if (config.transform_traj) {
+  if (cfg.transform_traj) {
     std::vector<PointStdDev> points_gps{};
 
     // Read trajectory in GPS format
@@ -135,10 +135,10 @@ std::vector<PointStdDevStamped> file_io::load_positions(
     }
 
     Eigen::Vector3d orig{0.0, 0.0, 0.0};
-    if (config.custom_origin) {
-      orig.x() = config.origin[0];
-      orig.y() = config.origin[1];
-      orig.z() = config.origin[2];
+    if (cfg.custom_origin) {
+      orig.x() = cfg.origin[0];
+      orig.y() = cfg.origin[1];
+      orig.z() = cfg.origin[2];
     } else {
       orig = points_gps[0].pos;
     }
@@ -146,7 +146,7 @@ std::vector<PointStdDevStamped> file_io::load_positions(
     std::cout << "\033[33mMap origin: " << orig.x() << " " << orig.y() << " " << orig.z()
               << "\033[0m" << std::endl;
 
-    config.origin = {orig.x(), orig.y(), orig.z()};
+    cfg.origin = {orig.x(), orig.y(), orig.z()};
 
     // initialize GeographicLib origins and ellipsoids
     const GeographicLib::NormalGravity & earth_WGS84 = GeographicLib::NormalGravity::WGS84();

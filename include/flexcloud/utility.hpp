@@ -27,6 +27,23 @@
 #include <vector>
 namespace flexcloud
 {
+// Helpers to detect optional point fields at compile time
+template <typename T, typename = void>
+struct has_intensity : std::false_type
+{
+};
+template <typename T>
+struct has_intensity<T, std::void_t<decltype(std::declval<T>().intensity)>> : std::true_type
+{
+};
+template <typename T, typename = void>
+struct has_label : std::false_type
+{
+};
+template <typename T>
+struct has_label<T, std::void_t<decltype(std::declval<T>().label)>> : std::true_type
+{
+};
 /**
  * @brief struct to represent metric position with standard deviation
  *
@@ -122,33 +139,6 @@ public:
 public:
   Pose pose;
   std::int64_t stamp;
-};
-/**
- * @brief configuration struct for FlexCloud packages
- */
-struct GeoreferencingConfig
-{
-  std::string pos_global_path{};
-  std::string poses_path{};
-  std::string pcd_path{};
-  // Optional additional pc attributes
-  bool include_label{false};
-  // Trajectory Alignment
-  bool transform_traj{true};
-  int rs_num_controlPoints{10};
-  double stddev_threshold{0.5};
-  std::vector<double> square_size{0.1, 0.1, 10.0};
-  // PCD Georeferencing
-  std::vector<int64_t> exclude_ind{};
-  std::vector<int64_t> shift_ind{};
-  std::vector<double> shift_ind_dist{};
-  std::vector<int64_t> fake_ind{};
-  std::vector<double> fake_ind_dist{};
-  std::vector<double> fake_ind_height{};
-  int num_cores{4};
-  // Zero point
-  bool custom_origin{false};
-  std::vector<double> origin{0.0, 0.0, 0.0};
 };
 /**
  * @brief struct to get TUMcolor code from string
