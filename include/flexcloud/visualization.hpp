@@ -18,6 +18,7 @@
 
 #pragma once
 
+#include <pcl/PCLPointCloud2.h>
 #include <pcl/filters/approximate_voxel_grid.h>
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
@@ -34,7 +35,6 @@
 
 #include "triangulation.hpp"
 #include "utility.hpp"
-#include "point_types.hpp"
 namespace flexcloud
 {
 class visualization
@@ -127,8 +127,6 @@ public:
    *                                  stream to add map to
    */
   void pc_map2rerun(
-    const pcl::PointCloud<pcl::PointXYZI>::Ptr & pcd_map, rerun::RecordingStream & stream);
-  void pc_map2rerun(
-    const pcl::PointCloud<PointXYZIL>::Ptr & pcd_map, rerun::RecordingStream & stream);
+    const pcl::PCLPointCloud2::Ptr & pcd_map, rerun::RecordingStream & stream);
 };
 }  // namespace flexcloud

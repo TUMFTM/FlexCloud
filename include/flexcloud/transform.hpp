@@ -19,6 +19,7 @@
 #pragma once
 //
 #include <math.h>
+#include <pcl/PCLPointCloud2.h>
 #include <pcl/filters/extract_indices.h>
 #include <pcl/io/pcd_io.h>
 #include <pcl/point_types.h>
@@ -133,61 +134,20 @@ public:
     const std::shared_ptr<Delaunay> & triag);
 
   /**
-   * @brief transform point cloud map with Umeyama and Rubber-Sheeting trafo using multi-threading.
-   *      Allowed types: PointXYZI (intensity point type) and PointXYZIL (intensity, label point
-   * type)
+   * @brief transform a point cloud map with Umeyama + Rubber-Sheeting using all
+   *        hardware threads. Operates on `pcl::PCLPointCloud2`, transforming
+   *        only the x/y/z fields and leaving every other field untouched.
+   *        Points outside the rubber-sheet
+   *        triangulation are dropped.
    *
-   * @param[in] node                - rclcpp::Node:
-   *                                  reference to node
-   * @param[in] umeyama             - std::shared_ptr<Umeyama>:
-   *                                  pointer to Umeyama transformation
-   * @param[in] triag               - std::shared_ptr<Delaunay>:
-   *                                  pointer to triangulation
-   * @param[in] pcm                 - pcl::PointCloud<PointT>::Ptr:
-   *                                  pointer to point cloud map
-   * @param[in] num_cores           - int:
-   *                                  amount of cores to be used
-   * @param[out]                    - bool:
-   *                                  true if function executed
+   * @param[in]    umeyama    Umeyama transformation
+   * @param[in]    triag      rubber-sheet triangulation
+   * @param[inout] pcm        point cloud map; modified in place (and replaced
+   *                          when outliers are removed)
+   * @return true if executed
    */
-  template <typename PointT>
   bool transform_pcd(
     const std::shared_ptr<Umeyama> & umeyama, const std::shared_ptr<Delaunay> & triag,
-    pcl::PointCloud<PointT>::Ptr & pcm, const int num_cores);
-
-private:
-  // Variables for multi-threading
-  std::vector<int> progress;
-  std::vector<bool> threads_finished;
-
-  /**
-   * @brief transform sub point cloud map one one thread.
-   *      Allowed types: PointXYZI (intensity point type) and PointXYZIL (intensity, label point
-   * type)
-   *
-   * @param[in] threadNum           - int:
-   *                                  number of thread
-   * @param[in] umeyama             - std::shared_ptr<Umeyama>:
-   *                                  pointer to Umeyama transformation
-   * @param[in] triag               - std::shared_ptr<Delaunay>:
-   *                                  pointer to triangulation
-   * @param[in] cloud_in            - pcl::PointCloud<PointT>::Ptr:
-   *                                  pointer to input point cloud map
-   * @param[in] cloud_out           - pcl::PointCloud<PointT>::Ptr:
-   *                                  pointer to output point cloud map
-   */
-  template <typename PointT>
-  void transform_sub_pcd(
-    const int threadNum, const std::shared_ptr<Umeyama> & umeyama,
-    const std::shared_ptr<Delaunay> & triag, const pcl::PointCloud<PointT>::Ptr & cloud_in,
-    const pcl::PointCloud<PointT>::Ptr & cloud_out);
-
-  /**
-   * @brief set class variables to preprare threading
-   *
-   * @param[in] num_threads         - size_t:
-   *                                  number of thread
-   */
-  void prepare_threading(size_t num_threads);
+    pcl::PCLPointCloud2::Ptr & pcm);
 };
 }  // namespace flexcloud

@@ -27,23 +27,6 @@
 #include <vector>
 namespace flexcloud
 {
-// Helpers to detect optional point fields at compile time
-template <typename T, typename = void>
-struct has_intensity : std::false_type
-{
-};
-template <typename T>
-struct has_intensity<T, std::void_t<decltype(std::declval<T>().intensity)>> : std::true_type
-{
-};
-template <typename T, typename = void>
-struct has_label : std::false_type
-{
-};
-template <typename T>
-struct has_label<T, std::void_t<decltype(std::declval<T>().label)>> : std::true_type
-{
-};
 /**
  * @brief struct to represent metric position with standard deviation
  *

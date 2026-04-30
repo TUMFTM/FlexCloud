@@ -71,7 +71,7 @@ bool Georeferencing::paths_valid()
     }
   };
 
-  check_file(this->config_.pos_global_path, "trajectory");
+  check_file(this->config_.positions_path, "trajectory");
   check_file(this->config_.poses_path, "poses");
 
   if (this->config_.pcd_path != "") {
@@ -86,7 +86,7 @@ bool Georeferencing::paths_valid()
 void Georeferencing::load_data()
 {
   // GPS trajectory
-  this->pos_global_ = file_io_->load_positions(this->config_.pos_global_path, this->config_);
+  this->pos_global_ = file_io_->load_positions(this->config_.positions_path, this->config_);
   std::cout << "\033[1;36m===> Trajectory with " << this->pos_global_.size()
             << " points: Loaded!\033[0m" << std::endl;
 
@@ -95,24 +95,11 @@ void Georeferencing::load_data()
   std::cout << "\033[1;36m===> Poses with " << this->poses_.size() << " points: Loaded!\033[0m"
             << std::endl;
 
-  // PCD map
-  if (this->config_.pcd_path != "") {
-    bool loading_successfull = false;
-    if (this->config_.include_label) {
-      loading_successfull =
-        file_io_->load_pcd<PointXYZIL>(this->config_.pcd_path, this->pcd_map_il_);
-    } else {
-      loading_successfull =
-        file_io_->load_pcd<pcl::PointXYZI>(this->config_.pcd_path, this->pcd_map_);
-    }
-    if (loading_successfull) {
-      if (this->config_.include_label && pcd_map_il_) {
-        std::cout << "\033[1;36mPoint Cloud with " << pcd_map_il_->width * pcd_map_il_->height
-                  << " points: Loaded!\033[0m" << std::endl;
-      } else if (pcd_map_) {
-        std::cout << "\033[1;36mPoint Cloud with " << pcd_map_->width * pcd_map_->height
-                  << " points: Loaded!\033[0m" << std::endl;
-      }
+  // PCD map (preserves all input fields via PCLPointCloud2)
+  if (!this->config_.pcd_path.empty()) {
+    if (file_io_->load_pcd(this->config_.pcd_path, this->pcd_map_) && this->pcd_map_) {
+      std::cout << "\033[1;36mPoint Cloud with " << pcd_map_->width * pcd_map_->height
+                << " points: Loaded!\033[0m" << std::endl;
     } else {
       std::cout << "!! Error during PCD loading !!" << std::endl;
     }
@@ -165,15 +152,9 @@ void Georeferencing::rubber_sheeting()
 
   transform_.transform_ls_rs(this->poses_align_, this->poses_rs_, this->triag_);
 
-  // Transform point cloud map if desired by user
-  if (this->config_.pcd_path != "") {
-    if (this->config_.include_label) {
-      transform_.transform_pcd<PointXYZIL>(
-        this->umeyama_, this->triag_, this->pcd_map_il_, this->config_.num_cores);
-    } else {
-      transform_.transform_pcd<pcl::PointXYZI>(
-        this->umeyama_, this->triag_, this->pcd_map_, this->config_.num_cores);
-    }
+  // Transform point cloud map if provided by the user
+  if (!this->config_.pcd_path.empty()) {
+    transform_.transform_pcd(this->umeyama_, this->triag_, this->pcd_map_);
 
     if (btrans_rs) {
       std::cout << "\033[1;36m===> Finished Rubber-Sheeting!\033[0m" << std::endl;
@@ -190,12 +171,8 @@ void Georeferencing::visualize_rs()
   this->viz_->rs2rerun(this->control_points_, this->triag_, this->rec_, "Blue");
   this->viz_->linestring2rerun(this->poses_rs_, this->rec_, "Orange", "Trajectory_RS");
 
-  if (this->config_.pcd_path != "") {
-    if (this->config_.include_label && this->pcd_map_il_) {
-      this->viz_->pc_map2rerun(this->pcd_map_il_, this->rec_);
-    } else if (this->pcd_map_) {
-      this->viz_->pc_map2rerun(this->pcd_map_, this->rec_);
-    }
+  if (!this->config_.pcd_path.empty() && this->pcd_map_) {
+    this->viz_->pc_map2rerun(this->pcd_map_, this->rec_);
   }
 }
 /**
@@ -208,14 +185,7 @@ void Georeferencing::save_map()
       this->config_.pcd_path.substr(0, this->config_.pcd_path.find_last_of("\\/")) + "/georef_" +
       this->config_.pcd_path.substr(this->config_.pcd_path.find_last_of("/\\") + 1);
 
-    bool saved_successfully = false;
-    if (this->config_.include_label) {
-      saved_successfully = file_io_->save_pcd<PointXYZIL>(path, this->pcd_map_il_);
-      std::cout << "Including labels: true" << std::endl;
-    } else {
-      saved_successfully = file_io_->save_pcd<pcl::PointXYZI>(path, this->pcd_map_);
-      std::cout << "Including labels: false" << std::endl;
-    }
+    const bool saved_successfully = file_io_->save_pcd(path, this->pcd_map_);
 
     if (saved_successfully) {
       std::cout << "\033[1;36mPoint Cloud Map written to " << path << "!\033[0m" << std::endl;
@@ -239,12 +209,10 @@ void Georeferencing::evaluation()
 
   // Dump effective config to output directory
   YAML::Node out;
-  out["transform_traj"] = this->config_.transform_traj;
-  out["rs_num_controlPoints"] = this->config_.rs_num_controlPoints;
+  out["project_positions"] = this->config_.project_positions;
+  out["control_points"] = this->config_.control_points;
   out["stddev_threshold"] = this->config_.stddev_threshold;
   out["square_size"] = this->config_.square_size;
-  out["num_cores"] = this->config_.num_cores;
-  out["include_labels"] = this->config_.include_label;
   out["custom_origin"] = this->config_.custom_origin;
   out["origin"] = this->config_.origin;
   out["exclude_ind"] = this->config_.exclude_ind;

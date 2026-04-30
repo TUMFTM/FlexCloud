@@ -18,18 +18,24 @@
 
 #include "transform.hpp"
 
-#include "point_types.hpp"
 #include <algorithm>
+#include <atomic>
+#include <chrono>
+#include <cstdint>
 #include <iostream>
 #include <memory>
 #include <thread>
-#include <type_traits>
 #include <vector>
 
+#include <pcl/PCLPointField.h>
+#include <pcl/common/io.h>
+#include <pcl/filters/extract_indices.h>
 #include <pcl/filters/impl/extract_indices.hpp>
 #include <pcl/filters/impl/filter.hpp>
 #include <pcl/filters/impl/filter_indices.hpp>
 #include <pcl/impl/pcl_base.hpp>
+
+#include "cli/cli_config.hpp"
 
 namespace flexcloud
 {
@@ -96,7 +102,7 @@ bool transform::select_control_points(
     std::cout << "Sizes of fake_ind, fake_ind_dist and fake_ind_height do not match!" << std::endl;
   }
   // Set interval for control point selection
-  int traj_split = static_cast<int>(target.size()) / cfg.rs_num_controlPoints;
+  int traj_split = static_cast<int>(target.size()) / cfg.control_points;
   std::cout << "\033[33m~~~~~> LiDAR got " << target.size() << " poses!\033[0m" << std::endl;
   std::cout << "\033[33m~~~~~> Every " << traj_split
             << " st/nd/rd/th vertex is selected as control point\033[0m" << std::endl;
@@ -305,237 +311,128 @@ bool transform::transform_ls_rs(
   return true;
 }
 /**
- * @brief transform point cloud map with Umeyama and Rubber-Sheeting trafo using multi-threading
- *
- * @param[in] node                - rclcpp::Node:
- *                                  reference to node
- * @param[in] umeyama             - std::shared_ptr<Umeyama>:
- *                                  pointer to Umeyama transformation
- * @param[in] triag               - std::shared_ptr<Delaunay>:
- *                                  pointer to triangulation
- * @param[in] pcm                 - pcl::PointCloud<pcl::PointXYZ>::Ptr:
- *                                  pointer to point cloud map
- * @param[in] num_cores           - int:
- *                                  amount of cores to be used
- * @param[out]                    - bool:
- *                                  true if function executed
+ * @brief Locate the byte offsets of the three coordinate fields and verify
+ *        they are all FLOAT32. Throws if not.
  */
-template <typename PointT>
+struct XYZFieldLayout
+{
+  std::uint32_t x_off, y_off, z_off, point_step;
+};
+
+XYZFieldLayout locate_xyz(const pcl::PCLPointCloud2 & pcm)
+{
+  XYZFieldLayout out{};
+  int x_idx = pcl::getFieldIndex(pcm, "x");
+  int y_idx = pcl::getFieldIndex(pcm, "y");
+  int z_idx = pcl::getFieldIndex(pcm, "z");
+  if (x_idx < 0 || y_idx < 0 || z_idx < 0) {
+    throw std::runtime_error("Point cloud is missing one of the x/y/z fields");
+  }
+  for (int idx : {x_idx, y_idx, z_idx}) {
+    if (pcm.fields[idx].datatype != pcl::PCLPointField::FLOAT32) {
+      throw std::runtime_error("FlexCloud only supports float32 x/y/z fields");
+    }
+  }
+  out.x_off = pcm.fields[x_idx].offset;
+  out.y_off = pcm.fields[y_idx].offset;
+  out.z_off = pcm.fields[z_idx].offset;
+  out.point_step = pcm.point_step;
+  return out;
+}
+/**
+ * @brief Transform a PCLPointCloud2 in place using Umeyama + Rubber-Sheeting.
+ *        Only the x/y/z fields are touched; every other field is preserved.
+ *        Points falling outside the rubber-sheet triangulation are removed.
+ *        All hardware threads are used.
+ */
 bool transform::transform_pcd(
   const std::shared_ptr<Umeyama> & umeyama, const std::shared_ptr<Delaunay> & triag,
-  pcl::PointCloud<PointT>::Ptr & pcm, const int num_cores)
+  pcl::PCLPointCloud2::Ptr & pcm)
 {
-  // Let's run threading
-  int num_max_cores = std::thread::hardware_concurrency();
-  size_t num_threads = 0;
-  // Check valid number for no. threads
-  if (num_cores < num_max_cores) {
-    num_threads = num_cores;
-  } else {
-    num_threads = static_cast<int>(std::floor(num_max_cores / 1.25));
-  }
-  size_t numPoints = pcm->size();
-  size_t quotient = numPoints / num_threads;
-  size_t remainder = numPoints % num_threads;
-  this->prepare_threading(num_threads);
-
-  // Create number of sub pointclouds for threading
-  std::vector<typename pcl::PointCloud<PointT>::Ptr> cloud_in_array;
-  for (size_t i = 0; i < num_threads; ++i) {
-    typename pcl::PointCloud<PointT>::Ptr cloud_in(new pcl::PointCloud<PointT>);
-    cloud_in_array.push_back(cloud_in);
+  if (!pcm || pcm->data.empty()) {
+    return false;
   }
 
-  // Create specific indices for all threads
-  std::vector<std::vector<int>> indices;
-  for (size_t i = 0; i < num_threads; ++i) {
-    std::vector<int> row;
-    if (i == 0) {
-      for (size_t x = 0; x <= (quotient - 1); ++x) {
-        row.push_back(x);
+  const XYZFieldLayout layout = locate_xyz(*pcm);
+  const std::size_t n = static_cast<std::size_t>(pcm->width) * pcm->height;
+  const unsigned int num_threads = std::max(1u, std::thread::hardware_concurrency());
+
+  std::vector<std::uint8_t> drop(n, 0);  // 1 = outside triangulation, drop
+  std::atomic<std::size_t> processed{0};
+
+  auto worker = [&](std::size_t begin, std::size_t end) {
+    for (std::size_t i = begin; i < end; ++i) {
+      auto * base = pcm->data.data() + i * layout.point_step;
+      float & x = *reinterpret_cast<float *>(base + layout.x_off);
+      float & y = *reinterpret_cast<float *>(base + layout.y_off);
+      float & z = *reinterpret_cast<float *>(base + layout.z_off);
+
+      Eigen::Vector3d p(x, y, z);
+      umeyama->transformPoint(p);
+      triag->transformPoint(p);
+      if (p.norm() < 1.0e-3) {
+        drop[i] = 1;
+      } else {
+        x = static_cast<float>(p.x());
+        y = static_cast<float>(p.y());
+        z = static_cast<float>(p.z());
       }
-    } else if (i > 0 && i < (num_threads - 1)) {
-      for (size_t x = (i * quotient); x <= ((i + 1) * quotient - 1); ++x) {
-        row.push_back(x);
-      }
-    } else if (i == (num_threads - 1)) {
-      for (size_t x = (i * quotient); x <= ((i + 1) * quotient + remainder - 1); ++x) {
-        row.push_back(x);
-      }
+      processed.fetch_add(1, std::memory_order_relaxed);
     }
-    indices.push_back(row);
-  }
+  };
 
-  // Copy corresponding parts of cloud to smaller pointclouds
-  for (size_t i = 0; i < num_threads; ++i) {
-    pcl::copyPointCloud(*pcm, indices[i], *cloud_in_array[i]);
-  }
-  // Configure every pcd
-  std::vector<typename pcl::PointCloud<PointT>::Ptr> cloud_out_array;
-  for (size_t i = 0; i < num_threads; ++i) {
-    typename pcl::PointCloud<PointT>::Ptr cloud_out(new pcl::PointCloud<PointT>);
-    cloud_out->is_dense = false;
-    cloud_out->height = 1;
-
-    if (i < (num_threads - 1)) {
-      cloud_out->width = quotient;
-    } else if (i == (num_threads - 1)) {
-      cloud_out->width = quotient + remainder;
-    }
-
-    cloud_out->points.resize(cloud_out->width * cloud_out->height);
-    cloud_out_array.push_back(cloud_out);
-  }
-
-  // Add to vector and start threads
   std::vector<std::thread> threads;
-  for (size_t i = 0; i < num_threads; ++i) {
-    threads.emplace_back(
-      &transform::transform_sub_pcd<PointT>, this, i, umeyama, triag, cloud_in_array[i],
-      cloud_out_array[i]);
+  threads.reserve(num_threads);
+  const std::size_t chunk = (n + num_threads - 1) / num_threads;
+  for (unsigned int t = 0; t < num_threads; ++t) {
+    const std::size_t begin = t * chunk;
+    const std::size_t end = std::min(n, begin + chunk);
+    if (begin >= end) break;
+    threads.emplace_back(worker, begin, end);
   }
-
-  std::cout << "\033[1;36mStart pcd transformation (" << num_threads << " threads started)\033[0m"
+  std::cout << "\033[1;36mStart pcd transformation (" << threads.size() << " threads)\033[0m"
             << std::endl;
 
-  // Wait for all threads to finish cleanly
+  // Progress bar polled from this thread
+  const int bar_width = 50;
+  int last_decile = -1;
   while (true) {
-    // Check if all threads finished
-    bool finished = true;
-    for (size_t i = 0; i < num_threads; ++i) {
-      if (!this->threads_finished[i]) {
-        finished = false;
-      }
-    }
-
-    // Sum current progress
-    int processedPoints = 0;
-    for (size_t i = 0; i < num_threads; ++i) {
-      processedPoints += this->progress[i];
-    }
-
-    float progress = static_cast<float>(processedPoints) / static_cast<float>(numPoints);
-    int bar_width = 50;
-    static int progress_counter = 0;
-
-    if (progress >= (progress_counter / 10.0)) {
-      progress_counter++;
-
+    const std::size_t done = processed.load(std::memory_order_relaxed);
+    const float frac = static_cast<float>(done) / static_cast<float>(n);
+    const int decile = static_cast<int>(frac * 10.0f);
+    if (decile > last_decile) {
+      last_decile = decile;
+      const int pos = static_cast<int>(bar_width * frac);
       std::cout << "[";
-      int pos = bar_width * progress;
-
       for (int i = 0; i < bar_width; ++i) {
-        if (i < pos)
-          std::cout << "=";
-        else if (i == pos)
-          std::cout << ">";
-        else
-          std::cout << " ";
+        std::cout << (i < pos ? '=' : (i == pos ? '>' : ' '));
       }
-      std::cout << "]" << int(progress * 100.0) << " %\r";
-      std::cout << std::endl;
+      std::cout << "] " << int(frac * 100.0f) << " %" << std::endl;
     }
-
-    // Break if done
-    if (finished) {
-      std::cout << "\033[1;36mTransformation finished\033[0m" << std::endl;
-      break;
-    }
+    if (done >= n) break;
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
   }
+  for (auto & th : threads) th.join();
 
-  // Gather all threads just for sure
-  for (auto & thread : threads) {
-    thread.join();
+  // Drop outliers via PCLPointCloud2-aware ExtractIndices (preserves all fields).
+  pcl::PointIndices::Ptr outliers(new pcl::PointIndices);
+  outliers->indices.reserve(static_cast<std::size_t>(
+    std::count(drop.begin(), drop.end(), std::uint8_t{1})));
+  for (std::size_t i = 0; i < n; ++i) {
+    if (drop[i]) outliers->indices.push_back(static_cast<int>(i));
   }
-
-  // Remove points from input cloud and write transformed points clouds
-  pcm->clear();
-
-  for (size_t i = 0; i < num_threads; ++i) {
-    *pcm += *cloud_out_array[i];
+  if (!outliers->indices.empty()) {
+    pcl::ExtractIndices<pcl::PCLPointCloud2> extract;
+    extract.setInputCloud(pcm);
+    extract.setIndices(outliers);
+    extract.setNegative(true);
+    pcl::PCLPointCloud2::Ptr filtered(new pcl::PCLPointCloud2);
+    extract.filter(*filtered);
+    pcm = filtered;
+    std::cout << "\033[1;33mDropped " << outliers->indices.size()
+              << " points outside the rubber-sheet triangulation\033[0m" << std::endl;
   }
+  std::cout << "\033[1;36mTransformation finished\033[0m" << std::endl;
   return true;
 }
-/**
- * @brief transform sub point cloud map one one thread
- *
- * @param[in] threadNum           - int:
- *                                  number of thread
- * @param[in] umeyama             - std::shared_ptr<Umeyama>:
- *                                  pointer to Umeyama transformation
- * @param[in] triag               - std::shared_ptr<Delaunay>:
- *                                  pointer to triangulation
- * @param[in] cloud_in            - pcl::PointCloud<PointT>::Ptr:
- *                                  pointer to input point cloud map
- * @param[in] cloud_out           - pcl::PointCloud<PointT>::Ptr:
- *                                  pointer to output point cloud map
- */
-template <typename PointT>
-void transform::transform_sub_pcd(
-  const int threadNum, const std::shared_ptr<Umeyama> & umeyama,
-  const std::shared_ptr<Delaunay> & triag, const typename pcl::PointCloud<PointT>::Ptr & cloud_in,
-  const typename pcl::PointCloud<PointT>::Ptr & cloud_out)
-{
-  // Transformation begin
-  pcl::PointIndices::Ptr outliers(new pcl::PointIndices());
-  int ind_pt = 0;
-  for (const auto & point : *cloud_in) {
-    // Align point with alignment transformation matrix
-    Eigen::Vector3d pt_al(point.x, point.y, point.z);
-    umeyama->transformPoint(pt_al);
-
-    // Locate new, aligned point
-    Eigen::Vector3d pt_rs(pt_al(0), pt_al(1), pt_al(2));
-    triag->transformPoint(pt_rs);
-    if (pt_rs.norm() < 1.0e-3) {
-      // Point outside of triangulation
-      outliers->indices.push_back(ind_pt);
-    } else {
-      // Point inside triangulation
-      cloud_out->points[ind_pt].x = pt_rs(0);
-      cloud_out->points[ind_pt].y = pt_rs(1);
-      cloud_out->points[ind_pt].z = pt_rs(2);
-    }
-    if constexpr (has_intensity<PointT>::value) {
-      cloud_out->points[ind_pt].intensity = point.intensity;
-    }
-    if constexpr (has_label<PointT>::value) {
-      cloud_out->points[ind_pt].label = point.label;
-    }
-    ++ind_pt;
-    this->progress[threadNum] = ind_pt;
-  }
-
-  pcl::ExtractIndices<PointT> extract;
-  extract.setInputCloud(cloud_out);
-  extract.setIndices(outliers);
-  extract.setNegative(true);
-  extract.filter(*cloud_out);
-
-  this->threads_finished[threadNum] = true;
-}
-/**
- * @brief set class variables to preprare threading
- *
- * @param[in] num_threads         - size_t:
- *                                  number of thread
- */
-void transform::prepare_threading(size_t num_threads)
-{
-  this->threads_finished.resize(num_threads);
-  this->progress.resize(num_threads);
-  for (size_t i = 0; i < num_threads; ++i) {
-    this->threads_finished[i] = false;
-    this->progress[i] = 0;
-  }
-}
-
-template bool transform::transform_pcd<pcl::PointXYZI>(
-  const std::shared_ptr<Umeyama> & umeyama, const std::shared_ptr<Delaunay> & triag,
-  pcl::PointCloud<pcl::PointXYZI>::Ptr & pcm, const int num_cores);
-
-template bool transform::transform_pcd<PointXYZIL>(
-  const std::shared_ptr<Umeyama> & umeyama, const std::shared_ptr<Delaunay> & triag,
-  pcl::PointCloud<PointXYZIL>::Ptr & pcm, const int num_cores);
-
 }  // namespace flexcloud

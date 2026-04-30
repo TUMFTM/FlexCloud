@@ -18,6 +18,7 @@
 
 #pragma once
 
+#include <pcl/PCLPointCloud2.h>
 #include <pcl/common/transforms.h>
 #include <pcl/io/pcd_io.h>
 #include <pcl/point_types.h>
@@ -38,7 +39,6 @@
 #include <vector>
 
 #include "cli/cli_config.hpp"
-#include "point_types.hpp"
 #include "utility.hpp"
 namespace flexcloud
 {
@@ -85,15 +85,16 @@ public:
   std::vector<PoseStamped> load_poses(const std::string & file_path);
 
   /**
-   * @brief read pcd map from file
-   *
+   * @brief Read a PCD map from file into a `pcl::PCLPointCloud2`. All fields
+   *        present in the file are preserved.
+   * 
    * @param[in] pcd_path            - std::string:
-   *                                  absolute path to file
-   * @param[in] pcm                 - pcl::PointCloud<PointT>::Ptr:
-   *                                  pointer on pointcloud map
+   *                                  absolute path to PCD file
+   * @param[out] pcm                - pcl::PCLPointCloud2::Ptr:
+   *                                  point cloud map; allocated and filled by this function
+   * @return true if executed
    */
-  template <typename PointT>
-  bool load_pcd(const std::string & pcd_path, typename pcl::PointCloud<PointT>::Ptr & pcm);
+  bool load_pcd(const std::string & pcd_path, pcl::PCLPointCloud2::Ptr & pcm);
 
   /**
    * @brief save position frames to file
@@ -116,18 +117,15 @@ public:
   bool save_poses(const std::string & filename, const std::vector<PoseStamped> & poses);
 
   /**
-   * @brief write pcd map to file
-   *
-   * @param[in] node                - rclcpp::Node:
-   *                                  Node reference
+   * @brief Write a `pcl::PCLPointCloud2` map to file
+   * 
    * @param[in] pcd_out_path        - std::string:
-   *                                  absolute path to file
-   * @param[in] pcm                 - pcl::PointCloud<PointT>::Ptr:
-   *                                  pointer on pointcloud map
+   *                                  absolute path to output PCD file
+   * @param[in] pcd_map             - pcl::PCLPointCloud2::Ptr:
+   *                                  point cloud map to save
+   * @return true if executed
    */
-  template <typename PointT>
-  bool save_pcd(
-    const std::string & pcd_out_path, const typename pcl::PointCloud<PointT>::Ptr & pcd_map);
+  bool save_pcd(const std::string & pcd_out_path, const pcl::PCLPointCloud2::Ptr & pcd_map);
 
 private:
 };

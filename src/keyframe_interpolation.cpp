@@ -20,7 +20,7 @@
 #include "keyframe_interpolation.hpp"
 
 #include <algorithm>
-#include <filesystem>
+#include <filesystem>  // NOLINT
 #include <iostream>
 #include <memory>
 #include <optional>
