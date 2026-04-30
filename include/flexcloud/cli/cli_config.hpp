@@ -36,11 +36,11 @@ struct KeyframeInterpolationConfig
   std::vector<double> origin{};  // [lat, lon, alt] for NavSatFix
 
   // Algorithm parameters
-  float stddev_threshold{5.0f};
-  float keyframe_delta_x{2.0f};
-  float keyframe_delta_angle{0.5f};
+  double stddev_threshold{0.25};
+  double keyframe_delta_x{2.0};
+  double keyframe_delta_angle{0.5};
   bool interpolate{true};
-  float interp_pos_delta_xyz{0.25f};
+  double interp_pos_delta_xyz{0.25};
 
   void add_cli_options(CLI::App * app)
   {
@@ -120,7 +120,7 @@ struct GeoreferencingConfig
 
   // Trajectory matching
   int control_points{10};
-  double stddev_threshold{0.05};
+  double stddev_threshold{0.25};
   std::vector<double> square_size{0.1, 0.1, 10.0};
   std::vector<double> origin{};
 
