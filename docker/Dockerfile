@@ -74,6 +74,9 @@ RUN apt-get update && apt-get install -y -q --no-install-recommends \
     ros-${ROS_DISTRO}-rosbag2-storage-mcap \
     && rm -rf /var/lib/apt/lists/*
 
+
+RUN pip3 install --upgrade ninja scikit-build-core auditwheel --break-system-packages
+
 # Rerun viewer
 RUN python3 -m venv /ros_ws/rerun
 RUN /ros_ws/rerun/bin/pip install rerun_sdk
