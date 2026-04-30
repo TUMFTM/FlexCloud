@@ -17,6 +17,7 @@
 #include <iostream>
 #include <rclcpp/logging.hpp>
 #include <stdexcept>
+#include <vector>
 #include <string>
 #include <tf2_eigen/tf2_eigen.hpp>
 #include <utility>
