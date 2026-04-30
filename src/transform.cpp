@@ -40,6 +40,35 @@
 namespace flexcloud
 {
 /**
+ * @brief Locate the byte offsets of the three coordinate fields and verify
+ *        they are all FLOAT32. Throws if not.
+ */
+struct XYZFieldLayout
+{
+  std::uint32_t x_off, y_off, z_off, point_step;
+};
+
+XYZFieldLayout locate_xyz(const pcl::PCLPointCloud2 & pcm)
+{
+  XYZFieldLayout out{};
+  int x_idx = pcl::getFieldIndex(pcm, "x");
+  int y_idx = pcl::getFieldIndex(pcm, "y");
+  int z_idx = pcl::getFieldIndex(pcm, "z");
+  if (x_idx < 0 || y_idx < 0 || z_idx < 0) {
+    throw std::runtime_error("Point cloud is missing one of the x/y/z fields");
+  }
+  for (int idx : {x_idx, y_idx, z_idx}) {
+    if (pcm.fields[idx].datatype != pcl::PCLPointField::FLOAT32) {
+      throw std::runtime_error("FlexCloud only supports float32 x/y/z fields");
+    }
+  }
+  out.x_off = pcm.fields[x_idx].offset;
+  out.y_off = pcm.fields[y_idx].offset;
+  out.z_off = pcm.fields[z_idx].offset;
+  out.point_step = pcm.point_step;
+  return out;
+}
+/**
  * @brief calculate Umeyama transformation from source and target trajectory
  *
  * @param[in] src                 - std::vector<PointStdDevStamped>:
@@ -311,39 +340,16 @@ bool transform::transform_ls_rs(
   return true;
 }
 /**
- * @brief Locate the byte offsets of the three coordinate fields and verify
- *        they are all FLOAT32. Throws if not.
- */
-struct XYZFieldLayout
-{
-  std::uint32_t x_off, y_off, z_off, point_step;
-};
-
-XYZFieldLayout locate_xyz(const pcl::PCLPointCloud2 & pcm)
-{
-  XYZFieldLayout out{};
-  int x_idx = pcl::getFieldIndex(pcm, "x");
-  int y_idx = pcl::getFieldIndex(pcm, "y");
-  int z_idx = pcl::getFieldIndex(pcm, "z");
-  if (x_idx < 0 || y_idx < 0 || z_idx < 0) {
-    throw std::runtime_error("Point cloud is missing one of the x/y/z fields");
-  }
-  for (int idx : {x_idx, y_idx, z_idx}) {
-    if (pcm.fields[idx].datatype != pcl::PCLPointField::FLOAT32) {
-      throw std::runtime_error("FlexCloud only supports float32 x/y/z fields");
-    }
-  }
-  out.x_off = pcm.fields[x_idx].offset;
-  out.y_off = pcm.fields[y_idx].offset;
-  out.z_off = pcm.fields[z_idx].offset;
-  out.point_step = pcm.point_step;
-  return out;
-}
-/**
  * @brief Transform a PCLPointCloud2 in place using Umeyama + Rubber-Sheeting.
  *        Only the x/y/z fields are touched; every other field is preserved.
  *        Points falling outside the rubber-sheet triangulation are removed.
  *        All hardware threads are used.
+ * 
+ * @param[in]    umeyama    Umeyama transformation
+ * @param[in]    triag      rubber-sheet triangulation
+ * @param[inout] pcm        point cloud map; modified in place (and replaced
+ *                          when outliers are removed)
+ * @return true if executed
  */
 bool transform::transform_pcd(
   const std::shared_ptr<Umeyama> & umeyama, const std::shared_ptr<Delaunay> & triag,
