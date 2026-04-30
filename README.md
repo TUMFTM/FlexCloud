@@ -82,45 +82,55 @@ If you are struggling with their installation, you can have a look at the proces
 
 All algorithm parameters are CLI flags with reasonable defaults. Invoke either via the PyPI wheel (`flexcloud-keyframe-interpolation`) or, if the package is built from source as a colcon package, via `ros2 run flexcloud keyframe_interpolation`.
 
-The reference data (global positions of the vehicle) can be supplied either as a directory of per-position `.txt` files (legacy format) or directly from a ROS 2 bag (`.mcap` or `sqlite3`) that contains `sensor_msgs/msg/NavSatFix` or `nav_msgs/msg/Odometry` messages.
+The reference-data source is given as a single positional argument `positions-path`; the reader is selected automatically:
+
+| `positions-path` is … | Reader |
+| --- | --- |
+| a `.txt` file | text-file reader (one position per line) |
+| a directory **without** any `.mcap` / `.db3` / `.sqlite3` | per-position txt-files reader |
+| a `.mcap` / `.db3` / `.sqlite3` file, **or** a directory containing one | ROS 2 bag reader |
 
 ```text
-flexcloud-keyframe-interpolation [OPTIONS] <poses-path> [out-dir]
+flexcloud-keyframe-interpolation [OPTIONS] <positions-path> <poses-path> [out-dir]
 
 Required positional arguments:
-  poses-path      SLAM trajectory in KITTI format
+  positions-path  Reference data (auto-detected, see table above)
+  poses-path      SLAM trajectory in GLIM format
                   (one row per pose: stamp xpos ypos zpos xquat yquat zquat wquat)
   out-dir         Output directory for poses_keyframes.txt and positions_interpolated.txt
                   (defaults to the current directory)
 
-Reference data (one of --pos-dir or --pos-bag is required):
-  --pos-dir TEXT             Directory with per-position txt files
-                             (filenames named <sec>_<nanosec>.txt, content
-                             "x y z x_stddev y_stddev z_stddev")
-  --pos-bag TEXT             ROS 2 bag containing the reference messages
-  --pos-topic TEXT           Topic of NavSatFix or Odometry messages (required with --pos-bag)
+Bag input (only used when positions-path is a ROS 2 bag):
+  --pos-topic TEXT           Topic of NavSatFix or Odometry messages (required for bags)
   -t,--target-frame TEXT     TF frame to transform positions into (uses /tf and /tf_static
                              from the bag). Optional.
   --origin LAT LON ALT       Custom origin for NavSatFix → local Cartesian projection.
                              If omitted the first valid fix is used.
 ```
 
+Reference-data file formats:
+
+* **single `.txt` file** — one position per line, whitespace-separated:
+  `stamp x y z x_stddev y_stddev z_stddev`.
+* **directory of per-position `.txt` files** — filenames `<sec>_<nanosec>.txt`, file content `x y z x_stddev y_stddev z_stddev` (timestamp parsed from the filename).
+* **ROS 2 bag** — supports `sensor_msgs/msg/NavSatFix` or `nav_msgs/msg/Odometry` messages.
+
 Examples:
 
 ```bash
-# legacy: per-position txt files (output to current directory)
-flexcloud-keyframe-interpolation /path/to/poses_kitti.txt \
-    --pos-dir /path/to/positions/
+# single txt file
+flexcloud-keyframe-interpolation positions.txt poses_GLIM.txt
 
-# rosbag with NavSatFix on /sensor/gnss/fix
-flexcloud-keyframe-interpolation /path/to/poses_kitti.txt /path/to/out \
-    --pos-bag /path/to/bag.mcap --pos-topic /sensor/gnss/fix \
-    --target-frame base_link
+# directory of per-position txt files
+flexcloud-keyframe-interpolation /path/to/positions/ poses_GLIM.txt
 
-# rosbag with Odometry
-flexcloud-keyframe-interpolation /path/to/poses_kitti.txt /path/to/out \
-    --pos-bag /path/to/bag.mcap --pos-topic /odom \
-    --target-frame base_link
+# ROS 2 bag with NavSatFix on /sensor/gnss/fix
+flexcloud-keyframe-interpolation /path/to/bag.mcap poses_GLIM.txt /path/to/out \
+    --pos-topic /sensor/gnss/fix --target-frame base_link
+
+# ROS 2 bag with Odometry
+flexcloud-keyframe-interpolation /path/to/bag.mcap poses_GLIM.txt /path/to/out \
+    --pos-topic /odom --target-frame base_link
 ```
 
 Notes on bag input:
@@ -147,7 +157,7 @@ flexcloud-georeferencing [OPTIONS] <positions-path> <poses-path>
 Required positional arguments:
   positions-path        GNSS / reference trajectory (lat,lon,ele,*_stddev or
                         x,y,z,*_stddev if already cartesian)
-  poses-path            SLAM trajectory in KITTI format
+  poses-path            SLAM trajectory in GLIM format
 
 Inputs:
   --pcd PATH            Point cloud map to transform

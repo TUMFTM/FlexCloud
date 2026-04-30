@@ -104,6 +104,57 @@ std::vector<PointStdDevStamped> file_io::load_positions_dir(
   return pos_frames;
 }
 /**
+ * @brief Load positions from a single txt file with one position per line.
+ * 
+ * @param[in] file_path          - std::string:
+ *                                  absolute path to file
+ * @param[in] stddev_threshold    - float:
+ *                                  threshold for standard deviation
+ * @return std::vector<PointStdDevStamped>:
+ *                                  vector of position frames
+ */
+std::vector<PointStdDevStamped> file_io::load_positions_file(
+  const std::string & file_path, const float stddev_threshold)
+{
+  std::vector<PointStdDevStamped> pos_frames{};
+  std::cout << "Loading position frames from " << file_path << std::endl;
+
+  std::ifstream infile(file_path);
+  if (!infile.is_open()) {
+    std::cerr << "Unable to open file: " << file_path << std::endl;
+    return pos_frames;
+  }
+
+  std::string line;
+  std::size_t skipped = 0;
+  while (std::getline(infile, line)) {
+    if (line.empty()) continue;
+    std::istringstream iss(line);
+    double stamp, x, y, z, x_stddev, y_stddev, z_stddev;
+    if (!(iss >> stamp >> x >> y >> z >> x_stddev >> y_stddev >> z_stddev)) {
+      std::cerr << "Skipping malformed line: " << line << std::endl;
+      continue;
+    }
+    if (std::sqrt(std::pow(x_stddev, 2) + std::pow(y_stddev, 2)) > stddev_threshold) {
+      ++skipped;
+      continue;
+    }
+    pos_frames.push_back(PointStdDevStamped(
+      PointStdDev(x, y, z, x_stddev, y_stddev, z_stddev), static_cast<int64_t>(stamp * 1e9)));
+  }
+
+  std::sort(
+    pos_frames.begin(), pos_frames.end(),
+    [](const PointStdDevStamped & a, const PointStdDevStamped & b) { return a.stamp < b.stamp; });
+
+  if (skipped > 0) {
+    std::cout << "\033[31m!! Skipped " << skipped
+              << " frames due to standard deviation exceeding limits !!\033[0m" << std::endl;
+  }
+  std::cout << "Loaded " << pos_frames.size() << " global position frames" << std::endl;
+  return pos_frames;
+}
+/**
  * @brief read traj from txt file
  *
  * @param[in] config              - GeoreferencingConfig:

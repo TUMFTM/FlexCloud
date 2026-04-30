@@ -60,6 +60,13 @@ public:
   std::vector<PointStdDevStamped> load_positions_dir(
     const std::string & directory, const float stddev_threshold);
   /**
+   * @brief Load positions from a single txt file with one position per line.
+   *        Each line: "stamp x y z x_stddev y_stddev z_stddev". Frames whose
+   *        horizontal stddev exceeds @p stddev_threshold are dropped.
+   */
+  std::vector<PointStdDevStamped> load_positions_file(
+    const std::string & file_path, const float stddev_threshold);
+  /**
    * @brief read traj from txt file
    *
    * @param[in] traj_path           - std::string:
