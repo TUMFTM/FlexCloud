@@ -24,9 +24,6 @@
 #include <pcl/point_types.h>
 
 #include <Eigen/Geometry>
-#include <GeographicLib/Geocentric.hpp>
-#include <GeographicLib/LocalCartesian.hpp>
-#include <GeographicLib/NormalGravity.hpp>
 #include <algorithm>
 #include <boost/filesystem.hpp>
 #include <boost/format.hpp>
@@ -54,26 +51,29 @@ public:
    *                                 absolute path to directory
    * @param[in] stddev_threshold    - float:
    *                                 threshold for standard deviation
+   * @param [in] origin             - std::optional<Eigen::Vector3d>:
+   *                                 optional origin for ENU projection
    * @return std::vector<PointStdDevStamped>:
    *                                 vector of frames
    */
   std::vector<PointStdDevStamped> load_positions_dir(
-    const std::string & directory, const float stddev_threshold);
+    const std::string & directory, const float stddev_threshold,
+    const std::optional<Eigen::Vector3d> & origin = std::nullopt);
   /**
    * @brief Load positions from a single txt file with one position per line.
-   *        Each line: "stamp x y z x_stddev y_stddev z_stddev". Frames whose
-   *        horizontal stddev exceeds @p stddev_threshold are dropped.
+   * 
+   * @param[in] file_path          - std::string:
+   *                                  absolute path to file
+   * @param[in] stddev_threshold    - float:
+   *                                  threshold for standard deviation
+   * @param [in] origin             - std::optional<Eigen::Vector3d>:
+   *                                  optional origin for ENU projection
+   * @return std::vector<PointStdDevStamped>:
+   *                                  vector of position frames
    */
   std::vector<PointStdDevStamped> load_positions_file(
-    const std::string & file_path, const float stddev_threshold);
-  /**
-   * @brief read traj from txt file
-   *
-   * @param[in] traj_path           - std::string:
-   *                                  absolute path to file
-   */
-  std::vector<PointStdDevStamped> load_positions(
-    const std::string & traj_path, config::GeoreferencingConfig & cfg);
+    const std::string & file_path, const float stddev_threshold,
+    const std::optional<Eigen::Vector3d> & origin = std::nullopt);
   /**
    * @brief Load glim odometry from a file
    *

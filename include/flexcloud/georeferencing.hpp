@@ -42,11 +42,6 @@ public:
   explicit Georeferencing(config::GeoreferencingConfig cfg);
   // Functions
   /**
-   * @brief check if all necessary paths exist
-   */
-  bool paths_valid();
-
-  /**
    * @brief load trajectories and pcd map
    */
   void load_data();

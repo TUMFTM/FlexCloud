@@ -11,7 +11,6 @@
 
 #include <tf2/exceptions.h>
 
-#include <GeographicLib/NormalGravity.hpp>
 #include <algorithm>
 #include <chrono>
 #include <functional>
@@ -25,7 +24,6 @@ namespace flexcloud
 {
 constexpr const char * NAVSATFIX_MSG = "sensor_msgs/msg/NavSatFix";
 constexpr const char * ODOMETRY_MSG = "nav_msgs/msg/Odometry";
-constexpr const char * GEOID_MODEL = "egm2008-2_5";
 std::int64_t to_nanosec(const builtin_interfaces::msg::Time & stamp)
 {
   return static_cast<std::int64_t>(stamp.sec) * 1000000000LL + stamp.nanosec;
@@ -33,11 +31,6 @@ std::int64_t to_nanosec(const builtin_interfaces::msg::Time & stamp)
 tf2::TimePoint to_tf2_time(const builtin_interfaces::msg::Time & stamp)
 {
   return tf2::TimePoint(std::chrono::nanoseconds(to_nanosec(stamp)));
-}
-GeographicLib::Geocentric make_wgs84_ellipsoid()
-{
-  const auto & earth = GeographicLib::NormalGravity::WGS84();
-  return {earth.EquatorialRadius(), earth.Flattening()};
 }
 rosbag_io::rosbag_io(
   const std::string & bag_path, const std::string & topic, const std::string & target_frame,
@@ -49,7 +42,6 @@ rosbag_io::rosbag_io(
   origin_(origin),
   reader_(bag_path),
   tf_buffer_(std::chrono::hours(24)),
-  ellipsoid_(make_wgs84_ellipsoid()),
   logger_(rclcpp::get_logger("flexcloud_rosbag_io"))
 {
   // Resolve message type from metadata of the already-opened reader.
@@ -75,16 +67,13 @@ rosbag_io::rosbag_io(
 
   // Topic listener and projection setup.
   if (topic_type_ == NAVSATFIX_MSG) {
-    GeographicLib::Geoid geoid(GEOID_MODEL);
-    if (origin_.has_value()) {
-      geoid_height_ = geoid(origin_->x(), origin_->y());
-      proj_.emplace(origin_->x(), origin_->y(), origin_->z(), ellipsoid_);
-      RCLCPP_INFO(
-        logger_, "NavSatFix origin (custom): %f %f %f (geoid height %.3f m)", origin_->x(),
-        origin_->y(), origin_->z(), geoid_height_);
-    } else {
+    if (!origin_.has_value()) {
       throw std::runtime_error("No origin provided for NavSatFix projection!");
     }
+    proj_.set_origin(*origin_);
+    RCLCPP_INFO(
+      logger_, "NavSatFix origin (custom): %f %f %f (geoid height %.3f m)", origin_->x(),
+      origin_->y(), origin_->z(), proj_.geoid_height());
     reader_.add_listener<sensor_msgs::msg::NavSatFix>(
       topic_, std::bind(&rosbag_io::navsatfix_callback, this, std::placeholders::_1));
   } else {
@@ -145,11 +134,8 @@ void rosbag_io::navsatfix_callback(const tools::RosbagReaderMsg<sensor_msgs::msg
     return;
   }
 
-  // Project lat/lon/alt → ENU. Subtract the geoid height at the origin from each
-  // altitude so that ENU height is referenced to mean sea level.
-  double x, y, z;
-  proj_->Forward(fix.latitude, fix.longitude, fix.altitude - geoid_height_, x, y, z);
-  Eigen::Vector3d p(x, y, z);
+  // Project lat/lon/alt → ENU using the shared ENUProjection helper.
+  Eigen::Vector3d p = proj_.forward(fix.latitude, fix.longitude, fix.altitude);
 
   // Optional TF transform. A single lookup at the message timestamp resolves
   // the entire static + dynamic chain.

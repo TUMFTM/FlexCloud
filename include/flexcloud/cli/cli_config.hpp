@@ -74,7 +74,7 @@ struct KeyframeInterpolationConfig
       ->group("Bag input");
 
     app->add_option("--origin", origin,
-                    "Custom origin for NavSatFix → local Cartesian projection [lat lon alt]")
+                    "Custom origin for local Cartesian projection [lat lon alt]")
       ->expected(3)
       ->type_name("FLOAT FLOAT FLOAT")
       ->group("Bag input");
@@ -119,13 +119,9 @@ struct GeoreferencingConfig
   std::string config_file{};  // optional YAML for index arrays
 
   // Trajectory matching
-  bool project_positions{false};
   int control_points{10};
   double stddev_threshold{0.05};
   std::vector<double> square_size{0.1, 0.1, 10.0};
-
-  // Origin
-  bool custom_origin{false};
   std::vector<double> origin{0.0, 0.0, 0.0};
 
   // Index-based fine tuning (YAML-only)
@@ -159,12 +155,6 @@ struct GeoreferencingConfig
       ->check(CLI::ExistingFile)
       ->group("Inputs");
 
-    app->add_flag("--project-positions,!--no-project-positions", project_positions,
-                  "Project reference positions from lat/lon to local ENU "
-                  "(false if positions are already cartesian)")
-      ->capture_default_str()
-      ->group("Trajectory matching");
-
     app->add_option("--control-points", control_points,
                     "Number of control points for rubber-sheeting")
       ->capture_default_str()
@@ -182,11 +172,6 @@ struct GeoreferencingConfig
       ->type_name("FLOAT FLOAT FLOAT")
       ->capture_default_str()
       ->group("Trajectory matching");
-
-    app->add_flag("--custom-origin,!--no-custom-origin", custom_origin,
-                  "Use --origin as the ENU zero point instead of the first GPS sample")
-      ->capture_default_str()
-      ->group("Origin");
 
     app->add_option("--origin", origin, "Custom ENU zero point [lat lon alt]")
       ->expected(3)

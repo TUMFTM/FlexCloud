@@ -20,13 +20,58 @@
 //
 
 #include <Eigen/Geometry>
+#include <GeographicLib/Geocentric.hpp>
+#include <GeographicLib/Geoid.hpp>
+#include <GeographicLib/LocalCartesian.hpp>
+#include <GeographicLib/NormalGravity.hpp>
 #include <algorithm>
 #include <iostream>
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 namespace flexcloud
 {
+/**
+ * @brief Helper to project WGS84 lat/lon/alt to local ENU.
+ *        Uses the EGM2008-2_5 geoid model.
+ */
+class ENUProjection
+{
+public:
+  ENUProjection()
+  : ellipsoid_(
+      GeographicLib::NormalGravity::WGS84().EquatorialRadius(),
+      GeographicLib::NormalGravity::WGS84().Flattening())
+  {
+  }
+  void set_origin(const Eigen::Vector3d & origin)
+  {
+    geoid_ = std::make_unique<GeographicLib::Geoid>("egm2008-2_5");
+    geoid_height_ = (*geoid_)(origin.x(), origin.y());
+    proj_.emplace(origin.x(), origin.y(), origin.z(), ellipsoid_);
+  }
+
+  bool initialized() const { return proj_.has_value(); }
+  double geoid_height() const { return geoid_height_; }
+
+  /**
+   * @brief Project (lat, lon, alt) into local ENU. The geoid height at the
+   *        origin is subtracted from alt before the projection.
+   */
+  Eigen::Vector3d forward(double lat, double lon, double alt) const
+  {
+    Eigen::Vector3d out = Eigen::Vector3d::Zero();
+    proj_->Forward(lat, lon, alt - geoid_height_, out.x(), out.y(), out.z());
+    return out;
+  }
+
+private:
+  GeographicLib::Geocentric ellipsoid_;
+  std::unique_ptr<GeographicLib::Geoid> geoid_;
+  std::optional<GeographicLib::LocalCartesian> proj_;
+  double geoid_height_{0.0};
+};
 /**
  * @brief struct to represent metric position with standard deviation
  *
