@@ -231,7 +231,7 @@ int main(int argc, char * argv[])
     "  ros2 run flexcloud georeferencing positions_interpolated.txt poses_keyframes.txt\n\n"
     "  # GPS reference, custom origin, transform a point cloud as well\n"
     "  ros2 run flexcloud georeferencing reference.txt poses_keyframes.txt \\\n"
-    "      --pcd map.pcd --transform-traj --custom-origin \\\n"
+    "      --pcd map.pcd"
     "      --origin 48.262 11.667 0.0\n\n"
     "  # supply index-based fine-tuning arrays via YAML\n"
     "  ros2 run flexcloud georeferencing reference.txt poses_keyframes.txt \\\n"
