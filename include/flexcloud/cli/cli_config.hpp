@@ -26,12 +26,11 @@ namespace flexcloud::config
 struct KeyframeInterpolationConfig
 {
   // Required
+  std::string positions_path{};
   std::string poses_path{};
   std::string out_dir{"."};
 
-  // Reference-data source: exactly one of these groups must be set
-  std::string pos_dir{};
-  std::string pos_bag{};
+  // Bag-only options (used when positions_path resolves to a ROS 2 bag)
   std::string pos_topic{};
   std::string target_frame{};
   std::vector<double> origin{};  // [lat, lon, alt] for NavSatFix
@@ -43,11 +42,18 @@ struct KeyframeInterpolationConfig
   bool interpolate{true};
   float interp_pos_delta_xyz{0.25f};
 
-  bool use_bag() const { return !pos_bag.empty(); }
-
   void add_cli_options(CLI::App * app)
   {
-    app->add_option("poses-path", poses_path, "Path to SLAM trajectory in KITTI format")
+    app->add_option(
+         "positions-path", positions_path,
+         "Reference-data source. Auto-detected: a single .txt file is read line-by-line "
+         "(\"stamp x y z x_stddev y_stddev z_stddev\"); a directory of per-position .txt "
+         "files (filename = \"<sec>_<nanosec>.txt\") is read as such; a .mcap / .db3 / "
+         ".sqlite3 file or a ROS 2 bag directory is read as a bag.")
+      ->required()
+      ->group("Required");
+
+    app->add_option("poses-path", poses_path, "Path to SLAM trajectory in GLIM format")
       ->required()
       ->check(CLI::ExistingFile)
       ->group("Required");
@@ -58,36 +64,20 @@ struct KeyframeInterpolationConfig
       ->capture_default_str()
       ->group("Required");
 
-    auto * dir_opt =
-      app->add_option("--pos-dir", pos_dir,
-                      "Directory with per-position txt files (one of --pos-dir or --pos-bag)")
-        ->check(CLI::ExistingDirectory)
-        ->group("Reference data");
-
-    auto * bag_opt = app->add_option("--pos-bag", pos_bag,
-                                     "ROS 2 bag (mcap or sqlite3) containing reference messages")
-                       ->group("Reference data");
-
     app->add_option("--pos-topic", pos_topic,
-                    "Topic name (NavSatFix or Odometry) inside the ROS 2 bag")
-      ->group("Reference data")
-      ->needs(bag_opt);
+                    "Topic name (NavSatFix or Odometry) — required when positions-path is a bag")
+      ->group("Bag input");
 
     app->add_option("-t,--target-frame", target_frame,
                     "Target TF frame to transform positions into "
                     "(uses /tf and /tf_static from bag)")
-      ->group("Reference data")
-      ->needs(bag_opt);
+      ->group("Bag input");
 
     app->add_option("--origin", origin,
                     "Custom origin for NavSatFix → local Cartesian projection [lat lon alt]")
       ->expected(3)
       ->type_name("FLOAT FLOAT FLOAT")
-      ->group("Reference data")
-      ->needs(bag_opt);
-
-    dir_opt->excludes(bag_opt);
-    bag_opt->excludes(dir_opt);
+      ->group("Bag input");
 
     app->add_option("--stddev-threshold", stddev_threshold,
                     "Reject reference frames whose horizontal stddev exceeds this value")
@@ -157,7 +147,7 @@ struct GeoreferencingConfig
       ->check(CLI::ExistingFile)
       ->group("Required");
 
-    app->add_option("poses-path", poses_path, "Path to SLAM trajectory in KITTI format")
+    app->add_option("poses-path", poses_path, "Path to SLAM trajectory in GLIM format")
       ->required()
       ->check(CLI::ExistingFile)
       ->group("Required");

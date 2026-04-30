@@ -20,11 +20,13 @@
 #include "keyframe_interpolation.hpp"
 
 #include <algorithm>
+#include <filesystem>
 #include <iostream>
 #include <memory>
 #include <optional>
 #include <rclcpp/rclcpp.hpp>
 #include <set>
+#include <stdexcept>
 #include <string>
 #include <vector>
 
@@ -32,6 +34,40 @@
 #include "cli/cli_config.hpp"
 namespace flexcloud
 {
+/// Heuristic detection of how to read the reference data at @p path.
+enum class PositionsKind
+{
+  TXT_FILE,       // single .txt file with one position per line
+  TXT_DIR,        // directory of per-position .txt files
+  BAG             // ROS 2 bag (.mcap / .db3 / .sqlite3 file, or a directory containing one)
+};
+
+bool is_bag_extension(const std::filesystem::path & ext)
+{
+  return ext == ".mcap" || ext == ".db3" || ext == ".sqlite3";
+}
+
+PositionsKind classify_positions_path(const std::string & p)
+{
+  std::filesystem::path path(p);
+  if (!std::filesystem::exists(path)) {
+    throw std::runtime_error("positions-path does not exist: " + p);
+  }
+  if (std::filesystem::is_regular_file(path)) {
+    if (is_bag_extension(path.extension())) return PositionsKind::BAG;
+    if (path.extension() == ".txt") return PositionsKind::TXT_FILE;
+    throw std::runtime_error("Unsupported positions-path file extension: " + p);
+  }
+  if (std::filesystem::is_directory(path)) {
+    for (const auto & entry : std::filesystem::directory_iterator(path)) {
+      if (entry.is_regular_file() && is_bag_extension(entry.path().extension())) {
+        return PositionsKind::BAG;
+      }
+    }
+    return PositionsKind::TXT_DIR;
+  }
+  throw std::runtime_error("positions-path is neither a regular file nor a directory: " + p);
+}
 KeyframeInterpolation::KeyframeInterpolation(const config::KeyframeInterpolationConfig & cli_cfg)
 {
   // Load
@@ -48,18 +84,33 @@ KeyframeInterpolation::KeyframeInterpolation(const config::KeyframeInterpolation
  */
 void KeyframeInterpolation::load(const config::KeyframeInterpolationConfig & cli_cfg)
 {
-  // Load reference positions
+  // Load reference positions — auto-detect reader from positions_path
   this->positions_.clear();
-  if (cli_cfg.use_bag()) {
-    std::optional<Eigen::Vector3d> origin;
-    if (cli_cfg.origin.size() == 3) {
-      origin = Eigen::Vector3d(cli_cfg.origin[0], cli_cfg.origin[1], cli_cfg.origin[2]);
+  const PositionsKind kind = classify_positions_path(cli_cfg.positions_path);
+  switch (kind) {
+    case PositionsKind::TXT_FILE:
+      this->positions_ =
+        file_io_->load_positions_file(cli_cfg.positions_path, cli_cfg.stddev_threshold);
+      break;
+    case PositionsKind::TXT_DIR:
+      this->positions_ =
+        file_io_->load_positions_dir(cli_cfg.positions_path, cli_cfg.stddev_threshold);
+      break;
+    case PositionsKind::BAG: {
+      if (cli_cfg.pos_topic.empty()) {
+        throw std::runtime_error(
+          "--pos-topic is required when positions-path is a ROS 2 bag");
+      }
+      std::optional<Eigen::Vector3d> origin;
+      if (cli_cfg.origin.size() == 3) {
+        origin = Eigen::Vector3d(cli_cfg.origin[0], cli_cfg.origin[1], cli_cfg.origin[2]);
+      }
+      rosbag_io io(
+        cli_cfg.positions_path, cli_cfg.pos_topic, cli_cfg.target_frame,
+        cli_cfg.stddev_threshold, origin);
+      this->positions_ = io.run();
+      break;
     }
-    rosbag_io io(
-      cli_cfg.pos_bag, cli_cfg.pos_topic, cli_cfg.target_frame, cli_cfg.stddev_threshold, origin);
-    this->positions_ = io.run();
-  } else {
-    this->positions_ = file_io_->load_positions_dir(cli_cfg.pos_dir, cli_cfg.stddev_threshold);
   }
 
   // Load SLAM poses (GLIM format)
@@ -300,25 +351,16 @@ int main(int argc, char * argv[])
   cfg.add_cli_options(&app);
 
   app.footer(
-    "\nExamples:\n"
-    "  # txt directory of per-position files (output to current directory)\n"
-    "  ros2 run flexcloud keyframe_interpolation /path/to/poses_kitti.txt \\\n"
-    "      --pos-dir /path/to/positions/\n\n"
+    "\nExamples (positions-path auto-detected):\n"
+    "  # single txt file with one position per line\n"
+    "  flexcloud-keyframe-interpolation positions.txt poses_kitti.txt\n\n"
+    "  # directory of per-position txt files\n"
+    "  flexcloud-keyframe-interpolation /path/to/positions/ poses_kitti.txt\n\n"
     "  # ROS 2 bag with NavSatFix on /sensor/gnss/fix\n"
-    "  ros2 run flexcloud keyframe_interpolation /path/to/poses_kitti.txt /path/to/out \\\n"
-    "      --pos-bag /path/to/bag.mcap --pos-topic /sensor/gnss/fix \\\n"
-    "      --target-frame base_link\n");
+    "  flexcloud-keyframe-interpolation /path/to/bag.mcap poses_kitti.txt /path/to/out \\\n"
+    "      --pos-topic /sensor/gnss/fix --target-frame base_link\n");
 
   CLI11_PARSE(app, argc, argv);
-
-  if (cfg.pos_dir.empty() && cfg.pos_bag.empty()) {
-    std::cerr << "Either --pos-dir or --pos-bag must be provided." << std::endl;
-    return 1;
-  }
-  if (!cfg.pos_bag.empty() && cfg.pos_topic.empty()) {
-    std::cerr << "--pos-topic is required when --pos-bag is set." << std::endl;
-    return 1;
-  }
 
   flexcloud::KeyframeInterpolation set_frames(cfg);
   set_frames.visualize();
