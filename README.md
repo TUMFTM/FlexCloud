@@ -15,83 +15,16 @@ Georeferencing of Point Cloud Maps
 <img src="doc/viz.gif" width="800"/>
 </div>
 
-<h2>Overview</h2>
-This project enables the georeferencing of an existing point cloud map created only from inertial sensor data (e.g. LiDAR) by the use of the corresponding GNSS data.
-Leveraging the concept of rubber-sheeting from cartography, the tool is also able to account for accumulated errors during map creation and thus rectify the map.
-
-![image](doc/flowchart.png)
-
-<h2>📦 Installation via pip</h2>
-
-The simplest way to use FlexCloud is via the PyPI wheel — it bundles the C++ executables together with the ROS 2 runtime libraries they need, so you don't need a system ROS installation.
+<h2>Installation</h2>
 
 ```bash
 pip install flexcloud
 ```
+<h2>Usage</h2>
 
-The wheel ships with `flexcloud-keyframe-interpolation` and `flexcloud-georeferencing` console-scripts:
+All algorithm parameters are CLI flags with reasonable defaults.
 
-```bash
-flexcloud-keyframe-interpolation --help
-flexcloud-georeferencing --help
-```
-
-<h2>🐋 Installation via Docker</h2>
-
-1. Clone the repository by running
-
-```bash
-git clone git@github.com:TUMFTM/FlexCloud.git
-```
-
-2. Go to the root directory of the repository
-
-```bash
-cd FlexCloud/
-```
-
-3. Build the docker image
-
-```bash
-./docker/build_docker.sh  
-```
-
-You can also download built versions of the docker images from the github container registry.
-E.g. to download the latest container, run:
-
-```bash
-docker pull ghcr.io/tumftm/flexcloud:latest
-```
-
-4. Run the container and mount your data by appending the directory containing your data:
-
-```bash
-./docker/run_docker.sh /your/local/directory/data
-```
-
-Note that you have to change the image name within the script, if you downloaded the docker image from Dockerhub in the previous step.
-Although installation with the provided Docker-Container is recommended, you can also install the package locally.
-To do so, you first have to install the required dependencies:
-
-* PCL
-* CGAL
-* GeographicLib
-* Eigen3 \
-If you are struggling with their installation, you can have a look at the process within the [Dockerfile](docker/Dockerfile).
-
-<h2> 🔨 Usage</h2>
-
-<h3> Keyframe Interpolation</h3>
-
-All algorithm parameters are CLI flags with reasonable defaults. Invoke either via the PyPI wheel (`flexcloud-keyframe-interpolation`) or, if the package is built from source as a colcon package, via `ros2 run flexcloud keyframe_interpolation`.
-
-The reference-data source is given as a single positional argument `positions-path`; the reader is selected automatically:
-
-| `positions-path` is … | Reader |
-| --- | --- |
-| a `.txt` file | text-file reader (one position per line) |
-| a directory **without** any `.mcap` / `.db3` / `.sqlite3` | per-position txt-files reader |
-| a `.mcap` / `.db3` / `.sqlite3` file, **or** a directory containing one | ROS 2 bag reader |
+<h3>Keyframe Interpolation</h3>
 
 ```text
 flexcloud-keyframe-interpolation [OPTIONS] <positions-path> <poses-path> [out-dir]
@@ -108,17 +41,30 @@ Bag input (only used when positions-path is a ROS 2 bag):
   -t,--target-frame TEXT     TF frame to transform positions into (uses /tf and /tf_static
                              from the bag). Optional.
   --origin LAT LON ALT       Custom origin for NavSatFix → local Cartesian projection.
-                             If omitted the first valid fix is used.
+                             If omitted no projection is performed.
 ```
 
-Reference-data file formats:
+The reference-data source is given as a single positional argument `positions-path`; the reader is selected automatically:
+
+| `positions-path` is … | Reader |
+| --- | --- |
+| a `.txt` file | text-file reader (one position per line) |
+| a directory **without** any `.mcap` / `.db3` / `.sqlite3` | per-position txt-files reader |
+| a `.mcap` / `.db3` / `.sqlite3` file, **or** a directory containing one | ROS 2 bag reader |
+
+**Reference-data file formats**:
 
 * **single `.txt` file** — one position per line, whitespace-separated:
   `stamp x y z x_stddev y_stddev z_stddev`.
 * **directory of per-position `.txt` files** — filenames `<sec>_<nanosec>.txt`, file content `x y z x_stddev y_stddev z_stddev` (timestamp parsed from the filename).
 * **ROS 2 bag** — supports `sensor_msgs/msg/NavSatFix` or `nav_msgs/msg/Odometry` messages.
 
-Examples:
+**Notes on bag input**:
+* `NavSatFix` messages are projected to local Cartesian via [GeographicLib](https://geographiclib.sourceforge.io/2009-03/classGeographicLib_1_1LocalCartesian.html); standard deviations are taken from `position_covariance` (diagonal).
+* `Odometry` messages use `pose.pose` directly; standard deviations are taken from `pose.covariance` (diagonal).
+* When `--target-frame` is set, all `/tf` and `/tf_static` messages from the bag are pre-loaded into a TF buffer. For each message its transform to the target frame is looked using the message timestamp.
+
+**Examples**:
 
 ```bash
 # single txt file
@@ -129,11 +75,6 @@ flexcloud-keyframe-interpolation /path/to/bag.mcap poses_GLIM.txt /path/to/out \
     --pos-topic /odom --target-frame base_link
 ```
 
-Notes on bag input:
-* `NavSatFix` messages are projected to local Cartesian via [GeographicLib](https://geographiclib.sourceforge.io/2009-03/classGeographicLib_1_1LocalCartesian.html); standard deviations are taken from `position_covariance` (diagonal).
-* `Odometry` messages use `pose.pose` directly; standard deviations are taken from `pose.covariance` (diagonal).
-* When `--target-frame` is set, all `/tf` and `/tf_static` messages from the bag are pre-loaded into a TF buffer. For each message we then look up the **translation from the static** transform (the lever arm between the message's frame and the target frame) and the **orientation from the dynamic** transform at the message timestamp, and apply `rotation * static_translation` as the world-frame offset to the message position. This mirrors the behaviour of `rosbag_to_gnss` from `iac_map_loc`.
-
 The keyframe-selection algorithm itself is unchanged:
 * keyframes are selected from the LiDAR trajectory based on minimum longitudinal distance (`keyframe_delta_x`) or minimum angular delta (`keyframe_delta_angle`).
 * For each LiDAR keyframe, the corresponding reference position is computed in one of two ways (controlled by `interpolate`):
@@ -143,9 +84,7 @@ The keyframe-selection algorithm itself is unchanged:
 
 The output is designed to be compatible with the georeferencing executable.
 
-<h3> PCD Georeferencing</h3>
-
-All parameters are CLI flags with sensible defaults; the only YAML config that remains is for the index-based fine-tuning arrays (`exclude_ind`, `shift_ind`, `shift_ind_dist`, `fake_ind`, `fake_ind_dist`, `fake_ind_height`) and is supplied via `--config-file`.
+<h3> Georeferencing</h3>
 
 ```text
 flexcloud-georeferencing [OPTIONS] <positions-path> <poses-path>
@@ -160,15 +99,15 @@ Inputs:
   --config-file PATH    Optional YAML for index-based fine-tuning arrays
 
 Trajectory matching:
-  --transform-traj / --no-transform-traj   (default: --no-transform-traj)
-  --rs-num-control-points INT              (default: 10)
+  --control-points INT              (default: 10)
   --stddev-threshold FLOAT                 (default: 0.05)
   --square-size FLOAT FLOAT FLOAT          (default: 0.1 0.1 10.0)
 
 Origin:
-  --custom-origin / --no-custom-origin     (default: --no-custom-origin)
-  --origin LAT LON ALT                     (default: 0.0 0.0 0.0)
+  --origin LAT LON ALT                     (default: empty)
 ```
+
+All parameters are CLI flags with sensible defaults; the only YAML config that remains is for the index-based fine-tuning arrays (`exclude_ind`, `shift_ind`, `shift_ind_dist`, `fake_ind`, `fake_ind_dist`, `fake_ind_height`) and is supplied via `--config-file`.
 
 Examples:
 
@@ -181,7 +120,7 @@ flexcloud-georeferencing reference.txt poses_keyframes.txt \
     --config-file config/georeferencing.yaml
 ```
 
-Inspect results:
+**Inspect results**:
 
 * results of the rubber-sheet transformation & the resulting, transformed point cloud map are visualized in [Rerun](https://rerun.io/).
 * by default, the rerun viewer instance of the docker container is spawned. However, if you have problems with the viewer and your graphics drivers, you can also launch your viewer locally
@@ -209,6 +148,10 @@ python3 plot_traj_matching.py /path/to/output/traj_matching/
 
 <h2>📄 Content</h2>
 
+This project enables the georeferencing of an existing point cloud map created only from inertial sensor data (e.g. LiDAR) by the use of the corresponding GNSS data.
+Leveraging the concept of rubber-sheeting from cartography, the tool is also able to account for accumulated errors during map creation and thus rectify the map.
+
+![image](doc/flowchart.png)
 Detailed documentation of the modules can be found below.
 
 <details>
@@ -259,13 +202,34 @@ Detailed documentation of the modules can be found below.
 
 </details>
 
-<h2>📈 Test Data </h2>
+<h2>Build from Source</h2>
+
+```bash
+git clone git@github.com:TUMFTM/FlexCloud.git
+cd FlexCloud/
+./docker/build_docker.sh  
+```
+
+You can also download built versions of the docker images from the github container registry.
+E.g. to download the latest container, run:
+
+```bash
+docker pull ghcr.io/tumftm/flexcloud:latest
+```
+
+Run the container and mount your data by appending the directory containing your data:
+
+```bash
+./docker/run_docker.sh /your/local/directory/data
+```
+
+<h2>Test Data </h2>
 
 The data was recorded by the [TUM Autonomous Motorsport Team](https://www.mos.ed.tum.de/ftm/forschungsfelder/team-av-perception/tum-autonomous-motorsport/) during the [Abu Dhabi Autonomous Racing League](https://a2rl.io/) 2025.
 The LiDAR/SLAM trajectory is created using [glim](https://github.com/koide3/glim).
 The reference trajectory presents raw data from the RTK-corrected GNSS-signal of the vehicle.
 
-<h2>📇 Developers </h2>
+<h2>Developers </h2>
 
 * [Maximilian Leitenstern](mailto:maxi.leitenstern@tum.de),
 Institute of Automotive Technology,
@@ -276,7 +240,7 @@ Germany
 * Marko Alten (student research project)
 * Christian Bolea-Schaser (student research project)
 
-<h2>📃 Citation </h2>
+<h2>Citation </h2>
 
 If you use this repository for any academic work, please consider citing our paper (preprint):
 
