@@ -87,6 +87,9 @@ RUN bash -c "wget https://github.com/geographiclib/geographiclib/archive/refs/ta
 
 RUN geographiclib-get-geoids good
 
+# Make shared libraries visible to the system
+RUN ldconfig
+
 WORKDIR /ros_ws
 
 COPY . /ros_ws/src/flexcloud/
