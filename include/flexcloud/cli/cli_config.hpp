@@ -122,7 +122,7 @@ struct GeoreferencingConfig
   int control_points{10};
   double stddev_threshold{0.05};
   std::vector<double> square_size{0.1, 0.1, 10.0};
-  std::vector<double> origin{0.0, 0.0, 0.0};
+  std::vector<double> origin{};
 
   // Index-based fine tuning (YAML-only)
   std::vector<int64_t> exclude_ind{};
