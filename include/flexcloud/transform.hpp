@@ -37,10 +37,6 @@
 #include "utility.hpp"
 namespace flexcloud
 {
-namespace config
-{
-struct GeoreferencingConfig;  // defined in cli/cli_config.hpp
-}
 /**
  * @brief class to perform all transformations
  */

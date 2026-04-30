@@ -13,8 +13,10 @@
 
 #include <Eigen/Geometry>
 #include <GeographicLib/Geocentric.hpp>
+#include <GeographicLib/Geoid.hpp>
 #include <GeographicLib/LocalCartesian.hpp>
-#include <builtin_interfaces/msg/time.hpp>
+#include <chrono>
+#include <memory>
 #include <nav_msgs/msg/odometry.hpp>
 #include <optional>
 #include <rclcpp/logger.hpp>
@@ -32,15 +34,22 @@ namespace flexcloud
  * @brief Reads reference position data from a ROS 2 bag in a single pass.
  *
  * Supports `sensor_msgs/msg/NavSatFix` and `nav_msgs/msg/Odometry`. The
- * constructor opens the bag once and registers listeners on the embedded
- * `tools::RosbagReader` for `/tf`, `/tf_static`, and the configured topic;
- * `run()` triggers a single `reader_.process()` pass. While the bag is being
- * iterated, the TF buffer is populated and the position messages are queued
- * in their raw form. After the pass finishes, the queued messages are
- * transformed into `target_frame` using the **translation from the static**
- * transform (lever arm) and the **orientation from the dynamic** transform
- * at the message timestamp (mirroring rosbag_to_gnss in iac_map_loc) and
- * returned as `PointStdDevStamped`.
+ * constructor opens the bag once, registers listeners on the embedded
+ * `tools::RosbagReader` for `/tf`, `/tf_static` and the configured topic,
+ * and sets up the geoid + ENU projection (NavSatFix only). `run()` triggers a
+ * single `reader_.process()` pass; each callback projects / transforms the
+ * message inline and pushes the resulting `PointStdDevStamped` directly into
+ * `positions_`. Only one of the two message types is used per instance.
+ *
+ * NavSatFix → local ENU uses GeographicLib's `egm2008-2_5` geoid model: the
+ * geoid height at the chosen origin is subtracted from each fix's altitude
+ * before projection, so that the ENU origin lies on the geoid surface (mean
+ * sea level approximation) rather than on the WGS84 ellipsoid.
+ *
+ * If a target frame is given, the message position is transformed via a
+ * single `lookupTransform(target_frame, msg_frame, msg_stamp)` — tf2 walks
+ * the entire static + dynamic chain at the message timestamp and returns the
+ * fully composed transform; no separate static/dynamic queries are needed.
  */
 class rosbag_io
 {
@@ -70,10 +79,10 @@ private:
   /// Resolve the configured topic's message type from the bag metadata.
   std::string resolve_topic_type();
 
-  /// World-frame offset to add to a message-frame position so that the result
-  /// is the position of `target_frame_` in world coordinates.
-  Eigen::Vector3d transform_offset(
-    const std::string & src_frame, const tf2::TimePoint & stamp) const;
+  /// Single-lookup TF resolution: returns the composite transform `target ← src`
+  /// at the message timestamp (covers static and dynamic edges in one shot).
+  /// Returns identity (and logs a warning) if the buffer can't satisfy the lookup.
+  Eigen::Isometry3d lookup(const std::string & src_frame, const tf2::TimePoint & stamp) const;
 
   // Configuration
   std::string bag_path_;
@@ -83,32 +92,16 @@ private:
   float stddev_threshold_;
   std::optional<Eigen::Vector3d> origin_;
 
-  // ROS state
+  // ROS / projection state
   tools::RosbagReader reader_;
   tf2::BufferCore tf_buffer_;
   GeographicLib::Geocentric ellipsoid_;
   std::optional<GeographicLib::LocalCartesian> proj_;
+  double geoid_height_{0.0};
   rclcpp::Logger logger_;
 
-  // Per-message raw data, populated by the topic callbacks during process().
-  // Transformation is deferred until after the pass so that the full TF tree
-  // (both static and dynamic) is available for the lookup.
-  struct RawNavSatFix
-  {
-    double lat, lon, alt;
-    double x_stddev, y_stddev, z_stddev;
-    std::string frame_id;
-    builtin_interfaces::msg::Time stamp;
-  };
-  struct RawOdom
-  {
-    Eigen::Vector3d pos;
-    double x_stddev, y_stddev, z_stddev;
-    std::string child_frame_id;
-    builtin_interfaces::msg::Time stamp;
-  };
-  std::vector<RawNavSatFix> raw_navsat_{};
-  std::vector<RawOdom> raw_odom_{};
+  // Output, populated inline by the topic callback
+  std::vector<PointStdDevStamped> positions_;
 
   // Stats
   std::size_t n_static_tf_{0};
