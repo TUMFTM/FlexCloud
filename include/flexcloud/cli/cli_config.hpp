@@ -113,20 +113,16 @@ struct KeyframeInterpolationConfig
 struct GeoreferencingConfig
 {
   // Inputs / outputs
-  std::string pos_global_path{};
+  std::string positions_path{};
   std::string poses_path{};
   std::string pcd_path{};
   std::string config_file{};  // optional YAML for index arrays
 
   // Trajectory matching
-  bool transform_traj{false};
-  int rs_num_controlPoints{10};
+  bool project_positions{false};
+  int control_points{10};
   double stddev_threshold{0.05};
   std::vector<double> square_size{0.1, 0.1, 10.0};
-
-  // Pointcloud transformation
-  int num_cores{10};
-  bool include_label{true};
 
   // Origin
   bool custom_origin{false};
@@ -142,7 +138,7 @@ struct GeoreferencingConfig
 
   void add_cli_options(CLI::App * app)
   {
-    app->add_option("positions-path", pos_global_path, "Path to GNSS / reference trajectory")
+    app->add_option("positions-path", positions_path, "Path to GNSS / reference trajectory")
       ->required()
       ->check(CLI::ExistingFile)
       ->group("Required");
@@ -163,13 +159,13 @@ struct GeoreferencingConfig
       ->check(CLI::ExistingFile)
       ->group("Inputs");
 
-    app->add_flag("--transform-traj,!--no-transform-traj", transform_traj,
-                  "Transform reference trajectory from lat/lon to local ENU "
+    app->add_flag("--project-positions,!--no-project-positions", project_positions,
+                  "Project reference positions from lat/lon to local ENU "
                   "(false if positions are already cartesian)")
       ->capture_default_str()
       ->group("Trajectory matching");
 
-    app->add_option("--rs-num-control-points", rs_num_controlPoints,
+    app->add_option("--control-points", control_points,
                     "Number of control points for rubber-sheeting")
       ->capture_default_str()
       ->group("Trajectory matching");
@@ -186,16 +182,6 @@ struct GeoreferencingConfig
       ->type_name("FLOAT FLOAT FLOAT")
       ->capture_default_str()
       ->group("Trajectory matching");
-
-    app->add_option("--num-cores", num_cores,
-                    "Threads used when transforming the point cloud map")
-      ->capture_default_str()
-      ->group("Pointcloud transformation");
-
-    app->add_flag("--include-labels,!--no-include-labels", include_label,
-                  "Include per-point labels when transforming the point cloud map")
-      ->capture_default_str()
-      ->group("Pointcloud transformation");
 
     app->add_flag("--custom-origin,!--no-custom-origin", custom_origin,
                   "Use --origin as the ENU zero point instead of the first GPS sample")

@@ -18,9 +18,8 @@
 
 #include "visualization.hpp"
 
-#include "point_types.hpp"
-
 #include <memory>
+#include <pcl/conversions.h>
 #include <pcl/filters/impl/approximate_voxel_grid.hpp>
 #include <pcl/filters/impl/filter.hpp>
 #include <pcl/impl/pcl_base.hpp>
@@ -209,35 +208,21 @@ void visualization::rs2rerun(
  *                                  stream to add map to
  */
 void visualization::pc_map2rerun(
-  const pcl::PointCloud<pcl::PointXYZI>::Ptr & pcd_map, rerun::RecordingStream & stream)
+  const pcl::PCLPointCloud2::Ptr & pcd_map, rerun::RecordingStream & stream)
 {
-  // Filter point cloud
-  pcl::PointCloud<pcl::PointXYZI>::Ptr cloud_filtered(new pcl::PointCloud<pcl::PointXYZI>());
-  pcl::ApproximateVoxelGrid<pcl::PointXYZI> grid;
-  grid.setInputCloud(pcd_map);
-  grid.setLeafSize(3.0, 3.0, 3.0);
-  grid.filter(*cloud_filtered);
+  // Convert to plain PointXYZ for voxel filtering and rerun positions — the
+  // arbitrary fields of the input cloud are irrelevant for visualization.
+  pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>);
+  pcl::fromPCLPointCloud2(*pcd_map, *cloud);
 
-  // Convert to rerun
-  TUMcolor col("White");
-  std::vector<rerun::Position3D> positions{};
-  positions.reserve(cloud_filtered->size());
-  for (const auto & p : cloud_filtered->points) {
-    positions.push_back(rerun::Position3D(p.x, p.y, p.z));
-  }
-  stream.log("pcd_map", rerun::Points3D(positions).with_colors(rerun::Color(col.r, col.g, col.b)));
-}
-void visualization::pc_map2rerun(
-  const pcl::PointCloud<PointXYZIL>::Ptr & pcd_map, rerun::RecordingStream & stream)
-{
-  pcl::PointCloud<PointXYZIL>::Ptr cloud_filtered(new pcl::PointCloud<PointXYZIL>());
-  pcl::ApproximateVoxelGrid<PointXYZIL> grid;
-  grid.setInputCloud(pcd_map);
+  pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_filtered(new pcl::PointCloud<pcl::PointXYZ>);
+  pcl::ApproximateVoxelGrid<pcl::PointXYZ> grid;
+  grid.setInputCloud(cloud);
   grid.setLeafSize(3.0, 3.0, 3.0);
   grid.filter(*cloud_filtered);
 
   TUMcolor col("White");
-  std::vector<rerun::Position3D> positions{};
+  std::vector<rerun::Position3D> positions;
   positions.reserve(cloud_filtered->size());
   for (const auto & p : cloud_filtered->points) {
     positions.push_back(rerun::Position3D(p.x, p.y, p.z));

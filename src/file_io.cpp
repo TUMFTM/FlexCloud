@@ -166,7 +166,7 @@ std::vector<PointStdDevStamped> file_io::load_positions(
   const std::string & path, config::GeoreferencingConfig & cfg)
 {
   std::vector<PointStdDevStamped> points_local{};
-  if (cfg.transform_traj) {
+  if (cfg.project_positions) {
     std::vector<PointStdDev> points_gps{};
 
     // Read trajectory in GPS format
@@ -268,28 +268,24 @@ std::vector<PoseStamped> file_io::load_poses(const std::string & file_path)
   return poses;
 }
 /**
- * @brief read pcd map from file
- *
+ * @brief Read a PCD map into a pcl::PCLPointCloud2 (preserves all fields).
+ * 
  * @param[in] pcd_path            - std::string:
- *                                  absolute path to file
- * @param[in] pcm                 - pcl::PointCloud<PointT>::Ptr:
- *                                  pointer on pointcloud map
+ *                                  absolute path to PCD file
+ * @param[out] pcm                 - pcl::PCLPointCloud2::Ptr:
+ *                                  point cloud map; allocated and filled by this function
+ * @return true if executed
  */
-template <typename PointT>
-bool file_io::load_pcd(const std::string & pcd_path, typename pcl::PointCloud<PointT>::Ptr & pcm)
+bool file_io::load_pcd(const std::string & pcd_path, pcl::PCLPointCloud2::Ptr & pcm)
 {
-  // Check for valid filename
-  if (pcd_path.substr(pcd_path.length() - 4) != ".pcd") {
+  if (pcd_path.size() < 4 || pcd_path.substr(pcd_path.length() - 4) != ".pcd") {
     std::cout << "The provided pcd_path does not lead to a .pcd file!" << std::endl;
     return false;
   }
-
-  // Read input cloud based on provided file path
-  typename pcl::PointCloud<PointT>::Ptr cloud(new pcl::PointCloud<PointT>);
-
-  if (pcl::io::loadPCDFile<PointT>(pcd_path, *cloud) == -1) {
+  pcl::PCLPointCloud2::Ptr cloud(new pcl::PCLPointCloud2);
+  if (pcl::io::loadPCDFile(pcd_path, *cloud) == -1) {
     PCL_ERROR("Couldn't read file Point cloud!\n");
-    return -1;
+    return false;
   }
   pcm = cloud;
   return true;
@@ -350,30 +346,18 @@ bool file_io::save_poses(const std::string & filename, const std::vector<PoseSta
   return true;
 }
 /**
- * @brief write pcd map to file
- *
- * @param[in] config              - GeoreferencingConfig:
- *                                  config struct
+ * @brief Write a pcl::PCLPointCloud2 map to file (preserves all fields).
  * @param[in] pcd_out_path        - std::string:
- *                                  absolute path to file
- * @param[in] pcm                 - pcl::PointCloud<PointT>::Ptr:
- *                                  pointer on pointcloud map
+ *                                  absolute path to output PCD file
+ * @param[in] pcd_map             - pcl::PCLPointCloud2::Ptr:
+ *                                  point cloud map to save
+ * @return true if executed
  */
-template <typename PointT>
 bool file_io::save_pcd(
-  const std::string & pcd_out_path, const typename pcl::PointCloud<PointT>::Ptr & pcd_map)
+  const std::string & pcd_out_path, const pcl::PCLPointCloud2::Ptr & pcd_map)
 {
-  // write to file
-  pcl::io::savePCDFileBinary(pcd_out_path, *pcd_map);
-  return true;
+  pcl::PCDWriter writer;
+  // Compressed binary preserves arbitrary fields without loss.
+  return writer.writeBinaryCompressed(pcd_out_path, *pcd_map) == 0;
 }
-// Explicit instantiations for point types used
-template bool file_io::load_pcd<pcl::PointXYZI>(
-  const std::string & pcd_path, typename pcl::PointCloud<pcl::PointXYZI>::Ptr & pcm);
-template bool file_io::save_pcd<pcl::PointXYZI>(
-  const std::string & pcd_out_path, const typename pcl::PointCloud<pcl::PointXYZI>::Ptr & pcd_map);
-template bool file_io::load_pcd<PointXYZIL>(
-  const std::string & pcd_path, typename pcl::PointCloud<PointXYZIL>::Ptr & pcm);
-template bool file_io::save_pcd<PointXYZIL>(
-  const std::string & pcd_out_path, const typename pcl::PointCloud<PointXYZIL>::Ptr & pcd_map);
 }  // namespace flexcloud

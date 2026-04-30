@@ -28,7 +28,6 @@
 #include "analysis.hpp"
 #include "cli/cli_config.hpp"
 #include "file_io.hpp"
-#include "point_types.hpp"
 #include "transform.hpp"
 #include "visualization.hpp"
 #include "yaml-cpp/yaml.h"
@@ -98,9 +97,8 @@ private:
   std::vector<PoseStamped> poses_{};
   std::vector<PoseStamped> poses_align_{};
   std::vector<PoseStamped> poses_rs_{};
-  // PCD map
-  pcl::PointCloud<pcl::PointXYZI>::Ptr pcd_map_{};
-  pcl::PointCloud<PointXYZIL>::Ptr pcd_map_il_{};
+  // PCD map (kept as PCLPointCloud2 to preserve all input fields)
+  pcl::PCLPointCloud2::Ptr pcd_map_{};
 
   // Transformation
   std::vector<ControlPoint> control_points_;

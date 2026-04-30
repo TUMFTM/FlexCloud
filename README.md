@@ -169,10 +169,6 @@ Trajectory matching:
   --stddev-threshold FLOAT                 (default: 0.05)
   --square-size FLOAT FLOAT FLOAT          (default: 0.1 0.1 10.0)
 
-Pointcloud transformation:
-  --num-cores INT                          (default: 10)
-  --include-labels / --no-include-labels   (default: --include-labels)
-
 Origin:
   --custom-origin / --no-custom-origin     (default: --no-custom-origin)
   --origin LAT LON ALT                     (default: 0.0 0.0 0.0)
