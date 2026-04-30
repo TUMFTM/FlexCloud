@@ -30,9 +30,6 @@ namespace flexcloud
 {
 Georeferencing::Georeferencing(config::GeoreferencingConfig cfg) : config_(std::move(cfg))
 {
-  // Check if all paths contain data
-  if (!paths_valid()) return;
-
   // Load data and point cloud map
   load_data();
 
@@ -57,36 +54,18 @@ Georeferencing::Georeferencing(config::GeoreferencingConfig cfg) : config_(std::
   std::cout << "\033[1;36m===> Done!\033[0m" << std::endl;
 }
 /**
- * @brief check if all necessary paths exist
- */
-bool Georeferencing::paths_valid()
-{
-  bool valid = true;
-
-  auto check_file = [&valid](const std::string & path, const std::string & name) {
-    std::ifstream file(path);
-    if (!file.is_open()) {
-      std::cout << "File to " << name << " (" << name << "_path) doesn't exist" << std::endl;
-      valid = false;
-    }
-  };
-
-  check_file(this->config_.positions_path, "trajectory");
-  check_file(this->config_.poses_path, "poses");
-
-  if (this->config_.pcd_path != "") {
-    check_file(this->config_.pcd_path, "pcd");
-  }
-
-  return valid;
-}
-/**
  * @brief load trajectories and pcd map
  */
 void Georeferencing::load_data()
 {
   // GPS trajectory
-  this->pos_global_ = file_io_->load_positions(this->config_.positions_path, this->config_);
+  std::optional<Eigen::Vector3d> origin = std::nullopt;
+  if (this->config_.origin.size() == 3) {
+    origin =
+      Eigen::Vector3d(this->config_.origin[0], this->config_.origin[1], this->config_.origin[2]);
+  }
+  this->pos_global_ = file_io_->load_positions_file(
+    this->config_.positions_path, this->config_.stddev_threshold, origin);
   std::cout << "\033[1;36m===> Trajectory with " << this->pos_global_.size()
             << " points: Loaded!\033[0m" << std::endl;
 
@@ -209,11 +188,9 @@ void Georeferencing::evaluation()
 
   // Dump effective config to output directory
   YAML::Node out;
-  out["project_positions"] = this->config_.project_positions;
   out["control_points"] = this->config_.control_points;
   out["stddev_threshold"] = this->config_.stddev_threshold;
   out["square_size"] = this->config_.square_size;
-  out["custom_origin"] = this->config_.custom_origin;
   out["origin"] = this->config_.origin;
   out["exclude_ind"] = this->config_.exclude_ind;
   out["shift_ind"] = this->config_.shift_ind;
@@ -239,9 +216,10 @@ void Georeferencing::evaluation()
  */
 int main(int argc, char * argv[])
 {
-  CLI::App app{"Georeference a SLAM trajectory and (optionally) a corresponding point cloud "
-               "map by aligning it to a GNSS / reference trajectory using Umeyama and "
-               "rubber-sheeting."};
+  CLI::App app{
+    "Georeference a SLAM trajectory and (optionally) a corresponding point cloud "
+    "map by aligning it to a GNSS / reference trajectory using Umeyama and "
+    "rubber-sheeting."};
   app.name("georeferencing");
 
   flexcloud::config::GeoreferencingConfig cfg;

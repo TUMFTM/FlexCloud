@@ -12,9 +12,6 @@
 #include <tf2_ros/buffer.h>
 
 #include <Eigen/Geometry>
-#include <GeographicLib/Geocentric.hpp>
-#include <GeographicLib/Geoid.hpp>
-#include <GeographicLib/LocalCartesian.hpp>
 #include <chrono>
 #include <memory>
 #include <nav_msgs/msg/odometry.hpp>
@@ -33,23 +30,7 @@ namespace flexcloud
 /**
  * @brief Reads reference position data from a ROS 2 bag in a single pass.
  *
- * Supports `sensor_msgs/msg/NavSatFix` and `nav_msgs/msg/Odometry`. The
- * constructor opens the bag once, registers listeners on the embedded
- * `tools::RosbagReader` for `/tf`, `/tf_static` and the configured topic,
- * and sets up the geoid + ENU projection (NavSatFix only). `run()` triggers a
- * single `reader_.process()` pass; each callback projects / transforms the
- * message inline and pushes the resulting `PointStdDevStamped` directly into
- * `positions_`. Only one of the two message types is used per instance.
- *
- * NavSatFix → local ENU uses GeographicLib's `egm2008-2_5` geoid model: the
- * geoid height at the chosen origin is subtracted from each fix's altitude
- * before projection, so that the ENU origin lies on the geoid surface (mean
- * sea level approximation) rather than on the WGS84 ellipsoid.
- *
- * If a target frame is given, the message position is transformed via a
- * single `lookupTransform(target_frame, msg_frame, msg_stamp)` — tf2 walks
- * the entire static + dynamic chain at the message timestamp and returns the
- * fully composed transform; no separate static/dynamic queries are needed.
+ * Supports `sensor_msgs/msg/NavSatFix` and `nav_msgs/msg/Odometry`.
  */
 class rosbag_io
 {
@@ -95,9 +76,7 @@ private:
   // ROS / projection state
   tools::RosbagReader reader_;
   tf2::BufferCore tf_buffer_;
-  GeographicLib::Geocentric ellipsoid_;
-  std::optional<GeographicLib::LocalCartesian> proj_;
-  double geoid_height_{0.0};
+  ENUProjection proj_;
   rclcpp::Logger logger_;
 
   // Output, populated inline by the topic callback

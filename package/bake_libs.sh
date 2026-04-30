@@ -5,6 +5,7 @@
 # installation. Invoked from CMakeLists.txt during a SKBUILD install.
 #
 # Adapted from PointCloudCrafter (Apache 2.0).
+# https://github.com/TUMFTM/PointCloudCrafter
 
 set -e
 

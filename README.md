@@ -21,17 +21,20 @@ Leveraging the concept of rubber-sheeting from cartography, the tool is also abl
 
 ![image](doc/flowchart.png)
 
-<h2>📦 Installation via PyPI</h2>
+<h2>📦 Installation via pip</h2>
 
 The simplest way to use FlexCloud is via the PyPI wheel — it bundles the C++ executables together with the ROS 2 runtime libraries they need, so you don't need a system ROS installation.
 
 ```bash
 pip install flexcloud
+```
+
+The wheel ships with `flexcloud-keyframe-interpolation` and `flexcloud-georeferencing` console-scripts:
+
+```bash
 flexcloud-keyframe-interpolation --help
 flexcloud-georeferencing --help
 ```
-
-The wheel ships with `flexcloud-keyframe-interpolation` and `flexcloud-georeferencing` console-scripts; both accept the CLI flags documented below.
 
 <h2>🐋 Installation via Docker</h2>
 
@@ -121,13 +124,6 @@ Examples:
 # single txt file
 flexcloud-keyframe-interpolation positions.txt poses_GLIM.txt
 
-# directory of per-position txt files
-flexcloud-keyframe-interpolation /path/to/positions/ poses_GLIM.txt
-
-# ROS 2 bag with NavSatFix on /sensor/gnss/fix
-flexcloud-keyframe-interpolation /path/to/bag.mcap poses_GLIM.txt /path/to/out \
-    --pos-topic /sensor/gnss/fix --target-frame base_link
-
 # ROS 2 bag with Odometry
 flexcloud-keyframe-interpolation /path/to/bag.mcap poses_GLIM.txt /path/to/out \
     --pos-topic /odom --target-frame base_link
@@ -179,10 +175,6 @@ Examples:
 ```bash
 # defaults, cartesian reference, no point cloud
 flexcloud-georeferencing positions_interpolated.txt poses_keyframes.txt
-
-# transform a GPS trajectory and a point cloud, with a custom origin
-flexcloud-georeferencing reference.txt poses_keyframes.txt \
-    --pcd map.pcd --transform-traj --custom-origin --origin 48.262 11.667 0.0
 
 # supply index-based fine-tuning arrays via YAML
 flexcloud-georeferencing reference.txt poses_keyframes.txt \

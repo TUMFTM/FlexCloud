@@ -31,12 +31,23 @@ namespace flexcloud
  *                                  absolute path to directory
  * @param[in] stddev_threshold    - float:
  *                                  threshold for standard deviation
+ * @param [in] origin             - std::optional<Eigen::Vector3d>:
+ *                                  optional origin for ENU projection
  * @return std::vector<PointStdDevStamped>:
  *                                  vector of position frames
  */
 std::vector<PointStdDevStamped> file_io::load_positions_dir(
-  const std::string & directory, const float stddev_threshold)
+  const std::string & directory, const float stddev_threshold,
+  const std::optional<Eigen::Vector3d> & origin)
 {
+  // Setup projection if origin provided
+  ENUProjection proj;
+  if (origin.has_value()) {
+    proj.set_origin(origin.value());
+    std::cout << "Using ENU projection with origin at (" << origin.value().transpose() << ")" << std::endl;
+  } else {
+    std::cout << "No origin provided, interpreting positions as already in ENU" << std::endl;
+  }
   std::vector<PointStdDevStamped> pos_frames{};
   std::cout << "Loading position frames from " << directory << std::endl;
 
@@ -91,7 +102,12 @@ std::vector<PointStdDevStamped> file_io::load_positions_dir(
                 << std::endl;
       continue;
     }
-    PointStdDev point(x_pos, y_pos, z_pos, x_stddev, y_stddev, z_stddev);
+    Eigen::Vector3d xyz(x_pos, y_pos, z_pos);
+    if (origin.has_value()) {
+      // Interpret as (lat, lon, alt) and project to local ENU.
+      xyz = proj.forward(x_pos, y_pos, z_pos);
+    }
+    PointStdDev point(xyz.x(), xyz.y(), xyz.z(), x_stddev, y_stddev, z_stddev);
     pos_frames.push_back(PointStdDevStamped(point, stamp_sec, stamp_usec));
   }
 
@@ -105,17 +121,28 @@ std::vector<PointStdDevStamped> file_io::load_positions_dir(
 }
 /**
  * @brief Load positions from a single txt file with one position per line.
- * 
- * @param[in] file_path          - std::string:
+ *
+ * @param[in] file_path           - std::string:
  *                                  absolute path to file
  * @param[in] stddev_threshold    - float:
  *                                  threshold for standard deviation
+ * @param [in] origin             - std::optional<Eigen::Vector3d>:
+ *                                  optional origin for ENU projection
  * @return std::vector<PointStdDevStamped>:
  *                                  vector of position frames
  */
 std::vector<PointStdDevStamped> file_io::load_positions_file(
-  const std::string & file_path, const float stddev_threshold)
+  const std::string & file_path, const float stddev_threshold,
+  const std::optional<Eigen::Vector3d> & origin)
 {
+  // Setup projection if origin provided
+  ENUProjection proj;
+  if (origin.has_value()) {
+    proj.set_origin(origin.value());
+    std::cout << "Using ENU projection with origin at (" << origin.value().transpose() << ")" << std::endl;
+  } else {
+    std::cout << "No origin provided, interpreting positions as already in ENU" << std::endl;
+  }
   std::vector<PointStdDevStamped> pos_frames{};
   std::cout << "Loading position frames from " << file_path << std::endl;
 
@@ -139,8 +166,14 @@ std::vector<PointStdDevStamped> file_io::load_positions_file(
       ++skipped;
       continue;
     }
+    Eigen::Vector3d xyz(x, y, z);
+    if (origin.has_value()) {
+      // Interpret as (lat, lon, alt) and project to local ENU.
+      xyz = proj.forward(x, y, z);
+    }
     pos_frames.push_back(PointStdDevStamped(
-      PointStdDev(x, y, z, x_stddev, y_stddev, z_stddev), static_cast<int64_t>(stamp * 1e9)));
+      PointStdDev(xyz.x(), xyz.y(), xyz.z(), x_stddev, y_stddev, z_stddev),
+      static_cast<int64_t>(stamp * 1e9)));
   }
 
   std::sort(
@@ -153,90 +186,6 @@ std::vector<PointStdDevStamped> file_io::load_positions_file(
   }
   std::cout << "Loaded " << pos_frames.size() << " global position frames" << std::endl;
   return pos_frames;
-}
-/**
- * @brief read traj from txt file
- *
- * @param[in] config              - GeoreferencingConfig:
- *                                  config struct
- * @param[in] path                 - std::string:
- *                                  absolute path to file
- */
-std::vector<PointStdDevStamped> file_io::load_positions(
-  const std::string & path, config::GeoreferencingConfig & cfg)
-{
-  std::vector<PointStdDevStamped> points_local{};
-  if (cfg.project_positions) {
-    std::vector<PointStdDev> points_gps{};
-
-    // Read trajectory in GPS format
-    double stamp, lat, lon, height, lat_stddev, lon_stddev, height_stddev;
-
-    std::ifstream infile(path);
-    std::string line;
-
-    while (std::getline(infile, line)) {
-      std::istringstream iss(line);
-
-      if (!(iss >> stamp >> lat >> lon >> height >> lat_stddev >> lon_stddev >> height_stddev)) {
-        std::cout << "Trajectory in wrong format!" << std::endl;
-      }
-      PointStdDev gps_pt(lat, lon, height, lat_stddev, lon_stddev, height_stddev);
-      points_gps.emplace_back(gps_pt);
-    }
-
-    Eigen::Vector3d orig{0.0, 0.0, 0.0};
-    if (cfg.custom_origin) {
-      orig.x() = cfg.origin[0];
-      orig.y() = cfg.origin[1];
-      orig.z() = cfg.origin[2];
-    } else {
-      orig = points_gps[0].pos;
-    }
-
-    std::cout << "\033[33mMap origin: " << orig.x() << " " << orig.y() << " " << orig.z()
-              << "\033[0m" << std::endl;
-
-    cfg.origin = {orig.x(), orig.y(), orig.z()};
-
-    // initialize GeographicLib origins and ellipsoids
-    const GeographicLib::NormalGravity & earth_WGS84 = GeographicLib::NormalGravity::WGS84();
-
-    GeographicLib::Geocentric WGS84ellipsoid =
-      GeographicLib::Geocentric(earth_WGS84.EquatorialRadius(), earth_WGS84.Flattening());
-
-    // initialize projection class
-    GeographicLib::LocalCartesian proj =
-      GeographicLib::LocalCartesian(orig.x(), orig.y(), orig.z(), WGS84ellipsoid);
-
-    for (const auto & gps : points_gps) {
-      PointStdDev pt_proj(0.0, 0.0, 0.0, 0.0, 0.0, 0.0);
-      proj.Forward(
-        gps.pos.y(), gps.pos.x(), gps.pos.z(), pt_proj.pos.x(), pt_proj.pos.y(), pt_proj.pos.z());
-      pt_proj.stddev.x() = gps.stddev.x();
-      pt_proj.stddev.y() = gps.stddev.y();
-      pt_proj.stddev.z() = gps.stddev.z();
-      points_local.push_back(PointStdDevStamped(pt_proj, static_cast<int64_t>(stamp * 1e9)));
-    }
-  } else {
-    // Read poses
-    double stamp, x, y, z, x_stddev, y_stddev, z_stddev;
-
-    std::ifstream infile(path);
-    std::string line;
-
-    while (std::getline(infile, line)) {
-      std::istringstream iss(line);
-
-      if (!(iss >> stamp >> x >> y >> z >> x_stddev >> y_stddev >> z_stddev)) {
-        std::cout << "Trajectory in wrong format!" << std::endl;
-        throw std::invalid_argument("Trajectory in wrong format!");
-      }
-      points_local.push_back(PointStdDevStamped(
-        PointStdDev(x, y, z, x_stddev, y_stddev, z_stddev), static_cast<int64_t>(stamp * 1e9)));
-    }
-  }
-  return points_local;
 }
 /**
  * @brief Load glim odometry from a file
@@ -269,7 +218,7 @@ std::vector<PoseStamped> file_io::load_poses(const std::string & file_path)
 }
 /**
  * @brief Read a PCD map into a pcl::PCLPointCloud2 (preserves all fields).
- * 
+ *
  * @param[in] pcd_path            - std::string:
  *                                  absolute path to PCD file
  * @param[out] pcm                 - pcl::PCLPointCloud2::Ptr:
@@ -353,8 +302,7 @@ bool file_io::save_poses(const std::string & filename, const std::vector<PoseSta
  *                                  point cloud map to save
  * @return true if executed
  */
-bool file_io::save_pcd(
-  const std::string & pcd_out_path, const pcl::PCLPointCloud2::Ptr & pcd_map)
+bool file_io::save_pcd(const std::string & pcd_out_path, const pcl::PCLPointCloud2::Ptr & pcd_map)
 {
   pcl::PCDWriter writer;
   // Compressed binary preserves arbitrary fields without loss.

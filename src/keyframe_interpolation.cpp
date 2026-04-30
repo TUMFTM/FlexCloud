@@ -35,18 +35,15 @@
 namespace flexcloud
 {
 /// Heuristic detection of how to read the reference data at @p path.
-enum class PositionsKind
-{
-  TXT_FILE,       // single .txt file with one position per line
-  TXT_DIR,        // directory of per-position .txt files
-  BAG             // ROS 2 bag (.mcap / .db3 / .sqlite3 file, or a directory containing one)
+enum class PositionsKind {
+  TXT_FILE,  // single .txt file with one position per line
+  TXT_DIR,   // directory of per-position .txt files
+  BAG        // ROS 2 bag (.mcap / .db3 / .sqlite3 file, or a directory containing one)
 };
-
 bool is_bag_extension(const std::filesystem::path & ext)
 {
   return ext == ".mcap" || ext == ".db3" || ext == ".sqlite3";
 }
-
 PositionsKind classify_positions_path(const std::string & p)
 {
   std::filesystem::path path(p);
@@ -87,27 +84,26 @@ void KeyframeInterpolation::load(const config::KeyframeInterpolationConfig & cli
   // Load reference positions — auto-detect reader from positions_path
   this->positions_.clear();
   const PositionsKind kind = classify_positions_path(cli_cfg.positions_path);
+  std::optional<Eigen::Vector3d> origin = std::nullopt;
+  if (cli_cfg.origin.size() == 3) {
+    origin = Eigen::Vector3d(cli_cfg.origin[0], cli_cfg.origin[1], cli_cfg.origin[2]);
+  }
   switch (kind) {
     case PositionsKind::TXT_FILE:
       this->positions_ =
-        file_io_->load_positions_file(cli_cfg.positions_path, cli_cfg.stddev_threshold);
+        file_io_->load_positions_file(cli_cfg.positions_path, cli_cfg.stddev_threshold, origin);
       break;
     case PositionsKind::TXT_DIR:
       this->positions_ =
-        file_io_->load_positions_dir(cli_cfg.positions_path, cli_cfg.stddev_threshold);
+        file_io_->load_positions_dir(cli_cfg.positions_path, cli_cfg.stddev_threshold, origin);
       break;
     case PositionsKind::BAG: {
       if (cli_cfg.pos_topic.empty()) {
-        throw std::runtime_error(
-          "--pos-topic is required when positions-path is a ROS 2 bag");
-      }
-      std::optional<Eigen::Vector3d> origin;
-      if (cli_cfg.origin.size() == 3) {
-        origin = Eigen::Vector3d(cli_cfg.origin[0], cli_cfg.origin[1], cli_cfg.origin[2]);
+        throw std::runtime_error("--pos-topic is required when positions-path is a ROS 2 bag");
       }
       rosbag_io io(
-        cli_cfg.positions_path, cli_cfg.pos_topic, cli_cfg.target_frame,
-        cli_cfg.stddev_threshold, origin);
+        cli_cfg.positions_path, cli_cfg.pos_topic, cli_cfg.target_frame, cli_cfg.stddev_threshold,
+        origin);
       this->positions_ = io.run();
       break;
     }
@@ -159,7 +155,8 @@ void KeyframeInterpolation::select_keyframes(const config::KeyframeInterpolation
   this->key_poses_.push_back(this->poses_.front());
   if (cli_cfg.interpolate) {
     // Interpolate position of frame
-    this->key_positions_.push_back(interpolate_pos(this->poses_.front(), cli_cfg.interp_pos_delta_xyz));
+    this->key_positions_.push_back(
+      interpolate_pos(this->poses_.front(), cli_cfg.interp_pos_delta_xyz));
   } else {
     // Search GPS frame for first frame
     this->key_positions_.push_back(search_closest(this->poses_.front()));
