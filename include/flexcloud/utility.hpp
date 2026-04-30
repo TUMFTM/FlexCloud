@@ -29,6 +29,7 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include <utility>
 #include <vector>
 namespace flexcloud
 {
@@ -51,10 +52,8 @@ public:
     geoid_height_ = (*geoid_)(origin.x(), origin.y());
     proj_.emplace(origin.x(), origin.y(), origin.z(), ellipsoid_);
   }
-
   bool initialized() const { return proj_.has_value(); }
   double geoid_height() const { return geoid_height_; }
-
   /**
    * @brief Project (lat, lon, alt) into local ENU. The geoid height at the
    *        origin is subtracted from alt before the projection.
