@@ -146,7 +146,7 @@ python3 plot_traj_matching.py /path/to/output/traj_matching/
 
 * Inspect results and modify parameters if desired.
 
-<h2>📄 Content</h2>
+<h2>Content</h2>
 
 This project enables the georeferencing of an existing point cloud map created only from inertial sensor data (e.g. LiDAR) by the use of the corresponding GNSS data.
 Leveraging the concept of rubber-sheeting from cartography, the tool is also able to account for accumulated errors during map creation and thus rectify the map.
