@@ -20,140 +20,42 @@
 #pragma once
 
 #include <Eigen/Dense>
-#include <algorithm>
-#include <filesystem>  // NOLINT
-#include <fstream>
-#include <iostream>
-#include <memory>
 #include <string>
-#include <utility>
 #include <vector>
 
-#include "triangulation.hpp"
 #include "utility.hpp"
 namespace flexcloud
 {
+struct MatchingStats
+{
+  double rmse;
+  double mean;
+  double median;
+  double stddev;
+  double min;
+  double max;
+};
+
 class analysis
 {
 public:
-  // Constructor
   analysis() {}
-  /**
-   * @brief write all data relevant for evaluation of trajectory matching
-   *
-   * @param[in] dir                 - std::string:
-   *                                  name of output directory
-   * @param[in] src                 - std::vector<PointStdDevStamped>:
-   *                                  source trajectory
-   * @param[in] target              - std::vector<PoseStamped>:
-   *                                  target trajectory
-   * @param[in] target_al           - std::vector<PoseStamped>:
-   *                                  target trajectory after Umeyama trafo
-   * @param[in] target_rs           - std::vector<PoseStamped>:
-   *                                  target trajectory after rubber-sheeting
-   * @param[in] triag               - std::shared_ptr<Delaunay>:
-   *                                  pointer to triangulation
-   * @param[in] cps                 - std::vector<ControlPoint>:
-   *                                  vector of control points
-   */
-  bool traj_matching(
-    const std::string & dir, const std::vector<PointStdDevStamped> & src,
-    const std::vector<PoseStamped> & target, const std::vector<PoseStamped> & target_al,
-    const std::vector<PoseStamped> & target_rs, const std::shared_ptr<Delaunay> & triag,
-    const std::vector<ControlPoint> & cps);
 
-private:
   /**
-   * @brief calculate difference of a target trajectory to a source trajectory
-   *
-   * @param[in] src                 - std::vector<PointStdDevStamped>:
-   *                                  source trajectory
-   * @param[in] target              - std::vector<PoseStamped>:
-   *                                  target trajectory
-   * @return std::vector<double>    - std::vector<double>:
-   *                                  difference between trajectories (euclidean distance)
+   * @brief calculate per-point euclidean deviation of a target trajectory
+   *        relative to a (paired-by-index) source trajectory
    */
   std::vector<double> calc_diff(
     const std::vector<PointStdDevStamped> & src, const std::vector<PoseStamped> & target);
-  /**
-   * @brief write a linestring to .txt file
-   *
-   * @param[in] ls                  - std::vector<PointStdDevStamped>:
-   *                                  linestring
-   * @param[in] dir_path            - std::string:
-   *                                  name of output directory
-   * @param[in] file_name           - std::string:
-   *                                  name of output file
-   */
-  void write_ls(
-    const std::vector<PointStdDevStamped> & ls, const std::string & dir_path,
-    const std::string & file_name);
-  /**
-   * @brief write a linestring to .txt file
-   *
-   * @param[in] ls                  - std::vector<PoseStamped>:
-   *                                  linestring
-   * @param[in] dir_path            - std::string:
-   *                                  name of output directory
-   * @param[in] file_name           - std::string:
-   *                                  name of output file
-   */
-  void write_ls(
-    const std::vector<PoseStamped> & ls, const std::string & dir_path,
-    const std::string & file_name);
-  /**
-   * @brief write a linestrings to .txt file
-   *
-   * @param[in] node                - rclcpp::Node:
-   *                                  Node reference
-   * @param[in] lss                 - std::vector<std::vector<PointStdDev>>:
-   *                                  vector of linestrings
-   * @param[in] dir_path            - std::string:
-   *                                  name of output directory
-   * @param[in] file_name           - std::string:
-   *                                  name of output file
-   */
-  void write_lss(
-    const std::vector<std::vector<PointStdDev>> & lss, const std::string & dir_path,
-    const std::string & file_name);
-  /**
-   * @brief write a double vector to .txt file
-   *
-   * @param[in] vec                 - std::vector<double>:
-   *                                  vector of double values
-   * @param[in] dir_path            - std::string:
-   *                                  name of output directory
-   * @param[in] file_name           - std::string:
-   *                                  name of output file
-   */
-  void write_double_vec(
-    const std::vector<double> & vec, const std::string & dir_path, const std::string & file_name);
 
   /**
-   * @brief write triangulation vertices to file
-   *
-   * @param[in] triag               - std::shared_ptr<Delaunay>:
-   *                                  pointer to triangulation
-   * @param[in] dir_path            - std::string:
-   *                                  name of output directory
-   * @param[in] file_name           - std::string:
-   *                                  name of output file
+   * @brief reduce a deviation vector to summary statistics
    */
-  void write_triag(
-    const std::shared_ptr<Delaunay> & triag, const std::string & dir_path,
-    const std::string & file_name);
+  MatchingStats compute_stats(const std::vector<double> & diff);
+
   /**
-   * @brief write controlpoints to file
-   *
-   * @param[in] cps                 - std::vector<ControlPoint>:
-   *                                  control points
-   * @param[in] dir_path            - std::string:
-   *                                  name of output directory
-   * @param[in] file_name           - std::string:
-   *                                  name of output file
+   * @brief pretty-print aligned and rubber-sheeted matching statistics to stdout
    */
-  void write_cp(
-    const std::vector<ControlPoint> & cps, const std::string & dir_path,
-    const std::string & file_name);
+  void print_statistics(const MatchingStats & al, const MatchingStats & rs);
 };
 }  // namespace flexcloud

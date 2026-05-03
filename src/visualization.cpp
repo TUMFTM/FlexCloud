@@ -18,6 +18,9 @@
 
 #include "visualization.hpp"
 
+#include <algorithm>
+#include <cmath>
+#include <cstdint>
 #include <memory>
 #include <pcl/conversions.h>
 #include <pcl/filters/impl/approximate_voxel_grid.hpp>
@@ -27,6 +30,16 @@
 #include <vector>
 namespace flexcloud
 {
+rerun::Color jet(double t)
+{
+  t = std::clamp(t, 0.0, 1.0);
+  const double r = std::clamp(1.5 - std::abs(4.0 * t - 3.0), 0.0, 1.0);
+  const double g = std::clamp(1.5 - std::abs(4.0 * t - 2.0), 0.0, 1.0);
+  const double b = std::clamp(1.5 - std::abs(4.0 * t - 1.0), 0.0, 1.0);
+  return rerun::Color(
+    static_cast<uint8_t>(r * 255.0), static_cast<uint8_t>(g * 255.0),
+    static_cast<uint8_t>(b * 255.0));
+}
 /**
  * @brief visualize odom frames in rerun
  *
@@ -198,6 +211,40 @@ void visualization::rs2rerun(
     "tetrahedra", rerun::LineStrips3D(lines)
                     .with_colors(rerun::Color(col_edges.r, col_edges.g, col_edges.b))
                     .with_radii({0.3f}));
+}
+void visualization::linestring2rerun_colored(
+  const std::vector<PoseStamped> & ls, const std::vector<double> & values,
+  rerun::RecordingStream & stream, const std::string name)
+{
+  if (ls.size() < 2 || values.empty()) return;
+
+  const double vmin = *std::min_element(values.begin(), values.end());
+  const double vmax = *std::max_element(values.begin(), values.end());
+  const double span = (vmax - vmin) > 1e-12 ? (vmax - vmin) : 1.0;
+
+  std::vector<rerun::Position3D> positions;
+  positions.reserve(ls.size());
+  for (const auto & p : ls) {
+    positions.push_back(
+      rerun::Position3D(
+        p.pose.pose.translation().x(), p.pose.pose.translation().y(),
+        p.pose.pose.translation().z()));
+  }
+
+  std::vector<rerun::LineStrip3D> lines;
+  std::vector<rerun::Color> colors;
+  std::vector<rerun::components::Text> labels;
+  lines.reserve(positions.size() - 1);
+  colors.reserve(positions.size() - 1);
+  labels.reserve(positions.size() - 1);
+  for (size_t i = 0; i < positions.size() - 1; ++i) {
+    lines.emplace_back(rerun::LineStrip3D({positions[i].xyz, positions[i + 1].xyz}));
+    const double v = (i < values.size()) ? values[i] : values.back();
+    colors.emplace_back(jet((v - vmin) / span));
+    labels.emplace_back(rerun::components::Text(std::to_string(v)));
+  }
+  stream.log(
+    name.c_str(), rerun::LineStrips3D(lines).with_colors(colors).with_labels(labels));
 }
 /**
  * @brief visualize point cloud map in rerun

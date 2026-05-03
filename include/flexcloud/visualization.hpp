@@ -119,6 +119,18 @@ public:
     const std::vector<ControlPoint> & cps, std::shared_ptr<Delaunay> & triag,
     rerun::RecordingStream & stream, const std::string color);
   /**
+   * @brief visualize a pose linestring whose per-segment color encodes a scalar
+   *        value (jet colormap). Segment i uses values[i].
+   *
+   * @param[in] ls       pose linestring (vertices)
+   * @param[in] values   per-vertex scalar; segment color uses values[i]
+   * @param[in] stream   rerun stream
+   * @param[in] name     entity path
+   */
+  void linestring2rerun_colored(
+    const std::vector<PoseStamped> & ls, const std::vector<double> & values,
+    rerun::RecordingStream & stream, const std::string name);
+  /**
    * @brief visualize point cloud map in rerun
    *
    * @param[in] pcd_map             - pcl::PointCloud<pcl::PointXYZ>::Ptr:
