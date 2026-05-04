@@ -18,229 +18,68 @@
 
 #include "analysis.hpp"
 
+#include <algorithm>
+#include <cmath>
+#include <iomanip>
 #include <iostream>
-#include <memory>
-#include <string>
+#include <numeric>
 #include <vector>
 namespace flexcloud
 {
-/**
- * @brief write all data relevant for evaluation of trajectory matching
- *
- * @param[in] dir                 - std::string:
- *                                  name of output directory
- * @param[in] src                 - std::vector<PointStdDevStamped>:
- *                                  source trajectory
- * @param[in] target              - std::vector<PoseStamped>:
- *                                  target trajectory
- * @param[in] target_al           - std::vector<PoseStamped>:
- *                                  target trajectory after Umeyama trafo
- * @param[in] target_rs           - std::vector<PoseStamped>:
- *                                  target trajectory after rubber-sheeting
- * @param[in] triag               - std::shared_ptr<Delaunay>:
- *                                  pointer to triangulation
- * @param[in] cps                 - std::vector<ControlPoint>:
- *                                  vector of control points
- */
-bool analysis::traj_matching(const std::string & dir, const std::vector<PointStdDevStamped> & src,
-  const std::vector<PoseStamped> & target, const std::vector<PoseStamped> & target_al,
-  const std::vector<PoseStamped> & target_rs, const std::shared_ptr<Delaunay> & triag,
-  const std::vector<ControlPoint> & cps)
-{
-  write_ls(src, dir, "source.txt");
-  write_ls(target, dir, "target.txt");
-  write_ls(target_al, dir, "target_al.txt");
-  write_ls(target_rs, dir, "target_rs.txt");
-  write_triag(triag, dir, "triag.txt");
-  write_cp(cps, dir, "controlPoints.txt");
-  write_double_vec(calc_diff(src, target_al), dir, "diff_al.txt");
-  write_double_vec(calc_diff(src, target_rs), dir, "diff_rs.txt");
-  return true;
-}
-/**
- * @brief calculate difference of a target trajectory to a source trajectory
- *
- * @param[in] src                 - std::vector<PointStdDevStamped>:
- *                                  source trajectory
- * @param[in] target              - std::vector<PoseStamped>:
- *                                  target trajectory
- * @return std::vector<double>    - std::vector<double>:
- *                                  difference between trajectories (euclidean distance)
- */
 std::vector<double> analysis::calc_diff(
   const std::vector<PointStdDevStamped> & src, const std::vector<PoseStamped> & target)
 {
   std::vector<double> diff;
-  int i = 0;
-  for (const auto & pt : target) {
-    double dist = (pt.pose.pose.translation() - src[i].point.pos).norm();
-    diff.push_back(dist);
-    ++i;
+  diff.reserve(target.size());
+  for (size_t i = 0; i < target.size(); ++i) {
+    diff.push_back((target[i].pose.pose.translation() - src[i].point.pos).norm());
   }
   return diff;
 }
-/**
- * @brief write a linestring to .txt file
- *
- * @param[in] ls                  - std::vector<PointStdDevStamped>:
- *                                  linestring
- * @param[in] dir_path            - std::string:
- *                                  name of output directory
- * @param[in] file_name           - std::string:
- *                                  name of output file
- */
-void analysis::write_ls(
-  const std::vector<PointStdDevStamped> & ls, const std::string & dir_path,
-  const std::string & file_name)
-{
-  const std::string file_path = dir_path + "/" + file_name;
-  std::ofstream file(file_path);
 
-  if (file.is_open()) {
-    for (const auto & pt : ls) {
-      file << pt.point.pos.x() << " " << pt.point.pos.y() << " " << pt.point.pos.z() << std::endl;
-    }
-    file.close();
-  } else {
-    std::cout << "\033[1;31m!! Unable to open " << file_path << " !!\033[0m" << std::endl;
+MatchingStats analysis::compute_stats(const std::vector<double> & diff)
+{
+  MatchingStats s{};
+  if (diff.empty()) return s;
+
+  const double sum = std::accumulate(diff.begin(), diff.end(), 0.0);
+  s.mean = sum / static_cast<double>(diff.size());
+
+  double sq_sum = 0.0;
+  double var_sum = 0.0;
+  for (double d : diff) {
+    sq_sum += d * d;
+    var_sum += (d - s.mean) * (d - s.mean);
   }
+  s.rmse = std::sqrt(sq_sum / static_cast<double>(diff.size()));
+  s.stddev = std::sqrt(var_sum / static_cast<double>(diff.size()));
+
+  std::vector<double> sorted = diff;
+  std::sort(sorted.begin(), sorted.end());
+  const size_t n = sorted.size();
+  s.median = (n % 2 == 0) ? 0.5 * (sorted[n / 2 - 1] + sorted[n / 2]) : sorted[n / 2];
+  s.min = sorted.front();
+  s.max = sorted.back();
+  return s;
 }
-/**
- * @brief write a linestring to .txt file
- *
- * @param[in] ls                  - std::vector<PoseStamped>:
- *                                  linestring
- * @param[in] dir_path            - std::string:
- *                                  name of output directory
- * @param[in] file_name           - std::string:
- *                                  name of output file
- */
-void analysis::write_ls(
-  const std::vector<PoseStamped> & ls, const std::string & dir_path, const std::string & file_name)
+
+void analysis::print_statistics(const MatchingStats & al, const MatchingStats & rs)
 {
-  const std::string file_path = dir_path + "/" + file_name;
-  std::ofstream file(file_path);
+  auto row = [](const char * label, double a, double b) {
+    std::cout << "  " << std::left << std::setw(8) << label << std::right << std::fixed
+              << std::setprecision(4) << std::setw(14) << a << std::setw(14) << b << "\n";
+  };
 
-  if (file.is_open()) {
-    for (const auto & pose : ls) {
-      file << pose.pose.pose.translation().x() << " " << pose.pose.pose.translation().y() << " "
-           << pose.pose.pose.translation().z() << std::endl;
-    }
-    file.close();
-  } else {
-    std::cout << "\033[1;31m!! Unable to open " << file_path << " !!\033[0m" << std::endl;
-  }
-}
-/**
- * @brief write a linestrings to .txt file
- *
- * @param[in] lss                 - std::vector<std::vector<PointStdDev>>:
- *                                  vector of linestrings
- * @param[in] dir_path            - std::string:
- *                                  name of output directory
- * @param[in] file_name           - std::string:
- *                                  name of output file
- */
-void analysis::write_lss(
-  const std::vector<std::vector<PointStdDev>> & lss, const std::string & dir_path,
-  const std::string & file_name)
-{
-  const std::string file_path = dir_path + "/" + file_name;
-  std::ofstream file(file_path);
-
-  if (file.is_open()) {
-    for (const auto & ls : lss) {
-      for (const auto & pt : ls) {
-        file << pt.pos.x() << " " << pt.pos.y() << " " << pt.pos.z() << " ";
-      }
-      file << std::endl;
-    }
-    file.close();
-  } else {
-    std::cout << "\033[1;31m!! Unable to open " << file_path << " !!\033[0m" << std::endl;
-  }
-}
-/**
- * @brief write a double vector to .txt file
- *
- * @param[in] vec                 - std::vector<double>:
- *                                  vector of double values
- * @param[in] dir_path            - std::string:
- *                                  name of output directory
- * @param[in] file_name           - std::string:
- *                                  name of output file
- */
-void analysis::write_double_vec(
-  const std::vector<double> & vec, const std::string & dir_path, const std::string & file_name)
-{
-  const std::string file_path = dir_path + "/" + file_name;
-  std::ofstream file(file_path);
-
-  if (file.is_open()) {
-    for (const auto & diff : vec) file << diff << std::endl;
-
-    file.close();
-  } else {
-    std::cout << "\033[1;31m!! Unable to open " << file_path << " !!\033[0m" << std::endl;
-  }
-}
-/**
- * @brief write triangulation vertices to file
- *
- * @param[in] triag               - std::shared_ptr<Delaunay>:
- *                                  pointer to triangulation
- * @param[in] dir_path            - std::string:
- *                                  name of output directory
- * @param[in] file_name           - std::string:
- *                                  name of output file
- */
-void analysis::write_triag(
-  const std::shared_ptr<Delaunay> & triag, const std::string & dir_path,
-  const std::string & file_name)
-{
-  const std::string file_path = dir_path + "/" + file_name;
-  std::ofstream file(file_path);
-
-  std::vector<std::vector<Eigen::Vector3d>> vertices = triag->getVertices();
-
-  if (file.is_open()) {
-    for (const auto & tet : vertices) {
-      for (const Eigen::Vector3d & p : tet) {
-        file << p.x() << " " << p.y() << " " << p.z() << " ";
-      }
-      file << std::endl;
-    }
-  } else {
-    std::cout << "\033[1;31m!! Unable to open " << file_path << " !!\033[0m" << std::endl;
-  }
-}
-/**
- * @brief write controlpoints to file
- *
- * @param[in] cps                 - std::vector<ControlPoint>:
- *                                  control points
- * @param[in] dir_path            - std::string:
- *                                  name of output directory
- * @param[in] file_name           - std::string:
- *                                  name of output file
- */
-void analysis::write_cp(
-  const std::vector<ControlPoint> & cps, const std::string & dir_path,
-  const std::string & file_name)
-{
-  const std::string file_path = dir_path + "/" + file_name;
-  std::ofstream file(file_path);
-
-  if (file.is_open()) {
-    for (const auto & cpt : cps) {
-      Eigen::Vector3d src = cpt.source;
-      Eigen::Vector3d target = cpt.target;
-      file << src(0) << " " << src(1) << " " << src(2) << " " << target(0) << " " << target(1)
-           << " " << target(2) << std::endl;
-    }
-    file.close();
-  } else {
-    std::cout << "\033[1;31m!! Unable to open " << file_path << " !!\033[0m" << std::endl;
-  }
+  std::cout << "\033[1;36m=== Trajectory matching statistics (deviation from GNSS, m) ===\033[0m\n";
+  std::cout << "\033[32m";
+  std::cout << "  " << std::left << std::setw(8) << "" << std::right << std::setw(14) << "Aligned"
+            << std::setw(14) << "Rubber-sheet" << "\n";
+  row("RMSE",   al.rmse,   rs.rmse);
+  row("Mean",   al.mean,   rs.mean);
+  row("Median", al.median, rs.median);
+  row("Stddev", al.stddev, rs.stddev);
+  row("Min",    al.min,    rs.min);
+  row("Max",    al.max,    rs.max);
+  std::cout << "\033[0m";
 }
 }  // namespace flexcloud

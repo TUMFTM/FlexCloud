@@ -87,52 +87,70 @@ The output is designed to be compatible with the georeferencing executable.
 <h3> Georeferencing</h3>
 
 ```text
-flexcloud-georeferencing [OPTIONS] <positions-path> <poses-path>
+Georeference a SLAM trajectory and (optionally) a corresponding point cloud map by
+aligning it to a GNSS / reference trajectory using Umeyama and rubber-sheeting.
+Usage: georeferencing [OPTIONS] positions-path poses-path
 
-Required positional arguments:
-  positions-path        GNSS / reference trajectory (lat,lon,ele,*_stddev or
-                        x,y,z,*_stddev if already cartesian)
-  poses-path            SLAM trajectory in GLIM format
+Required:
+  positions-path TEXT:FILE REQUIRED
+                              Path to GNSS / reference trajectory
+  poses-path TEXT:FILE REQUIRED
+                              Path to SLAM trajectory in GLIM format
+
+Options:
+  -h,--help                   Print this help message and exit
 
 Inputs:
-  --pcd PATH            Point cloud map to transform
-  --config-file PATH    Optional YAML for index-based fine-tuning arrays
+  --pcd TEXT                  Optional point cloud map to transform alongside the
+                              trajectory
+  --config-file TEXT:FILE     Optional YAML file with index-based fine-tuning arrays
+                              (exclude_ind, shift_ind, shift_ind_dist, fake_ind,
+                              fake_ind_dist, fake_ind_height)
 
 Trajectory matching:
-  --control-points INT              (default: 10)
-  --stddev-threshold FLOAT                 (default: 0.05)
-  --square-size FLOAT FLOAT FLOAT          (default: 0.1 0.1 10.0)
+  --control-points INT [10]   Number of control points for rubber-sheeting
+  --stddev-threshold FLOAT [0.25]
+                              Maximum stddev of reference points for automatic
+                              control-point selection
+  --square-size FLOAT FLOAT FLOAT [0.1,0.1,10] ...
+                              Padding of enclosing square around trajectories
+                              [x y z] (fractions)
 
 Origin:
-  --origin LAT LON ALT                     (default: empty)
+  --origin FLOAT FLOAT FLOAT ...
+                              Custom ENU zero point [lat lon alt]
+
+Evaluation:
+  --evaluation                Print trajectory-matching statistics (RMSE, mean,
+                              median, stddev of GNSS-vs-aligned and
+                              GNSS-vs-rubber-sheeted deviations) to the terminal
+                              and log per-segment, deviation-colored linestrings
+                              to the rerun viewer.
+
+Examples:
+  # cartesian reference, no point cloud, default parameters
+  flexcloud-georeferencing positions_interpolated.txt poses_keyframes.txt
+
+  # GPS reference, custom origin, transform a point cloud as well
+  flexcloud-georeferencing reference.txt poses_keyframes.txt \
+      --pcd map.pcd --origin 48.262 11.667 0.0
+
+  # supply index-based fine-tuning arrays via YAML
+  flexcloud-georeferencing reference.txt poses_keyframes.txt \
+      --config-file georeferencing.yaml
 ```
 
 All parameters are CLI flags with sensible defaults; the only YAML config that remains is for the index-based fine-tuning arrays (`exclude_ind`, `shift_ind`, `shift_ind_dist`, `fake_ind`, `fake_ind_dist`, `fake_ind_height`) and is supplied via `--config-file`.
 
-Examples:
-
-```bash
-# defaults, cartesian reference, no point cloud
-flexcloud-georeferencing positions_interpolated.txt poses_keyframes.txt
-
-# supply index-based fine-tuning arrays via YAML
-flexcloud-georeferencing reference.txt poses_keyframes.txt \
-    --config-file config/georeferencing.yaml
-```
+When `--pcd` is provided, the effective configuration is dumped next to the input point cloud as `georeferencing.yaml` (alongside the transformed `georef_<pcd>` output). The dumped file can be edited and fed back in via `--config-file` for reproducible runs.
 
 **Inspect results**:
 
 * results of the rubber-sheet transformation & the resulting, transformed point cloud map are visualized in [Rerun](https://rerun.io/).
-* by default, the rerun viewer instance of the docker container is spawned. However, if you have problems with the viewer and your graphics drivers, you can also launch your viewer locally
-* adjust the parameters if the results are satisfying
-* see table for explanation of single topics
-* follow the instructions below (Content->Analysis) to get a quantitative evaluation fo the georeferencing
-* the results are automatically saved in the current working directory within the folder `output/traj_matching/`
-* Quick usage (the directory output/traj_matching is automatically generated at the current working directory):
-
-```bash
-python3 plot_traj_matching.py /path/to/output/traj_matching/
-```
+* by default, the rerun viewer instance of the docker container is spawned. However, if you have problems with the viewer and your graphics drivers, you can also launch your viewer locally.
+* adjust the parameters if the results are unsatisfying.
+* see the table below for an explanation of the individual entities.
+* pass `--evaluation` to additionally print quantitative matching statistics to the terminal and visualize the per-segment GNSS deviation as a jet-colormap-shaded linestring (one for the Umeyama-aligned trajectory, one for the rubber-sheeted trajectory).
 
 | Type | Description |
 | ----------- | ----------- |
@@ -140,11 +158,11 @@ python3 plot_traj_matching.py /path/to/output/traj_matching/
 | `Trajectory_SLAM` | original SLAM trajectory |
 | `Trajectory_align` | SLAM trajectory aligned to reference with [Umeyama](https://web.stanford.edu/class/cs273/refs/umeyama.pdf) transformation |
 | `Trajectory_RS` | SLAM trajectory after [rubber-sheet](https://www.tandfonline.com/doi/abs/10.1559/152304085783915135)-transformation |
+| `Trajectory_align_deviation` | aligned trajectory, per-segment colored by euclidean deviation from the reference (only with `--evaluation`) |
+| `Trajectory_RS_deviation` | rubber-sheeted trajectory, per-segment colored by euclidean deviation from the reference (only with `--evaluation`) |
 | `control_points` | control points used for rubber-sheeting |
 | `tetrahedra` | triangulation used for rubber-sheeting |
 | `pcd_map` | transformed point cloud map |
-
-* Inspect results and modify parameters if desired.
 
 <h2>Content</h2>
 
@@ -190,15 +208,9 @@ Detailed documentation of the modules can be found below.
 <details>
 <summary> <h3> Evaluation </h3> </summary>
 
-* export of various data by setting corresponding parameters in config-file
-  * data is exported to `.txt` files that are then read by python-scripts
-  * set export path in config-file
-  * adjust import paths at the beginning of python-scripts if necessary
-* analysis scripts in `/analysis`:
-  * visualization of initial trajectories, [Umeyama transformation](https://web.stanford.edu/class/cs273/refs/umeyama.pdf) and [Rubber-Sheet transformation](https://www.tandfonline.com/doi/abs/10.1559/152304085783915135)
-  * execute script `plot_traj_matching.py` in `/analysis`
-  * produces graphs shown in previous section
-  * calculation of deviation between trajectories based on euclidean distance of points
+* enable with the `--evaluation` flag on `flexcloud-georeferencing`.
+* statistics (RMSE, mean, median, stddev, min, max) of the per-point euclidean deviation between the reference trajectory and both the Umeyama-aligned and the rubber-sheeted SLAM trajectory are printed to the terminal in a single side-by-side table.
+* the same per-segment deviations are visualized in the [Rerun](https://rerun.io/) viewer as two additional, jet-colormap-shaded linestrings: `Trajectory_align_deviation` and `Trajectory_RS_deviation` (segment label = deviation value in meters).
 
 </details>
 

@@ -68,12 +68,13 @@ public:
   void visualize_rs();
 
   /**
-   * @brief write pcd map to file
+   * @brief write pcd map to file and dump effective config alongside it
    */
   void save_map();
 
   /**
-   * @brief do evaluation calculations and write to txt-files
+   * @brief if --evaluation is set, print matching statistics and add
+   *        deviation-colored linestrings to the rerun stream
    */
   void evaluation();
 

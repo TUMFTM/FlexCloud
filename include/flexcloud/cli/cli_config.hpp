@@ -132,6 +132,9 @@ struct GeoreferencingConfig
   std::vector<double> fake_ind_dist{};
   std::vector<double> fake_ind_height{};
 
+  // Post-run evaluation
+  bool evaluation{false};
+
   void add_cli_options(CLI::App * app)
   {
     app->add_option("positions-path", positions_path, "Path to GNSS / reference trajectory")
@@ -178,6 +181,12 @@ struct GeoreferencingConfig
       ->type_name("FLOAT FLOAT FLOAT")
       ->capture_default_str()
       ->group("Origin");
+
+    app->add_flag("--evaluation", evaluation,
+                  "Print trajectory-matching statistics (RMSE, mean, median, stddev of "
+                  "GNSS-vs-aligned and GNSS-vs-rubber-sheeted deviations) to the terminal "
+                  "and log per-segment, deviation-colored linestrings to the rerun viewer.")
+      ->group("Evaluation");
   }
 
   /**

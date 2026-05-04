@@ -18,6 +18,7 @@
 
 #include "georeferencing.hpp"
 
+#include <fstream>
 #include <iostream>
 #include <memory>
 #include <string>
@@ -155,38 +156,26 @@ void Georeferencing::visualize_rs()
   }
 }
 /**
- * @brief write pcd map to file
+ * @brief write pcd map to file and dump the effective config alongside it
  */
 void Georeferencing::save_map()
 {
-  if (this->config_.pcd_path != "") {
-    std::string path =
-      this->config_.pcd_path.substr(0, this->config_.pcd_path.find_last_of("\\/")) + "/georef_" +
-      this->config_.pcd_path.substr(this->config_.pcd_path.find_last_of("/\\") + 1);
-
-    const bool saved_successfully = file_io_->save_pcd(path, this->pcd_map_);
-
-    if (saved_successfully) {
-      std::cout << "\033[1;36mPoint Cloud Map written to " << path << "!\033[0m" << std::endl;
-    } else {
-      std::cout << "!! Error during Map writing !!" << std::endl;
-    }
+  if (this->config_.pcd_path.empty()) {
+    return;
   }
-}
-/**
- * @brief do evaluation calculations and write to txt-files
- */
-void Georeferencing::evaluation()
-{
-  // Create output directory
-  // Set working directory to current path
-  const std::string dir = "./georeferencing_output";
-  // Create if not a directory
-  if (!std::filesystem::is_directory(dir)) {
-    std::filesystem::create_directories(dir);
+  const std::string dir = this->config_.pcd_path.substr(0, this->config_.pcd_path.find_last_of("\\/"));
+  const std::string path = dir + "/georef_" +
+    this->config_.pcd_path.substr(this->config_.pcd_path.find_last_of("/\\") + 1);
+
+  const bool saved_successfully = file_io_->save_pcd(path, this->pcd_map_);
+
+  if (saved_successfully) {
+    std::cout << "\033[1;36mPoint Cloud Map written to " << path << "!\033[0m" << std::endl;
+  } else {
+    std::cout << "!! Error during Map writing !!" << std::endl;
   }
 
-  // Dump effective config to output directory
+  // Dump effective config next to the (input) pcd
   YAML::Node out;
   out["control_points"] = this->config_.control_points;
   out["stddev_threshold"] = this->config_.stddev_threshold;
@@ -198,17 +187,35 @@ void Georeferencing::evaluation()
   out["fake_ind"] = this->config_.fake_ind;
   out["fake_ind_dist"] = this->config_.fake_ind_dist;
   out["fake_ind_height"] = this->config_.fake_ind_height;
-  std::ofstream fout(dir + "/georeferencing_config.yaml");
+  const std::string yaml_path = dir + "/georeferencing.yaml";
+  std::ofstream fout(yaml_path);
   fout << out;
   fout.close();
+  std::cout << "\033[1;36mEffective config written to " << yaml_path << "!\033[0m" << std::endl;
+}
+/**
+ * @brief compute deviation statistics, print them to the terminal, and add
+ *        deviation-colored linestrings of the aligned and rubber-sheeted
+ *        trajectories to the rerun stream. Gated on --evaluation.
+ */
+void Georeferencing::evaluation()
+{
+  if (!this->config_.evaluation) {
+    return;
+  }
 
-  // Trajectory matching analysis and export
-  this->analysis_->traj_matching(
-    dir, this->pos_global_, this->poses_, this->poses_align_, this->poses_rs_, this->triag_,
-    this->control_points_);
+  const std::vector<double> diff_al =
+    this->analysis_->calc_diff(this->pos_global_, this->poses_align_);
+  const std::vector<double> diff_rs =
+    this->analysis_->calc_diff(this->pos_global_, this->poses_rs_);
 
-  std::cout << "\033[1;36m===> Analysis calculations saved in Output directory!\033[0m"
-            << std::endl;
+  this->analysis_->print_statistics(
+    this->analysis_->compute_stats(diff_al), this->analysis_->compute_stats(diff_rs));
+
+  this->viz_->linestring2rerun_colored(
+    this->poses_align_, diff_al, this->rec_, "Trajectory_align_deviation");
+  this->viz_->linestring2rerun_colored(
+    this->poses_rs_, diff_rs, this->rec_, "Trajectory_RS_deviation");
 }
 }  // namespace flexcloud
 /**
