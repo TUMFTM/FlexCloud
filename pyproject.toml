@@ -4,7 +4,7 @@ build-backend = "scikit_build_core.build"
 
 [project]
 name = "flexcloud"
-version = "1.0.1"
+version = "1.0.2"
 description = "Direct, modular georeferencing and drift-correction of point cloud maps"
 readme = "README.md"
 authors = [

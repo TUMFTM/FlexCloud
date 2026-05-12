@@ -2,7 +2,7 @@
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
   <name>flexcloud</name>
-  <version>1.0.0</version>
+  <version>1.0.2</version>
   <description>Direct, modular georeferencing and drift-correction of point cloud maps.</description>
   <maintainer email="maxi.leitenstern@tum.de">Maximilian Leitenstern</maintainer>
   <license>GPL-3.0-or-later</license>
