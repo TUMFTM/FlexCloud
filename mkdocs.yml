@@ -82,6 +82,7 @@ nav:
       - Overview: version_details/index.md
       - Latest: version_details/latest.md
       # VERSION_NAV_START
+      - version_details/1.0.2.md
       - version_details/1.0.1.md
       - version_details/1.0.0.md
       # VERSION_NAV_END
