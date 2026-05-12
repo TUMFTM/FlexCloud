@@ -7,3 +7,4 @@ output
 traj_matching
 georeferencing_output
 *.pcd
+site

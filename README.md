@@ -4,236 +4,49 @@
 
 Georeferencing of Point Cloud Maps
 
-[![Linux](https://img.shields.io/badge/os-linux-blue.svg)](https://www.linux.org/)
-[![Docker](https://badgen.net/badge/icon/docker?icon=docker&label)](https://www.docker.com/)
-![C++](https://img.shields.io/badge/-C++-blue?logo=cplusplus)
 ![License](https://img.shields.io/badge/license-Apache%202.0-blue)
+[![Docker](https://badgen.net/badge/icon/docker?icon=docker&label)](https://www.docker.com/)
+![pip](https://img.shields.io/badge/pip-Ubuntu%2024.04%20x86__64-E95420?logo=ubuntu&logoColor=white)
+[![PyPI](https://github.com/TUMFTM/FlexCloud/actions/workflows/pypi.yml/badge.svg)](https://github.com/TUMFTM/FlexCloud/actions/workflows/pypi.yml)
 [![arXiv](https://img.shields.io/badge/arXiv-1234.56789-b31b1b.svg)](https://arxiv.org/abs/2502.00395)
 [![DOI:10.5220/0013405400003941](https://img.shields.io/badge/DOI-10.5220/0013405400003941-00629B.svg)](https://doi.org/10.5220/0013359600003941)
 
-
-<img src="doc/viz.gif" width="800"/>
+<img src="docs/assets/viz.gif" width="800"/>
 </div>
+
+**Full documentation: [https://TUMFTM.github.io/FlexCloud](https://TUMFTM.github.io/FlexCloud)**
 
 <h2>Installation</h2>
 
 ```bash
 pip install flexcloud
 ```
+
+> **Supported platform:** Ubuntu 24.04 on x86_64 with CPython 3.12. The published PyPI wheel is built for `manylinux_2_39_x86_64` / `cp312` only. On other platforms, use the [Docker image](https://ghcr.io/tumftm/pointcloudcrafter) or build from source.
+
 <h2>Usage</h2>
 
 All algorithm parameters are CLI flags with reasonable defaults.
 
-<h3>Keyframe Interpolation</h3>
-
-```text
-flexcloud-keyframe-interpolation [OPTIONS] <positions-path> <poses-path> [out-dir]
-
-Required positional arguments:
-  positions-path  Reference data (auto-detected, see table above)
-  poses-path      SLAM trajectory in GLIM format
-                  (one row per pose: stamp xpos ypos zpos xquat yquat zquat wquat)
-  out-dir         Output directory for poses_keyframes.txt and positions_interpolated.txt
-                  (defaults to the current directory)
-
-Bag input (only used when positions-path is a ROS 2 bag):
-  --pos-topic TEXT           Topic of NavSatFix or Odometry messages (required for bags)
-  -t,--target-frame TEXT     TF frame to transform positions into (uses /tf and /tf_static
-                             from the bag). Optional.
-  --origin LAT LON ALT       Custom origin for NavSatFix → local Cartesian projection.
-                             If omitted no projection is performed.
-```
-
-The reference-data source is given as a single positional argument `positions-path`; the reader is selected automatically:
-
-| `positions-path` is … | Reader |
-| --- | --- |
-| a `.txt` file | text-file reader (one position per line) |
-| a directory **without** any `.mcap` / `.db3` / `.sqlite3` | per-position txt-files reader |
-| a `.mcap` / `.db3` / `.sqlite3` file, **or** a directory containing one | ROS 2 bag reader |
-
-**Reference-data file formats**:
-
-* **single `.txt` file** — one position per line, whitespace-separated:
-  `stamp x y z x_stddev y_stddev z_stddev`.
-* **directory of per-position `.txt` files** — filenames `<sec>_<nanosec>.txt`, file content `x y z x_stddev y_stddev z_stddev` (timestamp parsed from the filename).
-* **ROS 2 bag** — supports `sensor_msgs/msg/NavSatFix` or `nav_msgs/msg/Odometry` messages.
-
-**Notes on bag input**:
-* `NavSatFix` messages are projected to local Cartesian via [GeographicLib](https://geographiclib.sourceforge.io/2009-03/classGeographicLib_1_1LocalCartesian.html); standard deviations are taken from `position_covariance` (diagonal).
-* `Odometry` messages use `pose.pose` directly; standard deviations are taken from `pose.covariance` (diagonal).
-* When `--target-frame` is set, all `/tf` and `/tf_static` messages from the bag are pre-loaded into a TF buffer. For each message its transform to the target frame is looked using the message timestamp.
-
-**Examples**:
+**Keyframe Interpolation**
 
 ```bash
-# single txt file
-flexcloud-keyframe-interpolation positions.txt poses_GLIM.txt
+flexcloud-keyframe-interpolation -h
 
-# ROS 2 bag with Odometry
-flexcloud-keyframe-interpolation /path/to/bag.mcap poses_GLIM.txt /path/to/out \
-    --pos-topic /odom --target-frame base_link
+ros2 run flexcloud keyframe_interpolation
 ```
 
-The keyframe-selection algorithm itself is unchanged:
-* keyframes are selected from the LiDAR trajectory based on minimum longitudinal distance (`keyframe_delta_x`) or minimum angular delta (`keyframe_delta_angle`).
-* For each LiDAR keyframe, the corresponding reference position is computed in one of two ways (controlled by `interpolate`):
-  * **Closest neighbor** — pick the reference frame with the smallest timestamp delta.
-  * **Spline interpolation** — fit a third-order spline through neighboring reference points (selected so that consecutive supports have a minimum euclidean distance of `interp_pos_delta_xyz`) and evaluate at the keyframe timestamp.
-* `stddev_threshold` is used to drop reference frames with high covariance.
-
-The output is designed to be compatible with the georeferencing executable.
-
-<h3> Georeferencing</h3>
-
-```text
-Georeference a SLAM trajectory and (optionally) a corresponding point cloud map by
-aligning it to a GNSS / reference trajectory using Umeyama and rubber-sheeting.
-Usage: georeferencing [OPTIONS] positions-path poses-path
-
-Required:
-  positions-path TEXT:FILE REQUIRED
-                              Path to GNSS / reference trajectory
-  poses-path TEXT:FILE REQUIRED
-                              Path to SLAM trajectory in GLIM format
-
-Options:
-  -h,--help                   Print this help message and exit
-
-Inputs:
-  --pcd TEXT                  Optional point cloud map to transform alongside the
-                              trajectory
-  --config-file TEXT:FILE     Optional YAML file with index-based fine-tuning arrays
-                              (exclude_ind, shift_ind, shift_ind_dist, fake_ind,
-                              fake_ind_dist, fake_ind_height)
-
-Trajectory matching:
-  --control-points INT [10]   Number of control points for rubber-sheeting
-  --stddev-threshold FLOAT [0.25]
-                              Maximum stddev of reference points for automatic
-                              control-point selection
-  --square-size FLOAT FLOAT FLOAT [0.1,0.1,10] ...
-                              Padding of enclosing square around trajectories
-                              [x y z] (fractions)
-
-Origin:
-  --origin FLOAT FLOAT FLOAT ...
-                              Custom ENU zero point [lat lon alt]
-
-Evaluation:
-  --evaluation                Print trajectory-matching statistics (RMSE, mean,
-                              median, stddev of GNSS-vs-aligned and
-                              GNSS-vs-rubber-sheeted deviations) to the terminal
-                              and log per-segment, deviation-colored linestrings
-                              to the rerun viewer.
-
-Examples:
-  # cartesian reference, no point cloud, default parameters
-  flexcloud-georeferencing positions_interpolated.txt poses_keyframes.txt
-
-  # GPS reference, custom origin, transform a point cloud as well
-  flexcloud-georeferencing reference.txt poses_keyframes.txt \
-      --pcd map.pcd --origin 48.262 11.667 0.0
-
-  # supply index-based fine-tuning arrays via YAML
-  flexcloud-georeferencing reference.txt poses_keyframes.txt \
-      --config-file georeferencing.yaml
-```
-
-All parameters are CLI flags with sensible defaults; the only YAML config that remains is for the index-based fine-tuning arrays (`exclude_ind`, `shift_ind`, `shift_ind_dist`, `fake_ind`, `fake_ind_dist`, `fake_ind_height`) and is supplied via `--config-file`.
-
-When `--pcd` is provided, the effective configuration is dumped next to the input point cloud as `georeferencing.yaml` (alongside the transformed `georef_<pcd>` output). The dumped file can be edited and fed back in via `--config-file` for reproducible runs.
-
-**Inspect results**:
-
-* results of the rubber-sheet transformation & the resulting, transformed point cloud map are visualized in [Rerun](https://rerun.io/).
-* by default, the rerun viewer instance of the docker container is spawned. However, if you have problems with the viewer and your graphics drivers, you can also launch your viewer locally.
-* adjust the parameters if the results are unsatisfying.
-* see the table below for an explanation of the individual entities.
-* pass `--evaluation` to additionally print quantitative matching statistics to the terminal and visualize the per-segment GNSS deviation as a jet-colormap-shaded linestring (one for the Umeyama-aligned trajectory, one for the rubber-sheeted trajectory).
-
-| Type | Description |
-| ----------- | ----------- |
-| `Trajectory` | reference trajectory |
-| `Trajectory_SLAM` | original SLAM trajectory |
-| `Trajectory_align` | SLAM trajectory aligned to reference with [Umeyama](https://web.stanford.edu/class/cs273/refs/umeyama.pdf) transformation |
-| `Trajectory_RS` | SLAM trajectory after [rubber-sheet](https://www.tandfonline.com/doi/abs/10.1559/152304085783915135)-transformation |
-| `Trajectory_align_deviation` | aligned trajectory, per-segment colored by euclidean deviation from the reference (only with `--evaluation`) |
-| `Trajectory_RS_deviation` | rubber-sheeted trajectory, per-segment colored by euclidean deviation from the reference (only with `--evaluation`) |
-| `control_points` | control points used for rubber-sheeting |
-| `tetrahedra` | triangulation used for rubber-sheeting |
-| `pcd_map` | transformed point cloud map |
-
-<h2>Content</h2>
-
-This project enables the georeferencing of an existing point cloud map created only from inertial sensor data (e.g. LiDAR) by the use of the corresponding GNSS data.
-Leveraging the concept of rubber-sheeting from cartography, the tool is also able to account for accumulated errors during map creation and thus rectify the map.
-
-![image](doc/flowchart.png)
-Detailed documentation of the modules can be found below.
-
-<details>
-<summary> <h3> Trajectory Matching </h3> </summary>
-
-* calculation of transformation based on GNSS/reference and SLAM trajectories
-* trajectories do not have to be time-synchronized, although time-synchronization is required to select control points automatically for rubber-sheeting
-
-<h4>1. Projection of Global Coordinates</h4>
-
-* global coordinates may be projected into local coordinate system using ENU-coordinates from the [GeographicLib](https://geographiclib.sourceforge.io/2009-03/classGeographicLib_1_1LocalCartesian.html)
-
-<h4>2. Keyframe Interpolation</h4>
-- Selection of keyframes and interpolation of global position frames for map creation and manual optimization
-- Interpolation follows a third-order spline interpolation from [Eigen](https://eigen.tuxfamily.org/dox/unsupported/group__Splines__Module.html)
-
-<h4>3. Alignment of Trajectories by Rigid Transformation</h4>
-
-* SLAM trajectory aligned to reference using [Umeyama algorithm](https://web.stanford.edu/class/cs273/refs/umeyama.pdf) transformation in 2D/3D
-* application of calculated transformation on SLAM trajectory
-* screenshot below shows results of alignment of SLAM trajectory to projected reference trajectory with [Umeyama algorithm](https://web.stanford.edu/class/cs273/refs/umeyama.pdf)\
-  ![image](doc/traj_al.png)
-
-<h4>4. Rubber-Sheet transformation</h4>
-
-* piecewise linear rubber-sheet transformation in 2D/3D based on concept of [Griffin & White](https://www.tandfonline.com/doi/abs/10.1559/152304085783915135)
-* using Delaunay triangulation from [CGAL](https://www.cgal.org/)
-* manual selection of control points in RVIZ (see above) possible if trajectories are not time-synchronized (parameter `auto_cp`)
-* automatic exclusion of trajectory points as control points using thresholding for standard deviation possible
-* manual exclusion of indices as controlpoints and manual displacement in xy possible, see parameter descriptions
-* application of calculated transformations on target SLAM-poses and point cloud map
-* the two screenshots below show selected control points on the aligned trajectories from step 2 and the results of the rubber-sheet transformation\
-  ![image](doc/traj_rubber_sheet.png) ![image](doc/triag.png)
-
-</details>
-<details>
-<summary> <h3> Evaluation </h3> </summary>
-
-* enable with the `--evaluation` flag on `flexcloud-georeferencing`.
-* statistics (RMSE, mean, median, stddev, min, max) of the per-point euclidean deviation between the reference trajectory and both the Umeyama-aligned and the rubber-sheeted SLAM trajectory are printed to the terminal in a single side-by-side table.
-* the same per-segment deviations are visualized in the [Rerun](https://rerun.io/) viewer as two additional, jet-colormap-shaded linestrings: `Trajectory_align_deviation` and `Trajectory_RS_deviation` (segment label = deviation value in meters).
-
-</details>
-
-<h2>Build from Source</h2>
+**Georeferencing**
 
 ```bash
-git clone git@github.com:TUMFTM/FlexCloud.git
-cd FlexCloud/
-./docker/build_docker.sh  
+flexcloud-georeferencing -h
+
+ros2 run flexcloud georeferencing
 ```
 
-You can also download built versions of the docker images from the github container registry.
-E.g. to download the latest container, run:
+<h2>Documentation </h2>
 
-```bash
-docker pull ghcr.io/tumftm/flexcloud:latest
-```
-
-Run the container and mount your data by appending the directory containing your data:
-
-```bash
-./docker/run_docker.sh /your/local/directory/data
-```
+For more details on the implementation and available features, refer to the full documentation hosted on GitHub pages: [https://TUMFTM.github.io/FlexCloud](https://TUMFTM.github.io/FlexCloud)
 
 <h2>Test Data </h2>
 
@@ -257,13 +70,15 @@ Germany
 If you use this repository for any academic work, please consider citing our paper (preprint):
 
 ```bibtex
-@misc{leitenstern2025flexcloud,
-      title={FlexCloud: Direct, Modular Georeferencing and Drift-Correction of Point Cloud Maps}, 
-      author={Maximilian Leitenstern and Marko Alten and Christian Bolea-Schaser and Dominik Kulmer and Marcel Weinmann and Markus Lienkamp},
-      year={2025},
-      eprint={2502.00395},
-      archivePrefix={arXiv},
-      primaryClass={cs.RO},
-      url={https://arxiv.org/abs/2502.00395}, 
+@conference{leitenstern2025flexcloud,
+author={Maximilian Leitenstern and Marko Alten and Christian Bolea-Schaser and Dominik Kulmer and Marcel Weinmann and Markus Lienkamp},
+title={FlexCloud: Direct, Modular Georeferencing and Drift-Correction of Point Cloud Maps},
+booktitle={Proceedings of the 11th International Conference on Vehicle Technology and Intelligent Transport Systems - Volume 1: VEHITS},
+year={2025},
+pages={157-165},
+publisher={SciTePress},
+organization={INSTICC},
+doi={10.5220/0013359600003941},
+isbn={978-989-758-745-0},
 }
 ```
