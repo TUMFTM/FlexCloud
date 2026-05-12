@@ -14,6 +14,8 @@ Georeferencing of Point Cloud Maps
 <img src="docs/assets/viz.gif" width="800"/>
 </div>
 
+**Full documentation: [https://TUMFTM.github.io/FlexCloud](https://TUMFTM.github.io/FlexCloud)**
+
 <h2>Installation</h2>
 
 ```bash
@@ -41,6 +43,10 @@ flexcloud-georeferencing -h
 
 ros2 run flexcloud georeferencing
 ```
+
+<h2>Documentation </h2>
+
+For more details on the implementation and available features, refer to the full documentation hosted on GitHub pages: [https://TUMFTM.github.io/FlexCloud](https://TUMFTM.github.io/FlexCloud)
 
 <h2>Test Data </h2>
 
