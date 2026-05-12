@@ -1,0 +1,87 @@
+name: docs
+
+on:
+  push:
+    branches: [main]
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Optional image tag to freeze (e.g. v1.0.2). Leave empty for a normal docs build."
+        required: false
+
+permissions:
+  contents: write
+  packages: read
+
+concurrency:
+  group: docs-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  docs:
+    name: Generate documentation
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Install python dependencies
+        run: python -m pip install mkdocs mkdocs-material pymdown-extensions
+
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Resolve release tag (if any)
+        id: release_tag
+        run: |
+          if [[ "${{ github.event_name }}" == "release" ]]; then
+            echo "value=${{ github.event.release.tag_name }}" >> "$GITHUB_OUTPUT"
+          elif [[ -n "${{ github.event.inputs.tag }}" ]]; then
+            echo "value=${{ github.event.inputs.tag }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "value=" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Freeze Version Details page for release
+        if: steps.release_tag.outputs.value != ''
+        run: ./docs/scripts/capture_version.sh "${{ steps.release_tag.outputs.value }}"
+
+      - name: Commit frozen version page back to main
+        if: steps.release_tag.outputs.value != ''
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/version_details/ mkdocs.yml
+          if git diff --cached --quiet; then
+            echo "No new version page to commit."
+          else
+            git commit -m "docs: add Version Details for ${{ steps.release_tag.outputs.value }}"
+            git push origin main
+          fi
+
+      - name: Capture CLI help output for :latest
+        working-directory: docs
+        run: make helpgen
+
+      - name: Generate documentation
+        working-directory: docs
+        run: make all
+
+      - name: Upload documentation artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: site
+          path: site/
+
+      - name: Deploy documentation
+        working-directory: docs
+        run: make deploy
