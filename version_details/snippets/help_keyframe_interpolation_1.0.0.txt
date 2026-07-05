@@ -1,0 +1,45 @@
+Select keyframes from a SLAM trajectory and interpolate the corresponding reference positions, either from per-position txt files or from a ROS 2 bag (NavSatFix or Odometry messages).
+Usage: keyframe_interpolation [OPTIONS] positions-path poses-path [out-dir]
+
+Positionals:
+  positions-path TEXT REQUIRED
+                              Reference-data source. Auto-detected: a single .txt file is read line-by-line ("stamp x y z x_stddev y_stddev z_stddev"); a directory of per-position .txt files (filename = "<sec>_<nanosec>.txt") is read as such; a .mcap / .db3 / .sqlite3 file or a ROS 2 bag directory is read as a bag.
+  poses-path TEXT:FILE REQUIRED
+                              Path to SLAM trajectory in GLIM format
+  out-dir TEXT [.]            Output directory for poses_keyframes.txt and positions_interpolated.txt
+
+Options:
+  -h,--help                   Print this help message and exit
+
+
+Bag input:
+  --pos-topic TEXT            Topic name (NavSatFix or Odometry) — required when positions-path is a bag
+  -t,--target-frame TEXT      Target TF frame to transform positions into (uses /tf and /tf_static from bag)
+  --origin FLOAT FLOAT FLOAT x 3
+                              Custom origin for local Cartesian projection [lat lon alt]
+
+
+Algorithm:
+  --stddev-threshold FLOAT [0.25] 
+                              Reject reference frames whose horizontal stddev exceeds this value
+  --keyframe-delta-x FLOAT [2] 
+                              Minimum translational distance between keyframes [m]
+  --keyframe-delta-angle FLOAT [0.5] 
+                              Minimum rotational distance between keyframes [rad]
+  --interpolate,--no-interpolate{false}
+                              Spline-interpolate the reference position at each keyframe timestamp (otherwise use closest-neighbor selection)
+  --interp-pos-delta-xyz FLOAT [0.25] 
+                              Minimum euclidean distance between consecutive spline support points [m]
+
+
+Examples (positions-path auto-detected):
+  # single txt file with one position per line
+  flexcloud-keyframe-interpolation positions.txt poses_kitti.txt
+
+  # directory of per-position txt files
+  flexcloud-keyframe-interpolation /path/to/positions/ poses_kitti.txt
+
+  # ROS 2 bag with NavSatFix on /sensor/gnss/fix
+  flexcloud-keyframe-interpolation /path/to/bag.mcap poses_kitti.txt /path/to/out \
+      --pos-topic /sensor/gnss/fix --target-frame base_link
+
