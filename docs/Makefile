@@ -9,8 +9,8 @@ helpgen:
 
 .PHONY: mkdocs
 mkdocs:
-	@echo "Building MkDocs documentation..."
-	cd .. && mkdocs build
+	@echo "Building documentation with Zensical..."
+	cd .. && zensical build
 
 .PHONY: all
 all: mkdocs
@@ -19,4 +19,5 @@ all: mkdocs
 .PHONY: deploy
 deploy:
 	@echo "Deploying documentation..."
-	cd .. && mkdocs gh-deploy --force
+	cd .. && zensical build
+	cd .. && ghp-import --no-jekyll --push --force --message "Deploy documentation" site

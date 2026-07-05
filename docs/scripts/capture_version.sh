@@ -95,10 +95,10 @@ Frozen snapshot captured from \`${IMAGE}\` at release time.
 EOF
 echo "Wrote ${PAGE}"
 
-# Rebuild the version table in the index AND the mkdocs.yml nav section,
+# Rebuild the version table in the index AND the zensical.toml nav section,
 # both sorted newest-first by version (sort -Vr).
 INDEX="${PAGE_DIR}/index.md"
-MKDOCS="${ROOT}/mkdocs.yml"
+ZENSICAL="${ROOT}/zensical.toml"
 VERSIONS=$(find "${PAGE_DIR}" -maxdepth 1 -type f -name '*.md' \
         ! -name 'index.md' ! -name 'latest.md' 2>/dev/null \
     | xargs -n1 basename 2>/dev/null \
@@ -121,27 +121,27 @@ VERSIONS=$(find "${PAGE_DIR}" -maxdepth 1 -type f -name '*.md' \
 mv "${INDEX}.new" "${INDEX}"
 echo "Rebuilt version table in ${INDEX}"
 
-# Rebuild the mkdocs.yml nav block between # VERSION_NAV_START / # VERSION_NAV_END.
+# Rebuild the zensical.toml nav block between # VERSION_NAV_START / # VERSION_NAV_END.
 {
     awk '
         /# VERSION_NAV_START/ { print; in_block=1; next }
         /# VERSION_NAV_END/   { in_block=0 }
         !in_block             { print }
-    ' "${MKDOCS}"
-} > "${MKDOCS}.new"
+    ' "${ZENSICAL}"
+} > "${ZENSICAL}.new"
 
-# Insert version entries just before the END marker.
+# Insert version entries (TOML nav array items) just before the END marker.
 awk -v versions="${VERSIONS}" '
     /# VERSION_NAV_END/ {
         n = split(versions, v, "\n")
         for (i = 1; i <= n; i++) {
             if (v[i] != "") {
-                printf "      - version_details/%s.md\n", v[i]
+                printf "    \"version_details/%s.md\",\n", v[i]
             }
         }
     }
     { print }
-' "${MKDOCS}.new" > "${MKDOCS}.new2"
-mv "${MKDOCS}.new2" "${MKDOCS}"
-rm -f "${MKDOCS}.new"
-echo "Rebuilt Version Details nav in ${MKDOCS}"
+' "${ZENSICAL}.new" > "${ZENSICAL}.new2"
+mv "${ZENSICAL}.new2" "${ZENSICAL}"
+rm -f "${ZENSICAL}.new"
+echo "Rebuilt Version Details nav in ${ZENSICAL}"
