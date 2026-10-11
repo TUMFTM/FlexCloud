@@ -121,14 +121,19 @@ bool transform::select_control_points(
   std::vector<Eigen::Vector3d> cp_inter{};
   int cp_count = 0;
 
-  // Santiy checks
+  // Sanity checks: mismatching arrays would be read out of bounds below
   if (cfg.shift_ind.size() != cfg.shift_ind_dist.size()) {
-    std::cout << "Sizes of shift_ind and shift_ind_dist do not match!" << std::endl;
+    throw std::invalid_argument("Sizes of shift_ind and shift_ind_dist do not match");
   }
   if (
     cfg.fake_ind.size() != cfg.fake_ind_dist.size() ||
     cfg.fake_ind.size() != cfg.fake_ind_height.size()) {
-    std::cout << "Sizes of fake_ind, fake_ind_dist and fake_ind_height do not match!" << std::endl;
+    throw std::invalid_argument(
+      "Sizes of fake_ind, fake_ind_dist and fake_ind_height do not match");
+  }
+  if (cfg.exclude_ind.size() % 2 != 0) {
+    std::cout << "\033[31m!! exclude_ind needs [start, end] pairs, its last entry "
+              << cfg.exclude_ind.back() << " is ignored !!\033[0m" << std::endl;
   }
   // Portect against empty control point selection
   if (cfg.control_points <= 0) {
@@ -143,14 +148,12 @@ bool transform::select_control_points(
   for (size_t idx = 0; idx < static_cast<size_t>(target.size()); ++idx) {
     // Check if index is within manually excluded indices
     bool use_ind = true;
-    if (!cfg.exclude_ind.empty() || static_cast<int>(cfg.exclude_ind.size()) % 2 != 0) {
-      for (int i = 0; i < static_cast<int>(cfg.exclude_ind.size()) / 2; ++i) {
-        if (
-          idx >= static_cast<size_t>(cfg.exclude_ind[2 * i]) &&
-          idx <= static_cast<size_t>(cfg.exclude_ind[2 * i + 1])) {
-          use_ind = false;
-          break;
-        }
+    for (std::size_t i = 0; i + 1 < cfg.exclude_ind.size(); i += 2) {
+      if (
+        idx >= static_cast<size_t>(cfg.exclude_ind[i]) &&
+        idx <= static_cast<size_t>(cfg.exclude_ind[i + 1])) {
+        use_ind = false;
+        break;
       }
     }
     if (!use_ind) {
@@ -240,9 +243,10 @@ bool transform::select_control_points(
     // Check if point is configured to be faked
     Eigen::Vector3d pt_pcd{};
     if (std::find(cfg.fake_ind.begin(), cfg.fake_ind.end(), idx) != cfg.fake_ind.end()) {  // NOLINT
-      // Fake point
+      // Fake point; its height is indexed by the position in fake_ind, also if it is shifted too
+      const auto fake = std::find(cfg.fake_ind.begin(), cfg.fake_ind.end(), idx) - cfg.fake_ind.begin();  // NOLINT
       Eigen::Vector2d pt_pcd_shift = Eigen::Vector2d(target[idx].pose.pose.translation().x(), target[idx].pose.pose.translation().y()) + direction.normalized() * real_offset;  // NOLINT
-      pt_pcd << pt_pcd_shift(0), pt_pcd_shift(1), target[idx].pose.pose.translation().z() + cfg.fake_ind_height[ind];  // NOLINT
+      pt_pcd << pt_pcd_shift(0), pt_pcd_shift(1), target[idx].pose.pose.translation().z() + cfg.fake_ind_height[fake];  // NOLINT
     } else {
       pt_pcd << target[idx].pose.pose.translation().x(), target[idx].pose.pose.translation().y(), target[idx].pose.pose.translation().z();  // NOLINT
     }
@@ -345,7 +349,7 @@ bool transform::transform_ls_rs(
 /**
  * @brief Transform a PCLPointCloud2 in place using Umeyama + Rubber-Sheeting.
  *        Only the x/y/z fields are touched; every other field is preserved.
- *        Points falling outside the rubber-sheet triangulation are removed.
+ *        Non-finite points and points outside the rubber-sheet triangulation are removed.
  *        All hardware threads are used.
  * 
  * @param[in]    umeyama    Umeyama transformation
@@ -366,7 +370,7 @@ bool transform::transform_pcd(
   const std::size_t n = static_cast<std::size_t>(pcm->width) * pcm->height;
   const unsigned int num_threads = std::max(1u, std::thread::hardware_concurrency());
 
-  std::vector<std::uint8_t> drop(n, 0);  // 1 = outside triangulation, drop
+  std::vector<std::uint8_t> drop(n, 0);  // 1 = non-finite or outside triangulation, drop
   std::atomic<std::size_t> processed{0};
 
   auto worker = [&](std::size_t begin, std::size_t end) {
@@ -376,15 +380,19 @@ bool transform::transform_pcd(
       float & y = *reinterpret_cast<float *>(base + layout.y_off);
       float & z = *reinterpret_cast<float *>(base + layout.z_off);
 
+      // Non-finite points (e.g. of organized clouds) must not reach the triangulation lookup
       Eigen::Vector3d p(x, y, z);
-      umeyama->transformPoint(p);
-      triag->transformPoint(p);
-      if (p.norm() < 1.0e-3) {
-        drop[i] = 1;
-      } else {
+      bool inside = p.allFinite();
+      if (inside) {
+        umeyama->transformPoint(p);
+        inside = triag->transformPoint(p);
+      }
+      if (inside) {
         x = static_cast<float>(p.x());
         y = static_cast<float>(p.y());
         z = static_cast<float>(p.z());
+      } else {
+        drop[i] = 1;
       }
       processed.fetch_add(1, std::memory_order_relaxed);
     }
@@ -439,7 +447,8 @@ bool transform::transform_pcd(
     extract.filter(*filtered);
     pcm = filtered;
     std::cout << "\033[1;33mDropped " << outliers->indices.size()
-              << " points outside the rubber-sheet triangulation\033[0m" << std::endl;
+              << " non-finite points or points outside the rubber-sheet triangulation\033[0m"
+              << std::endl;
   }
   std::cout << "\033[1;36mTransformation finished\033[0m" << std::endl;
   return true;
