@@ -1,4 +1,4 @@
-exclude_ind: [0]                  # Vector of indices in ascending order that may be excluded when automatically selecting control points (e.g. [50, 60] -> indices 50 - 60 are skipped during control point selection; vector length must be dividable by 2)
+exclude_ind: []                   # Vector of indices in ascending order that may be excluded when automatically selecting control points (e.g. [50, 60] -> indices 50 - 60 are skipped during control point selection; vector length must be dividable by 2)
 shift_ind: [0]                    # shift given control point at index by distance specified in shift_ind_dist
 shift_ind_dist: [0.0]             # distance to shift given control point at index defined in shift_ind (shift applied to reference trajectory coordinates of control point in lateral direction (2D) - left is positive)
 fake_ind: [0]                    # fake given control point at index by distance specified in fake_ind_dist
