@@ -120,15 +120,19 @@ public:
    *
    * @param[in] pt                  - Eigen::Vector3d:
    *                                  point to transform
+   * @param[out]                    - bool:
+   *                                  false if outside the triangulation (pt is left unchanged)
    */
-  void transformPoint(Eigen::Vector3d & pt) const;
+  bool transformPoint(Eigen::Vector3d & pt) const;
   /**
    * @brief transform single point with rubber-sheeting in 3D
    *
    * @param[in] pt                  - Eigen::Vector3d:
    *                                  point to transform
+   * @param[out]                    - bool:
+   *                                  false if outside the triangulation (pose is left unchanged)
    */
-  void transformPoint(Eigen::Isometry3d & pose) const;
+  bool transformPoint(Eigen::Isometry3d & pose) const;
   /**
    * @brief get edges of triangulation
    *
@@ -226,11 +230,13 @@ void Delaunay::enclosingControlPoints(
   double min_z = *std::min_element(z.begin(), z.end());
   double max_z = *std::max_element(z.begin(), z.end());
 
-  // Set size of cube
+  // Set size of cube; the minimum padding keeps a flat trajectory from collapsing the
+  // triangulation into a plane
+  constexpr double min_padding = 1.0;
   double dx, dy, dz;
-  dx = size.at(0) * std::abs(max_x - min_x);
-  dy = size.at(1) * std::abs(max_y - min_y);
-  dz = size.at(2) * std::abs(max_z - min_z);
+  dx = std::max(size.at(0) * std::abs(max_x - min_x), min_padding);
+  dy = std::max(size.at(1) * std::abs(max_y - min_y), min_padding);
+  dz = std::max(size.at(2) * std::abs(max_z - min_z), min_padding);
 
   // Define cube
   Eigen::Vector3d v1(min_x - dx, min_y - dy, min_z - dz);
@@ -332,8 +338,10 @@ void Delaunay::calcTransformations()
  *
  * @param[in] pt                  - Eigen::Vector3d:
  *                                  point to transform
+ * @param[out]                    - bool:
+ *                                  false if outside the triangulation (pt is left unchanged)
  */
-void Delaunay::transformPoint(Eigen::Vector3d & pt) const
+bool Delaunay::transformPoint(Eigen::Vector3d & pt) const
 {
   // Find area the point is in
   CellHandle cell = this->triangulation_.locate(Point3D(pt(0), pt(1), pt(2)));
@@ -343,21 +351,23 @@ void Delaunay::transformPoint(Eigen::Vector3d & pt) const
   int index = std::distance(this->mapping_.begin(), map);
   if (this->triangulation_.is_infinite(cell) || index >= static_cast<int>(this->mapping_.size())) {
     // Point outside triangulation
-    pt = Eigen::Vector3d(0.0, 0.0, 0.0);
-  } else {
-    // Point inside triangulation
-    const Eigen::Vector4d point(pt(0), pt(1), pt(2), 1.0);
-    const Eigen::Vector4d pt_rs = this->mat_.at(index) * point;
-    pt = Eigen::Vector3d(pt_rs(0), pt_rs(1), pt_rs(2));
+    return false;
   }
+  // Point inside triangulation
+  const Eigen::Vector4d point(pt(0), pt(1), pt(2), 1.0);
+  const Eigen::Vector4d pt_rs = this->mat_.at(index) * point;
+  pt = Eigen::Vector3d(pt_rs(0), pt_rs(1), pt_rs(2));
+  return true;
 }
 /**
  * @brief transform point with 3D transformation
  *
  * @param[in] pt                  - Eigen::Isometry3d
  *                                  point to transform
+ * @param[out]                    - bool:
+ *                                  false if outside the triangulation (pose is left unchanged)
  */
-void Delaunay::transformPoint(Eigen::Isometry3d & pose) const
+bool Delaunay::transformPoint(Eigen::Isometry3d & pose) const
 {
   // Find area the point is in
   CellHandle cell = this->triangulation_.locate(
@@ -368,11 +378,11 @@ void Delaunay::transformPoint(Eigen::Isometry3d & pose) const
   int index = std::distance(this->mapping_.begin(), map);
   if (this->triangulation_.is_infinite(cell) || index >= static_cast<int>(this->mapping_.size())) {
     // Point outside triangulation
-    pose = Eigen::Isometry3d::Identity();
-  } else {
-    // Point inside triangulation
-    pose.matrix() = this->mat_.at(index) * pose.matrix();
+    return false;
   }
+  // Point inside triangulation
+  pose.matrix() = this->mat_.at(index) * pose.matrix();
+  return true;
 }
 /**
  * @brief get edges of tetrahedrons
