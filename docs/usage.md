@@ -35,8 +35,9 @@ Required positional arguments:
 
 Bag input (only used when positions-path is a ROS 2 bag):
   --pos-topic TEXT           Topic of NavSatFix or Odometry messages (required for bags)
-  -t, --target-frame TEXT    TF frame to transform positions into (uses /tf and /tf_static
-                             from the bag). Optional.
+  -t, --target-frame TEXT    Frame of the SLAM poses (e.g. base_link). Reference positions are
+                             moved into this frame using /tf and /tf_static from the bag.
+                             Optional.
   --origin LAT LON ALT       Custom origin for NavSatFix → local Cartesian projection.
                              If omitted no projection is performed.
 ```
@@ -65,8 +66,16 @@ The reader is selected automatically from `positions-path`:
       standard deviations are taken from `position_covariance` (diagonal).
     - `Odometry` messages use `pose.pose` directly; stddevs come from
       `pose.covariance` (diagonal).
-    - When `--target-frame` is set, all `/tf` and `/tf_static` messages from the bag
-      are pre-loaded into a TF buffer and the message timestamp is used for the lookup.
+    - When `--target-frame` is set, all `/tf` and `/tf_static` messages are buffered
+      first. Once the whole bag has been read, each position is shifted by the lever arm
+      from its frame to the target frame, rotated with the vehicle orientation from TF at
+      the message timestamp. The bag's TF tree must hold the full chain from the world
+      frame to the target frame; messages without a transform are dropped (and counted).
+        - `Odometry`: world frame `header.frame_id`, lever arm from `child_frame_id`.
+        - `NavSatFix`: lever arm from `header.frame_id` (the antenna). The fix names no
+          world frame, so the root of the antenna's TF tree is used; it must be
+          ENU-aligned like the projection (e.g. a local cartesian frame), its origin
+          does not matter.
 
 ### Examples
 
@@ -118,7 +127,8 @@ Inputs:
                               fake_ind_dist, fake_ind_height)
 
 Trajectory matching:
-  --control-points INT [10]   Number of control points for rubber-sheeting
+  --control-points INT:POSITIVE [10]
+                              Number of control points for rubber-sheeting
   --stddev-threshold FLOAT [0.25]
                               Maximum stddev of reference points for automatic
                               control-point selection

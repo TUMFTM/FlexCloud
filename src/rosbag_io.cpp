@@ -19,7 +19,6 @@
 #include <stdexcept>
 #include <vector>
 #include <string>
-#include <tf2_eigen/tf2_eigen.hpp>
 #include <utility>
 namespace flexcloud
 {
@@ -29,9 +28,9 @@ std::int64_t to_nanosec(const builtin_interfaces::msg::Time & stamp)
 {
   return static_cast<std::int64_t>(stamp.sec) * 1000000000LL + stamp.nanosec;
 }
-tf2::TimePoint to_tf2_time(const builtin_interfaces::msg::Time & stamp)
+tf2::TimePoint to_tf2_time(const std::int64_t stamp)
 {
-  return tf2::TimePoint(std::chrono::nanoseconds(to_nanosec(stamp)));
+  return tf2::TimePoint(std::chrono::nanoseconds(stamp));
 }
 rosbag_io::rosbag_io(
   const std::string & bag_path, const std::string & topic, const std::string & target_frame,
@@ -101,6 +100,7 @@ void rosbag_io::tf_callback(const tools::RosbagReaderMsg<tf2_msgs::msg::TFMessag
   for (const auto & t : msg.ros_msg.transforms) {
     if (t.header.frame_id == t.child_frame_id) continue;
     tf_buffer_.setTransform(t, "bag", is_static);
+    tf_parents_[t.child_frame_id] = t.header.frame_id;
     if (is_static) {
       ++n_static_tf_;
     } else {
@@ -108,25 +108,12 @@ void rosbag_io::tf_callback(const tools::RosbagReaderMsg<tf2_msgs::msg::TFMessag
     }
   }
 }
-Eigen::Isometry3d rosbag_io::lookup(
-  const std::string & src_frame, const tf2::TimePoint & stamp) const
-{
-  if (target_frame_.empty() || src_frame.empty() || target_frame_ == src_frame) {
-    return Eigen::Isometry3d::Identity();
-  }
-  try {
-    auto tf = tf_buffer_.lookupTransform(target_frame_, src_frame, stamp).transform;
-    return tf2::transformToEigen(tf);
-  } catch (const tf2::TransformException & ex) {
-    RCLCPP_WARN(
-      logger_, "TF lookup '%s' ← '%s' at stamp failed: %s — using identity", target_frame_.c_str(),
-      src_frame.c_str(), ex.what());
-    return Eigen::Isometry3d::Identity();
-  }
-}
 void rosbag_io::navsatfix_callback(const tools::RosbagReaderMsg<sensor_msgs::msg::NavSatFix> & msg)
 {
   const auto & fix = msg.ros_msg;
+  if (source_frame_.empty()) {
+    source_frame_ = fix.header.frame_id;  // the antenna; the world frame is inferred from TF
+  }
   const double x_stddev = std::sqrt(std::max(0.0, fix.position_covariance[0]));
   const double y_stddev = std::sqrt(std::max(0.0, fix.position_covariance[4]));
   const double z_stddev = std::sqrt(std::max(0.0, fix.position_covariance[8]));
@@ -136,13 +123,7 @@ void rosbag_io::navsatfix_callback(const tools::RosbagReaderMsg<sensor_msgs::msg
   }
 
   // Project lat/lon/alt → ENU using the shared ENUProjection helper.
-  Eigen::Vector3d p = proj_.forward(fix.latitude, fix.longitude, fix.altitude);
-
-  // Optional TF transform. A single lookup at the message timestamp resolves
-  // the entire static + dynamic chain.
-  if (!target_frame_.empty() && !fix.header.frame_id.empty()) {
-    p = lookup(fix.header.frame_id, to_tf2_time(fix.header.stamp)) * p;
-  }
+  const Eigen::Vector3d p = proj_.forward(fix.latitude, fix.longitude, fix.altitude);
 
   positions_.emplace_back(
     PointStdDev(p.x(), p.y(), p.z(), x_stddev, y_stddev, z_stddev), to_nanosec(fix.header.stamp));
@@ -150,6 +131,10 @@ void rosbag_io::navsatfix_callback(const tools::RosbagReaderMsg<sensor_msgs::msg
 void rosbag_io::odometry_callback(const tools::RosbagReaderMsg<nav_msgs::msg::Odometry> & msg)
 {
   const auto & odom = msg.ros_msg;
+  if (source_frame_.empty()) {
+    source_frame_ = odom.child_frame_id;
+    world_frame_ = odom.header.frame_id;
+  }
   const double x_stddev = std::sqrt(std::max(0.0, odom.pose.covariance[0]));
   const double y_stddev = std::sqrt(std::max(0.0, odom.pose.covariance[7]));
   const double z_stddev = std::sqrt(std::max(0.0, odom.pose.covariance[14]));
@@ -157,14 +142,70 @@ void rosbag_io::odometry_callback(const tools::RosbagReaderMsg<nav_msgs::msg::Od
     ++skipped_stddev_;
     return;
   }
-  Eigen::Vector3d p(
-    odom.pose.pose.position.x, odom.pose.pose.position.y, odom.pose.pose.position.z);
-
-  if (!target_frame_.empty() && !odom.child_frame_id.empty()) {
-    p = lookup(odom.child_frame_id, to_tf2_time(odom.header.stamp)) * p;
-  }
+  const auto & p = odom.pose.pose.position;
   positions_.emplace_back(
-    PointStdDev(p.x(), p.y(), p.z(), x_stddev, y_stddev, z_stddev), to_nanosec(odom.header.stamp));
+    PointStdDev(p.x, p.y, p.z, x_stddev, y_stddev, z_stddev), to_nanosec(odom.header.stamp));
+}
+std::string rosbag_io::tf_root(const std::string & frame) const
+{
+  std::string root = frame;
+  for (std::size_t i = 0; i < tf_parents_.size(); ++i) {  // bounded in case of a cycle
+    const auto parent = tf_parents_.find(root);
+    if (parent == tf_parents_.end()) {
+      break;
+    }
+    root = parent->second;
+  }
+  if (root == frame) {
+    throw std::runtime_error("Frame '" + frame + "' has no parent in /tf");
+  }
+  return root;
+}
+void rosbag_io::resolve_positions()
+{
+  if (target_frame_.empty() || positions_.empty() || source_frame_ == target_frame_) {
+    return;
+  }
+  if (source_frame_.empty()) {
+    throw std::runtime_error("Messages on '" + topic_ + "' have no frame id to apply TF to");
+  }
+  // NavSatFix names no world frame: use the TF root, which has to be ENU-aligned like the
+  // projection (only orientation is used)
+  const std::string world = world_frame_.empty() ? tf_root(source_frame_) : world_frame_;
+  if (world_frame_.empty()) {
+    RCLCPP_INFO(
+      logger_, "Lever arm rotated with the orientation of TF root '%s' (must be ENU-aligned)",
+      world.c_str());
+  }
+  // Origin of `frame` expressed in the world frame
+  const auto origin = [this, &world](const std::string & frame, const tf2::TimePoint & stamp) {
+    const auto t = tf_buffer_.lookupTransform(world, frame, stamp).transform.translation;
+    return Eigen::Vector3d(t.x, t.y, t.z);
+  };
+
+  std::string first_error;
+  std::vector<PointStdDevStamped> moved;
+  moved.reserve(positions_.size());
+  for (auto pos : positions_) {
+    try {
+      // Lever arm from the source frame to target_frame in world axes: the orientation and the
+      // offset come from TF, the absolute position from the message
+      const tf2::TimePoint stamp = to_tf2_time(pos.stamp);
+      pos.point.pos += origin(target_frame_, stamp) - origin(source_frame_, stamp);
+      moved.push_back(pos);
+    } catch (const tf2::TransformException & ex) {
+      if (skipped_tf_++ == 0) {
+        first_error = ex.what();
+      }
+    }
+  }
+  if (skipped_tf_ > 0) {
+    RCLCPP_WARN(
+      logger_, "Dropped %zu of %zu messages without a transform '%s' → '%s' (first error: %s)",
+      skipped_tf_, positions_.size(), source_frame_.c_str(), target_frame_.c_str(),
+      first_error.c_str());
+  }
+  positions_ = std::move(moved);
 }
 std::vector<PointStdDevStamped> rosbag_io::run()
 {
@@ -179,6 +220,9 @@ std::vector<PointStdDevStamped> rosbag_io::run()
   if (skipped_stddev_ > 0) {
     RCLCPP_INFO(logger_, "Skipped %zu reference frames due to stddev threshold", skipped_stddev_);
   }
+
+  // TF is resolved only now, with every /tf and /tf_static message in the buffer
+  resolve_positions();
 
   std::sort(
     positions_.begin(), positions_.end(),

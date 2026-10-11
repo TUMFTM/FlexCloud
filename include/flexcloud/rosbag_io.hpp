@@ -20,6 +20,7 @@
 #include <sensor_msgs/msg/nav_sat_fix.hpp>
 #include <string>
 #include <tf2_msgs/msg/tf_message.hpp>
+#include <unordered_map>
 #include <vector>
 
 #include "rosbag_reader.hpp"
@@ -30,7 +31,8 @@ namespace flexcloud
 /**
  * @brief Reads reference position data from a ROS 2 bag in a single pass.
  *
- * Supports `sensor_msgs/msg/NavSatFix` and `nav_msgs/msg/Odometry`.
+ * Supports `sensor_msgs/msg/NavSatFix` and `nav_msgs/msg/Odometry`. TF lookups are
+ * resolved after the pass, once every `/tf` and `/tf_static` message is buffered.
  */
 class rosbag_io
 {
@@ -38,7 +40,8 @@ public:
   /**
    * @param[in] bag_path          path to the bag (mcap or sqlite3 directory)
    * @param[in] topic             name of the position topic
-   * @param[in] target_frame      TF frame to transform positions into; empty disables TF
+   * @param[in] target_frame      frame of the SLAM poses (e.g. base_link) to move the positions
+   *                              into, using the TF chain of the bag; empty disables TF
    * @param[in] stddev_threshold  drop frames with horizontal stddev exceeding this value
    * @param[in] origin            optional [lat, lon, alt] for NavSatFix → ENU projection;
    *                              if std::nullopt, the first valid fix is used as the origin
@@ -60,10 +63,13 @@ private:
   /// Resolve the configured topic's message type from the bag metadata.
   std::string resolve_topic_type();
 
-  /// Single-lookup TF resolution: returns the composite transform `target ← src`
-  /// at the message timestamp (covers static and dynamic edges in one shot).
-  /// Returns identity (and logs a warning) if the buffer can't satisfy the lookup.
-  Eigen::Isometry3d lookup(const std::string & src_frame, const tf2::TimePoint & stamp) const;
+  /// Move the positions to target_frame (if set): the lever arm source → target is looked up in
+  /// the world frame at each message stamp, so the vehicle orientation comes from TF. Positions
+  /// whose lookup fails are dropped and counted.
+  void resolve_positions();
+
+  /// Topmost parent of @p frame in the TF tree; throws if it has none.
+  std::string tf_root(const std::string & frame) const;
 
   // Configuration
   std::string bag_path_;
@@ -76,15 +82,21 @@ private:
   // ROS / projection state
   tools::RosbagReader reader_;
   tf2::BufferCore tf_buffer_;
+  std::unordered_map<std::string, std::string> tf_parents_;  // child frame → parent frame
   ENUProjection proj_;
   rclcpp::Logger logger_;
 
-  // Output, populated inline by the topic callback
+  // Frames of the topic, taken from its first message (assumed constant within the bag)
+  std::string source_frame_;  // Odometry: child_frame_id, NavSatFix: header.frame_id (antenna)
+  std::string world_frame_;   // Odometry: header.frame_id, NavSatFix: empty (TF root is used)
+
+  // Output of by the topic callbacks and moved by resolve_positions()
   std::vector<PointStdDevStamped> positions_;
 
   // Stats
   std::size_t n_static_tf_{0};
   std::size_t n_dynamic_tf_{0};
   std::size_t skipped_stddev_{0};
+  std::size_t skipped_tf_{0};
 };
 }  // namespace flexcloud

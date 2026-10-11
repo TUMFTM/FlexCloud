@@ -69,8 +69,10 @@ struct KeyframeInterpolationConfig
       ->group("Bag input");
 
     app->add_option("-t,--target-frame", target_frame,
-                    "Target TF frame to transform positions into "
-                    "(uses /tf and /tf_static from bag)")
+                    "Frame of the SLAM poses (e.g. base_link). Reference positions are moved into "
+                    "this frame with the vehicle orientation and lever arm from /tf and "
+                    "/tf_static of the bag (full TF chain required; for NavSatFix the TF root "
+                    "must be ENU-aligned)")
       ->group("Bag input");
 
     app->add_option("--origin", origin,
@@ -160,6 +162,7 @@ struct GeoreferencingConfig
 
     app->add_option("--control-points", control_points,
                     "Number of control points for rubber-sheeting")
+      ->check(CLI::PositiveNumber)
       ->capture_default_str()
       ->group("Trajectory matching");
 
