@@ -103,5 +103,6 @@ private:
 
   // Visualization
   rerun::RecordingStream rec_ = rerun::RecordingStream("flexcloud");
+  bool viewer_connected_{false};
 };
 }  // namespace flexcloud
