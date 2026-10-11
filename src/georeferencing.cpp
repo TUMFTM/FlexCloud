@@ -68,8 +68,9 @@ void Georeferencing::load_data()
     origin =
       Eigen::Vector3d(this->config_.origin[0], this->config_.origin[1], this->config_.origin[2]);
   }
+  // Keep every line here, even if the standard deviation is high as they are paired
   this->pos_global_ = file_io_->load_positions_file(
-    this->config_.positions_path, this->config_.stddev_threshold, origin);
+    this->config_.positions_path, std::numeric_limits<float>::infinity(), origin);
   std::cout << "\033[1;36m===> Trajectory with " << this->pos_global_.size()
             << " points: Loaded!\033[0m" << std::endl;
 
@@ -77,6 +78,12 @@ void Georeferencing::load_data()
   this->poses_ = file_io_->load_poses(this->config_.poses_path);
   std::cout << "\033[1;36m===> Poses with " << this->poses_.size() << " points: Loaded!\033[0m"
             << std::endl;
+
+  if (this->pos_global_.empty() || this->pos_global_.size() != this->poses_.size()) {
+    throw std::runtime_error(
+      "Reference positions (" + std::to_string(this->pos_global_.size()) + ") and SLAM poses (" +
+      std::to_string(this->poses_.size()) + ") must be non-empty and paired line by line");
+  }
 
   // PCD map (preserves all input fields via PCLPointCloud2)
   if (!this->config_.pcd_path.empty()) {
