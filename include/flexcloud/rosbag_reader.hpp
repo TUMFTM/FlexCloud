@@ -19,6 +19,7 @@
 #include <rclcpp/serialization.hpp>
 #include <rclcpp/utilities.hpp>
 #include <rosbag2_cpp/reader.hpp>
+#include <stdexcept>
 #include <string>
 #include <unordered_map>
 #include <utility>
@@ -137,6 +138,10 @@ public:
       for (auto & handler : it->second) {
         handler->handle_serialized_message(*bag_msg, ser_msg);
       }
+    }
+    // Continuing with a partially read bag would silently produce truncated results
+    if (!rclcpp::ok()) {
+      throw std::runtime_error("Reading the bag was interrupted (or rclcpp is not initialized)");
     }
   }
 
