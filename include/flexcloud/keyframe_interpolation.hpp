@@ -26,6 +26,7 @@
 #include <iomanip>
 #include <iostream>
 #include <memory>
+#include <optional>
 #include <set>
 #include <string>
 #include <vector>
@@ -64,19 +65,26 @@ private:
    *
    * @param[in] frame              - PoseStamped:
    *                                 frame to search for
-   * @return PointStdDevStamped    - PointStdDevStamped:
-   *                                 closest PointStdDevStamped
+   * @param[in] max_time_diff      - double:
+   *                                 maximum time difference [s] to the closest position
+   * @return                       - std::optional<PointStdDevStamped>:
+   *                                 closest position, std::nullopt if none within max_time_diff
    */
-  PointStdDevStamped search_closest(const PoseStamped & frame);
+  std::optional<PointStdDevStamped> search_closest(
+    const PoseStamped & frame, const double max_time_diff);
   /**
    * @brief Interpolate PointStdDevStamped for a given frame
    *
    * @param[in] frame              - PoseStamped:
    *                                 frame to interpolate
-   * @return PointStdDevStamped     - PointStdDevStamped:
-   *                                 interpolated PointStdDevStamped
+   * @param[in] max_time_diff      - double:
+   *                                 maximum time [s] to the nearest position before and after it
+   * @return                       - std::optional<PointStdDevStamped>:
+   *                                 interpolated position, std::nullopt if the frame is not
+   *                                 covered by the reference positions
    */
-  PointStdDevStamped interpolate_pos(const PoseStamped & frame, const double pos_delta_xyz);
+  std::optional<PointStdDevStamped> interpolate_pos(
+    const PoseStamped & frame, const double pos_delta_xyz, const double max_time_diff);
 
 private:
   // File IO

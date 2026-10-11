@@ -41,6 +41,7 @@ struct KeyframeInterpolationConfig
   double keyframe_delta_angle{0.5};
   bool interpolate{true};
   double interp_pos_delta_xyz{0.25};
+  double max_time_diff{0.5};
 
   void add_cli_options(CLI::App * app)
   {
@@ -104,6 +105,13 @@ struct KeyframeInterpolationConfig
 
     app->add_option("--interp-pos-delta-xyz", interp_pos_delta_xyz,
                     "Minimum euclidean distance between consecutive spline support points [m]")
+      ->capture_default_str()
+      ->group("Algorithm");
+
+    app->add_option("--max-time-diff", max_time_diff,
+                    "Maximum time [s] between a keyframe and the nearest reference position "
+                    "(on both sides when interpolating); other keyframes are skipped")
+      ->check(CLI::PositiveNumber)
       ->capture_default_str()
       ->group("Algorithm");
   }
