@@ -320,8 +320,13 @@ PointStdDevStamped KeyframeInterpolation::interpolate_pos(
 }
 void KeyframeInterpolation::visualize()
 {
-  // Spawn a rerun stream
-  this->rec_.spawn().exit_on_failure();
+  // Spawn a rerun stream; the outputs are already written, so a missing viewer is not an error
+  const rerun::Error spawned = this->rec_.spawn();
+  if (spawned.is_err()) {
+    std::cout << "\033[33m!! Could not spawn Rerun viewer, skipping visualization: "
+              << spawned.description << " !!\033[0m" << std::endl;
+    return;
+  }
 
   // Visualize PosFrames
   viz_->pos2rerun(this->positions_, this->rec_, "Orange", "positions");
@@ -355,12 +360,21 @@ int main(int argc, char * argv[])
     "  flexcloud-keyframe-interpolation /path/to/positions/ poses_kitti.txt\n\n"
     "  # ROS 2 bag with NavSatFix on /sensor/gnss/fix\n"
     "  flexcloud-keyframe-interpolation /path/to/bag.mcap poses_kitti.txt /path/to/out \\\n"
-    "      --pos-topic /sensor/gnss/fix --target-frame base_link\n");
+    "      --pos-topic /sensor/gnss/fix --origin 48.262 11.667 0.0 --target-frame base_link\n\n"
+    "  # ROS 2 bag with Odometry, moved into the SLAM pose frame via TF\n"
+    "  flexcloud-keyframe-interpolation /path/to/bag.mcap poses_kitti.txt /path/to/out \\\n"
+    "      --pos-topic /odom --target-frame base_link\n");
 
   CLI11_PARSE(app, argc, argv);
 
-  flexcloud::KeyframeInterpolation set_frames(cfg);
-  set_frames.visualize();
+  try {
+    flexcloud::KeyframeInterpolation set_frames(cfg);
+    set_frames.visualize();
+  } catch (const std::exception & e) {
+    std::cerr << "\033[1;31m!! " << e.what() << " !!\033[0m" << std::endl;
+    rclcpp::shutdown();
+    return EXIT_FAILURE;
+  }
 
   rclcpp::shutdown();
   return 0;
