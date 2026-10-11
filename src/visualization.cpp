@@ -117,7 +117,7 @@ void visualization::linestring2rerun(
   }
   std::vector<rerun::LineStrip3D> lines;
   std::vector<rerun::components::Text> labels;
-  for (size_t i = 0; i < positions.size() - 1; ++i) {
+  for (size_t i = 0; i + 1 < positions.size(); ++i) {
     lines.emplace_back(rerun::LineStrip3D({positions[i].xyz, positions[i + 1].xyz}));
     labels.emplace_back(rerun::components::Text(std::to_string(i)));
   }
@@ -152,7 +152,7 @@ void visualization::linestring2rerun(
   }
   std::vector<rerun::LineStrip3D> lines;
   std::vector<rerun::components::Text> labels;
-  for (size_t i = 0; i < positions.size() - 1; ++i) {
+  for (size_t i = 0; i + 1 < positions.size(); ++i) {
     lines.emplace_back(rerun::LineStrip3D({positions[i].xyz, positions[i + 1].xyz}));
     labels.emplace_back(rerun::components::Text(std::to_string(i)));
   }
@@ -196,16 +196,13 @@ void visualization::rs2rerun(
   // Triangulation
   TUMcolor col_edges("WEBBlueLight");
   std::vector<std::vector<Eigen::Vector3d>> edges = triag->getEdges();
-  std::vector<rerun::Position3D> positions_edges{};
-  positions_edges.reserve(edges.size() * 2);
-  for (const auto & edge : edges) {
-    for (const auto & pt : edge) {
-      positions_edges.push_back(rerun::Position3D(pt.x(), pt.y(), pt.z()));
-    }
-  }
+  // One strip per edge; connecting consecutive points would also join unrelated edges
   std::vector<rerun::LineStrip3D> lines;
-  for (size_t i = 0; i < positions_edges.size() - 1; ++i) {
-    lines.emplace_back(rerun::LineStrip3D({positions_edges[i].xyz, positions_edges[i + 1].xyz}));
+  lines.reserve(edges.size());
+  for (const auto & edge : edges) {
+    const rerun::Position3D start(edge[0].x(), edge[0].y(), edge[0].z());
+    const rerun::Position3D end(edge[1].x(), edge[1].y(), edge[1].z());
+    lines.emplace_back(rerun::LineStrip3D({start.xyz, end.xyz}));
   }
   stream.log(
     "tetrahedra", rerun::LineStrips3D(lines)
