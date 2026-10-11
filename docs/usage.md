@@ -38,8 +38,15 @@ Bag input (only used when positions-path is a ROS 2 bag):
   -t, --target-frame TEXT    Frame of the SLAM poses (e.g. base_link). Reference positions are
                              moved into this frame using /tf and /tf_static from the bag.
                              Optional.
-  --origin LAT LON ALT       Custom origin for NavSatFix → local Cartesian projection.
-                             If omitted no projection is performed.
+  --origin LAT LON ALT       Origin of the local ENU frame, ALT above mean sea level.
+                             NavSatFix: defaults to the first accepted fix. txt input:
+                             positions are read as lat lon ellipsoidal-alt if given, as
+                             Cartesian coordinates otherwise.
+
+Algorithm (excerpt):
+  --max-time-diff FLOAT [0.5] Maximum time [s] between a keyframe and the nearest reference
+                             position (on both sides when interpolating); other keyframes
+                             are skipped.
 ```
 
 ### Reference-data auto-detection
@@ -63,7 +70,11 @@ The reader is selected automatically from `positions-path`:
 !!! note "Notes on bag input"
     - `NavSatFix` messages are projected to local Cartesian via
       [GeographicLib](https://geographiclib.sourceforge.io/2009-03/classGeographicLib_1_1LocalCartesian.html);
-      standard deviations are taken from `position_covariance` (diagonal).
+      standard deviations are taken from `position_covariance` (diagonal). Fixes without
+      a GNSS solution (`status < STATUS_FIX` or non-finite coordinates) are skipped.
+    - The NavSatFix altitude is ellipsoidal; the geoid height (EGM2008) at the origin is
+      subtracted, so z is the height above mean sea level relative to the origin. Without
+      `--origin`, the first accepted fix becomes the origin and is logged.
     - `Odometry` messages use `pose.pose` directly; stddevs come from
       `pose.covariance` (diagonal).
     - When `--target-frame` is set, all `/tf` and `/tf_static` messages are buffered
@@ -98,6 +109,10 @@ flexcloud-keyframe-interpolation /path/to/bag.mcap poses_GLIM.txt /path/to/out \
     - **Spline interpolation** — fit a third-order spline through neighbouring reference
       points (selected so consecutive supports have a minimum euclidean distance of
       `interp_pos_delta_xyz`) and evaluate at the keyframe timestamp.
+- Keyframes without reference data close in time are skipped (and counted): the nearest
+  reference position has to be within `max_time_diff`, on both sides of the keyframe when
+  interpolating. This drops keyframes before or after the reference recording and inside
+  gaps of it.
 - `stddev_threshold` drops reference frames with high covariance.
 
 The output is designed to be consumed directly by `flexcloud-georeferencing`.
@@ -137,7 +152,9 @@ Trajectory matching:
                               [x y z] (fractions)
 
 Origin:
-  --origin FLOAT FLOAT FLOAT  Custom ENU zero point [lat lon alt]
+  --origin FLOAT FLOAT FLOAT  Custom ENU zero point [lat lon alt], alt above mean
+                              sea level; the positions are then read as lat lon
+                              ellipsoidal-alt
 
 Evaluation:
   --evaluation                Print trajectory-matching statistics (RMSE, mean,

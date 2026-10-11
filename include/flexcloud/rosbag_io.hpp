@@ -43,8 +43,9 @@ public:
    * @param[in] target_frame      frame of the SLAM poses (e.g. base_link) to move the positions
    *                              into, using the TF chain of the bag; empty disables TF
    * @param[in] stddev_threshold  drop frames with horizontal stddev exceeding this value
-   * @param[in] origin            optional [lat, lon, alt] for NavSatFix → ENU projection;
-   *                              if std::nullopt, the first valid fix is used as the origin
+   * @param[in] origin            optional [lat, lon, alt] for NavSatFix → ENU projection, alt
+   *                              above mean sea level; if std::nullopt, the first accepted fix
+   *                              is used as the origin
    */
   rosbag_io(
     const std::string & bag_path, const std::string & topic, const std::string & target_frame,
@@ -96,6 +97,7 @@ private:
   // Stats
   std::size_t n_static_tf_{0};
   std::size_t n_dynamic_tf_{0};
+  std::size_t skipped_no_fix_{0};
   std::size_t skipped_stddev_{0};
   std::size_t skipped_tf_{0};
 };

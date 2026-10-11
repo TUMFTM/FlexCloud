@@ -13,6 +13,7 @@
 
 #include <algorithm>
 #include <chrono>
+#include <cmath>
 #include <functional>
 #include <iostream>
 #include <rclcpp/logging.hpp>
@@ -67,13 +68,14 @@ rosbag_io::rosbag_io(
 
   // Topic listener and projection setup.
   if (topic_type_ == NAVSATFIX_MSG) {
-    if (!origin_.has_value()) {
-      throw std::runtime_error("No origin provided for NavSatFix projection!");
+    if (origin_.has_value()) {
+      proj_.set_origin(*origin_);
+      RCLCPP_INFO(
+        logger_, "NavSatFix origin (custom): %f %f %f (geoid height %.3f m)", origin_->x(),
+        origin_->y(), origin_->z(), proj_.geoid_height());
+    } else {
+      RCLCPP_INFO(logger_, "No origin provided, the first accepted fix becomes the origin");
     }
-    proj_.set_origin(*origin_);
-    RCLCPP_INFO(
-      logger_, "NavSatFix origin (custom): %f %f %f (geoid height %.3f m)", origin_->x(),
-      origin_->y(), origin_->z(), proj_.geoid_height());
     reader_.add_listener<sensor_msgs::msg::NavSatFix>(
       topic_, std::bind(&rosbag_io::navsatfix_callback, this, std::placeholders::_1));
   } else {
@@ -114,12 +116,28 @@ void rosbag_io::navsatfix_callback(const tools::RosbagReaderMsg<sensor_msgs::msg
   if (source_frame_.empty()) {
     source_frame_ = fix.header.frame_id;  // the antenna; the world frame is inferred from TF
   }
+  // Fixes without a GNSS solution often carry NaN or zero coordinates with zero covariance
+  if (
+    fix.status.status < sensor_msgs::msg::NavSatStatus::STATUS_FIX ||
+    !std::isfinite(fix.latitude) || !std::isfinite(fix.longitude) ||
+    !std::isfinite(fix.altitude)) {
+    ++skipped_no_fix_;
+    return;
+  }
   const double x_stddev = std::sqrt(std::max(0.0, fix.position_covariance[0]));
   const double y_stddev = std::sqrt(std::max(0.0, fix.position_covariance[4]));
   const double z_stddev = std::sqrt(std::max(0.0, fix.position_covariance[8]));
   if (std::sqrt(x_stddev * x_stddev + y_stddev * y_stddev) > stddev_threshold_) {
     ++skipped_stddev_;
     return;
+  }
+  if (!proj_.initialized()) {
+    // NavSatFix altitudes are ellipsoidal, the origin is set as height above mean sea level
+    const double msl = fix.altitude - proj_.geoid_height_at(fix.latitude, fix.longitude);
+    proj_.set_origin(Eigen::Vector3d(fix.latitude, fix.longitude, msl));
+    RCLCPP_INFO(
+      logger_, "NavSatFix origin (first fix): %.9f %.9f %.3f (geoid height %.3f m)", fix.latitude,
+      fix.longitude, msl, proj_.geoid_height());
   }
 
   // Project lat/lon/alt → ENU using the shared ENUProjection helper.
@@ -216,6 +234,9 @@ std::vector<PointStdDevStamped> rosbag_io::run()
     RCLCPP_INFO(
       logger_, "Loaded %zu static and %zu dynamic transforms from bag", n_static_tf_,
       n_dynamic_tf_);
+  }
+  if (skipped_no_fix_ > 0) {
+    RCLCPP_INFO(logger_, "Skipped %zu fixes without a valid GNSS solution", skipped_no_fix_);
   }
   if (skipped_stddev_ > 0) {
     RCLCPP_INFO(logger_, "Skipped %zu reference frames due to stddev threshold", skipped_stddev_);
