@@ -33,7 +33,7 @@ struct KeyframeInterpolationConfig
   // Bag-only options (used when positions_path resolves to a ROS 2 bag)
   std::string pos_topic{};
   std::string target_frame{};
-  std::vector<double> origin{};  // [lat, lon, alt] for NavSatFix
+  std::vector<double> origin{};  // [lat, lon, alt above mean sea level] of the ENU frame
 
   // Algorithm parameters
   double stddev_threshold{0.25};
@@ -77,7 +77,9 @@ struct KeyframeInterpolationConfig
       ->group("Bag input");
 
     app->add_option("--origin", origin,
-                    "Custom origin for local Cartesian projection [lat lon alt]")
+                    "Origin of the local ENU frame [lat lon alt], alt above mean sea level. "
+                    "NavSatFix defaults to the first accepted fix; txt input is read as "
+                    "lat lon ellipsoidal-alt if given, as Cartesian coordinates otherwise")
       ->expected(3)
       ->type_name("FLOAT FLOAT FLOAT")
       ->group("Bag input");
@@ -187,7 +189,9 @@ struct GeoreferencingConfig
       ->capture_default_str()
       ->group("Trajectory matching");
 
-    app->add_option("--origin", origin, "Custom ENU zero point [lat lon alt]")
+    app->add_option("--origin", origin,
+                    "Custom ENU zero point [lat lon alt], alt above mean sea level; the "
+                    "positions are then read as lat lon ellipsoidal-alt")
       ->expected(3)
       ->type_name("FLOAT FLOAT FLOAT")
       ->capture_default_str()
