@@ -61,7 +61,8 @@ struct KeyframeInterpolationConfig
 
     app->add_option(
          "out-dir", out_dir,
-         "Output directory for poses_keyframes.txt and positions_interpolated.txt")
+         "Output directory for poses_keyframes.txt, positions_interpolated.txt and "
+         "keyframe_interpolation.yaml (effective config including the ENU origin)")
       ->capture_default_str()
       ->group("Required");
 
@@ -73,7 +74,7 @@ struct KeyframeInterpolationConfig
                     "Frame of the SLAM poses (e.g. base_link). Reference positions are moved into "
                     "this frame with the vehicle orientation and lever arm from /tf and "
                     "/tf_static of the bag (full TF chain required; for NavSatFix the TF root "
-                    "must be ENU-aligned)")
+                    "must be ENU-aligned and connected through a moving /tf transform)")
       ->group("Bag input");
 
     app->add_option("--origin", origin,
@@ -82,7 +83,7 @@ struct KeyframeInterpolationConfig
                     "lat lon ellipsoidal-alt if given, as Cartesian coordinates otherwise")
       ->expected(3)
       ->type_name("FLOAT FLOAT FLOAT")
-      ->group("Bag input");
+      ->group("Origin");
 
     app->add_option("--stddev-threshold", stddev_threshold,
                     "Reject reference frames whose horizontal stddev exceeds this value")
@@ -112,7 +113,8 @@ struct KeyframeInterpolationConfig
 
     app->add_option("--max-time-diff", max_time_diff,
                     "Maximum time [s] between a keyframe and the nearest reference position "
-                    "(on both sides when interpolating); other keyframes are skipped")
+                    "(on both sides when interpolating); other keyframes are skipped. The "
+                    "reference data needs a rate of at least 1 / max-time-diff")
       ->check(CLI::PositiveNumber)
       ->capture_default_str()
       ->group("Algorithm");

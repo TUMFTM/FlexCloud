@@ -161,6 +161,10 @@ bool transform::select_control_points(
       continue;
     }
     // clang-format off
+    // Only regular, shifted and faked indices are control point candidates
+    if (idx % traj_split != 0 && std::find(cfg.shift_ind.begin(), cfg.shift_ind.end(), idx) == cfg.shift_ind.end() && std::find(cfg.fake_ind.begin(), cfg.fake_ind.end(), idx) == cfg.fake_ind.end()) {  // NOLINT
+      continue;
+    }
     // Check if standard deviations of reference point are within threshold, otherwise skip point
     if (sqrt(pow(src[idx].point.stddev.x(), 2) + pow(src[idx].point.stddev.y(), 2)) > cfg.stddev_threshold) {  // NOLINT
       std::cout << "\033[31m!! Skipped control point due to high stddev !!\033[0m" << std::endl;
@@ -259,6 +263,10 @@ bool transform::select_control_points(
     // clang-format on
   }
   std::cout << "\033[1;32m~~~~~~~~~~> Set " << cp_count << " controlpoints!\033[0m" << std::endl;
+  if (cps.empty()) {
+    throw std::runtime_error(
+      "No control points selected: all candidates are excluded or exceed --stddev-threshold");
+  }
   return true;
 }
 /**

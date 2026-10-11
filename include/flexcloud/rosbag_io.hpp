@@ -21,6 +21,7 @@
 #include <string>
 #include <tf2_msgs/msg/tf_message.hpp>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 #include "rosbag_reader.hpp"
@@ -55,6 +56,10 @@ public:
   /// Iterate the bag once and return the resulting positions, sorted by timestamp.
   std::vector<PointStdDevStamped> run();
 
+  /// Origin [lat, lon, alt above mean sea level] of the ENU frame (custom or first accepted fix,
+  /// valid after run()); std::nullopt for Odometry topics, which are not projected.
+  const std::optional<Eigen::Vector3d> & origin() const { return origin_; }
+
 protected:
   void tf_callback(const tools::RosbagReaderMsg<tf2_msgs::msg::TFMessage> & msg);
   void navsatfix_callback(const tools::RosbagReaderMsg<sensor_msgs::msg::NavSatFix> & msg);
@@ -69,8 +74,9 @@ private:
   /// whose lookup fails are dropped and counted.
   void resolve_positions();
 
-  /// Topmost parent of @p frame in the TF tree; throws if it has none.
-  std::string tf_root(const std::string & frame) const;
+  /// World frame of @p frame: its topmost parent in the TF tree. Throws if it has no parent or
+  /// only static transforms lead there (then the root is part of the vehicle, not the world).
+  std::string infer_world_frame(const std::string & frame) const;
 
   // Configuration
   std::string bag_path_;
@@ -84,6 +90,7 @@ private:
   tools::RosbagReader reader_;
   tf2::BufferCore tf_buffer_;
   std::unordered_map<std::string, std::string> tf_parents_;  // child frame → parent frame
+  std::unordered_set<std::string> tf_moving_frames_;         // child frames of /tf transforms
   ENUProjection proj_;
   rclcpp::Logger logger_;
 

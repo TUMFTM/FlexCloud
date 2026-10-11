@@ -21,6 +21,7 @@
 
 #include <algorithm>
 #include <filesystem>  // NOLINT
+#include <fstream>
 #include <iostream>
 #include <memory>
 #include <optional>
@@ -74,7 +75,7 @@ KeyframeInterpolation::KeyframeInterpolation(const config::KeyframeInterpolation
   select_keyframes(cli_cfg);
 
   // Save keyframes
-  if (!save(cli_cfg.out_dir)) {
+  if (!save(cli_cfg)) {
     throw std::runtime_error("Could not write the keyframes to '" + cli_cfg.out_dir + "'");
   }
 }
@@ -94,10 +95,12 @@ void KeyframeInterpolation::load(const config::KeyframeInterpolationConfig & cli
     case PositionsKind::TXT_FILE:
       this->positions_ =
         file_io_->load_positions_file(cli_cfg.positions_path, cli_cfg.stddev_threshold, origin);
+      this->origin_ = origin;
       break;
     case PositionsKind::TXT_DIR:
       this->positions_ =
         file_io_->load_positions_dir(cli_cfg.positions_path, cli_cfg.stddev_threshold, origin);
+      this->origin_ = origin;
       break;
     case PositionsKind::BAG: {
       if (cli_cfg.pos_topic.empty()) {
@@ -107,6 +110,7 @@ void KeyframeInterpolation::load(const config::KeyframeInterpolationConfig & cli
         cli_cfg.positions_path, cli_cfg.pos_topic, cli_cfg.target_frame, cli_cfg.stddev_threshold,
         origin);
       this->positions_ = io.run();
+      this->origin_ = io.origin();
       break;
     }
   }
@@ -120,11 +124,12 @@ void KeyframeInterpolation::load(const config::KeyframeInterpolationConfig & cli
 /**
  * @brief Save everything to directory
  */
-bool KeyframeInterpolation::save(const std::string & dst_directory) const
+bool KeyframeInterpolation::save(const config::KeyframeInterpolationConfig & cli_cfg) const
 {
   if (this->key_poses_.empty()) {
     return false;
   }
+  const std::string & dst_directory = cli_cfg.out_dir;
 
   // Create directory
   if (!boost::filesystem::is_directory(dst_directory)) {
@@ -139,6 +144,29 @@ bool KeyframeInterpolation::save(const std::string & dst_directory) const
         dst_directory + "/positions_interpolated.txt", this->key_positions_)) {
     return false;
   }
+
+  // Dump the effective config; the origin of the ENU frame is needed to place the map globally,
+  // also when it was taken from the first fix
+  YAML::Node out;
+  out["pos_topic"] = cli_cfg.pos_topic;
+  out["target_frame"] = cli_cfg.target_frame;
+  out["origin"] = this->origin_ ? std::vector<double>{this->origin_->x(), this->origin_->y(),
+                                                      this->origin_->z()}
+                                : std::vector<double>{};
+  out["stddev_threshold"] = cli_cfg.stddev_threshold;
+  out["keyframe_delta_x"] = cli_cfg.keyframe_delta_x;
+  out["keyframe_delta_angle"] = cli_cfg.keyframe_delta_angle;
+  out["interpolate"] = cli_cfg.interpolate;
+  out["interp_pos_delta_xyz"] = cli_cfg.interp_pos_delta_xyz;
+  out["max_time_diff"] = cli_cfg.max_time_diff;
+  const std::string yaml_path = dst_directory + "/keyframe_interpolation.yaml";
+  std::ofstream fout(yaml_path);
+  fout << out;
+  fout.close();
+  if (!fout) {
+    return false;
+  }
+  std::cout << "Effective config written to " << yaml_path << std::endl;
   return true;
 }
 /**
@@ -371,14 +399,14 @@ int main(int argc, char * argv[])
   app.footer(
     "\nExamples (positions-path auto-detected):\n"
     "  # single txt file with one position per line\n"
-    "  flexcloud-keyframe-interpolation positions.txt poses_kitti.txt\n\n"
+    "  flexcloud-keyframe-interpolation positions.txt poses_GLIM.txt\n\n"
     "  # directory of per-position txt files\n"
-    "  flexcloud-keyframe-interpolation /path/to/positions/ poses_kitti.txt\n\n"
+    "  flexcloud-keyframe-interpolation /path/to/positions/ poses_GLIM.txt\n\n"
     "  # ROS 2 bag with NavSatFix on /sensor/gnss/fix\n"
-    "  flexcloud-keyframe-interpolation /path/to/bag.mcap poses_kitti.txt /path/to/out \\\n"
+    "  flexcloud-keyframe-interpolation /path/to/bag.mcap poses_GLIM.txt /path/to/out \\\n"
     "      --pos-topic /sensor/gnss/fix --origin 48.262 11.667 0.0 --target-frame base_link\n\n"
     "  # ROS 2 bag with Odometry, moved into the SLAM pose frame via TF\n"
-    "  flexcloud-keyframe-interpolation /path/to/bag.mcap poses_kitti.txt /path/to/out \\\n"
+    "  flexcloud-keyframe-interpolation /path/to/bag.mcap poses_GLIM.txt /path/to/out \\\n"
     "      --pos-topic /odom --target-frame base_link\n");
 
   CLI11_PARSE(app, argc, argv);

@@ -82,6 +82,7 @@ rosbag_io::rosbag_io(
     if (origin_.has_value()) {
       RCLCPP_WARN(
         logger_, "Origin provided but will be ignored for Odometry topic '%s'", topic_.c_str());
+      origin_.reset();
     }
     reader_.add_listener<nav_msgs::msg::Odometry>(
       topic_, std::bind(&rosbag_io::odometry_callback, this, std::placeholders::_1));
@@ -107,6 +108,7 @@ void rosbag_io::tf_callback(const tools::RosbagReaderMsg<tf2_msgs::msg::TFMessag
       ++n_static_tf_;
     } else {
       ++n_dynamic_tf_;
+      tf_moving_frames_.insert(t.child_frame_id);
     }
   }
 }
@@ -134,7 +136,8 @@ void rosbag_io::navsatfix_callback(const tools::RosbagReaderMsg<sensor_msgs::msg
   if (!proj_.initialized()) {
     // NavSatFix altitudes are ellipsoidal, the origin is set as height above mean sea level
     const double msl = fix.altitude - proj_.geoid_height_at(fix.latitude, fix.longitude);
-    proj_.set_origin(Eigen::Vector3d(fix.latitude, fix.longitude, msl));
+    origin_ = Eigen::Vector3d(fix.latitude, fix.longitude, msl);
+    proj_.set_origin(*origin_);
     RCLCPP_INFO(
       logger_, "NavSatFix origin (first fix): %.9f %.9f %.3f (geoid height %.3f m)", fix.latitude,
       fix.longitude, msl, proj_.geoid_height());
@@ -164,18 +167,27 @@ void rosbag_io::odometry_callback(const tools::RosbagReaderMsg<nav_msgs::msg::Od
   positions_.emplace_back(
     PointStdDev(p.x, p.y, p.z, x_stddev, y_stddev, z_stddev), to_nanosec(odom.header.stamp));
 }
-std::string rosbag_io::tf_root(const std::string & frame) const
+std::string rosbag_io::infer_world_frame(const std::string & frame) const
 {
   std::string root = frame;
+  bool moving = false;
   for (std::size_t i = 0; i < tf_parents_.size(); ++i) {  // bounded in case of a cycle
     const auto parent = tf_parents_.find(root);
     if (parent == tf_parents_.end()) {
       break;
     }
+    moving = moving || tf_moving_frames_.count(root) > 0;
     root = parent->second;
   }
   if (root == frame) {
     throw std::runtime_error("Frame '" + frame + "' has no parent in /tf");
+  }
+  // Without a moving transform the root is rigidly attached to the antenna: a vehicle frame, not
+  // the world frame whose orientation the lever arm needs
+  if (!moving) {
+    throw std::runtime_error(
+      "Only static transforms connect '" + frame + "' to its TF root '" + root +
+      "'; the bag needs the moving world → vehicle transform on /tf");
   }
   return root;
 }
@@ -189,14 +201,15 @@ void rosbag_io::resolve_positions()
   }
   // NavSatFix names no world frame: use the TF root, which has to be ENU-aligned like the
   // projection (only orientation is used)
-  const std::string world = world_frame_.empty() ? tf_root(source_frame_) : world_frame_;
+  const std::string world = world_frame_.empty() ? infer_world_frame(source_frame_) : world_frame_;
   if (world_frame_.empty()) {
     RCLCPP_INFO(
       logger_, "Lever arm rotated with the orientation of TF root '%s' (must be ENU-aligned)",
       world.c_str());
   }
   // Origin of `frame` expressed in the world frame
-  const auto origin = [this, &world](const std::string & frame, const tf2::TimePoint & stamp) {
+  const auto origin_in_world = [this, &world](
+                                 const std::string & frame, const tf2::TimePoint & stamp) {
     const auto t = tf_buffer_.lookupTransform(world, frame, stamp).transform.translation;
     return Eigen::Vector3d(t.x, t.y, t.z);
   };
@@ -209,7 +222,8 @@ void rosbag_io::resolve_positions()
       // Lever arm from the source frame to target_frame in world axes: the orientation and the
       // offset come from TF, the absolute position from the message
       const tf2::TimePoint stamp = to_tf2_time(pos.stamp);
-      pos.point.pos += origin(target_frame_, stamp) - origin(source_frame_, stamp);
+      pos.point.pos +=
+        origin_in_world(target_frame_, stamp) - origin_in_world(source_frame_, stamp);
       moved.push_back(pos);
     } catch (const tf2::TransformException & ex) {
       if (skipped_tf_++ == 0) {

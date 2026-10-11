@@ -30,14 +30,16 @@ Required positional arguments:
   positions-path  Reference data (auto-detected, see table below)
   poses-path      SLAM trajectory in GLIM format
                   (one row per pose: stamp xpos ypos zpos xquat yquat zquat wquat)
-  out-dir         Output directory for poses_keyframes.txt and positions_interpolated.txt
-                  (defaults to the current directory)
+  out-dir         Output directory for poses_keyframes.txt, positions_interpolated.txt and
+                  keyframe_interpolation.yaml (defaults to the current directory)
 
 Bag input (only used when positions-path is a ROS 2 bag):
   --pos-topic TEXT           Topic of NavSatFix or Odometry messages (required for bags)
   -t, --target-frame TEXT    Frame of the SLAM poses (e.g. base_link). Reference positions are
                              moved into this frame using /tf and /tf_static from the bag.
                              Optional.
+
+Origin:
   --origin LAT LON ALT       Origin of the local ENU frame, ALT above mean sea level.
                              NavSatFix: defaults to the first accepted fix. txt input:
                              positions are read as lat lon ellipsoidal-alt if given, as
@@ -46,8 +48,12 @@ Bag input (only used when positions-path is a ROS 2 bag):
 Algorithm (excerpt):
   --max-time-diff FLOAT [0.5] Maximum time [s] between a keyframe and the nearest reference
                              position (on both sides when interpolating); other keyframes
-                             are skipped.
+                             are skipped. Needs reference data of at least 1/max-time-diff Hz.
 ```
+
+Besides the two trajectory files, `keyframe_interpolation.yaml` records the effective
+parameters, including the origin of the ENU frame (also when it was taken from the first fix),
+which is needed to place the georeferenced map in global coordinates.
 
 ### Reference-data auto-detection
 
@@ -71,7 +77,8 @@ The reader is selected automatically from `positions-path`:
     - `NavSatFix` messages are projected to local Cartesian via
       [GeographicLib](https://geographiclib.sourceforge.io/2009-03/classGeographicLib_1_1LocalCartesian.html);
       standard deviations are taken from `position_covariance` (diagonal). Fixes without
-      a GNSS solution (`status < STATUS_FIX` or non-finite coordinates) are skipped.
+      a GNSS solution (`status < STATUS_FIX` or non-finite coordinates) are skipped; this
+      includes the default `STATUS_UNKNOWN`, so the GNSS driver has to set the status.
     - The NavSatFix altitude is ellipsoidal; the geoid height (EGM2008) at the origin is
       subtracted, so z is the height above mean sea level relative to the origin. Without
       `--origin`, the first accepted fix becomes the origin and is logged.
@@ -86,7 +93,9 @@ The reader is selected automatically from `positions-path`:
         - `NavSatFix`: lever arm from `header.frame_id` (the antenna). The fix names no
           world frame, so the root of the antenna's TF tree is used; it must be
           ENU-aligned like the projection (e.g. a local cartesian frame), its origin
-          does not matter.
+          does not matter. It also has to be connected to the antenna through at least
+          one moving `/tf` transform; with only static transforms the root belongs to the
+          vehicle and the run stops with an error.
 
 ### Examples
 
@@ -112,7 +121,8 @@ flexcloud-keyframe-interpolation /path/to/bag.mcap poses_GLIM.txt /path/to/out \
 - Keyframes without reference data close in time are skipped (and counted): the nearest
   reference position has to be within `max_time_diff`, on both sides of the keyframe when
   interpolating. This drops keyframes before or after the reference recording and inside
-  gaps of it.
+  gaps of it. The reference data therefore needs at least 1/`max_time_diff` Hz (2 Hz with
+  the default 0.5 s); 5 Hz or more is recommended.
 - `stddev_threshold` drops reference frames with high covariance.
 
 The output is designed to be consumed directly by `flexcloud-georeferencing`.
@@ -185,7 +195,7 @@ The only YAML configuration that remains is for the index-based fine-tuning arra
 (`exclude_ind`, `shift_ind`, `shift_ind_dist`, `fake_ind`, `fake_ind_dist`,
 `fake_ind_height`), supplied via `--config-file`.
 
-When `--pcd` is provided, the effective configuration is dumped next to the input
-point cloud as `georeferencing.yaml` (alongside the transformed `georef_<pcd>`
+When `--pcd` is provided and the map can be loaded, the effective configuration is dumped
+next to the input point cloud as `georeferencing.yaml` (alongside the transformed `georef_<pcd>`
 output). The dumped file can be edited and fed back in via `--config-file` for
 reproducible runs.

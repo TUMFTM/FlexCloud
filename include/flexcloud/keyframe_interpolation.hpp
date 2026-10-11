@@ -23,7 +23,6 @@
 
 #include <Eigen/Geometry>
 #include <eigen3/unsupported/Eigen/Splines>
-#include <iomanip>
 #include <iostream>
 #include <memory>
 #include <optional>
@@ -50,12 +49,13 @@ private:
    */
   void load(const config::KeyframeInterpolationConfig & cli_cfg);
   /**
-   * @brief Save everything to directory
+   * @brief Save keyframes, interpolated positions and the effective config to the output
+   *        directory of the configuration
    *
-   * @param[in] dst_directory       - std::string:
-   *                                  absolute path to directory
+   * @param[in] cli_cfg             - config::KeyframeInterpolationConfig:
+   *                                  configuration (out_dir and the parameters to dump)
    */
-  bool save(const std::string & dst_directory) const;
+  bool save(const config::KeyframeInterpolationConfig & cli_cfg) const;
   /**
    * @brief Select keyframes
    */
@@ -96,6 +96,8 @@ private:
   std::vector<PoseStamped> key_poses_;
   std::vector<PointStdDevStamped> key_positions_;
   std::int64_t max_time_diff_{};
+  // Origin [lat, lon, alt above mean sea level] of the ENU frame, if positions were projected
+  std::optional<Eigen::Vector3d> origin_;
 
 
   // Visualization
