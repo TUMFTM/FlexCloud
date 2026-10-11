@@ -20,6 +20,7 @@
 //
 #include <Eigen/Dense>
 #include <Eigen/Geometry>
+#include <cmath>
 #include <iostream>
 #include <stdexcept>
 #include <string>
@@ -120,8 +121,8 @@ void Umeyama::calcTransform()
   const Eigen::MatrixXd trans_scaling = Eigen::umeyama(src_mat, target_mat);
   const double scale = trans_scaling(0, 0) / trans(0, 0);
 
-  if (scale < 0.95) {
-    std::cout << "\033[1;31m!! High scaling factor between poses and GPS data. "
+  if (std::abs(scale - 1.0) > 0.05) {
+    std::cout << "\033[1;31m!! High scaling factor " << scale << " between poses and GPS data. "
               << "Are you sure they belong together? !!\033[0m" << std::endl;
   }
   this->trans_ = trans.inverse();
