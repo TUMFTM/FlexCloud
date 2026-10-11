@@ -130,8 +130,11 @@ bool transform::select_control_points(
     cfg.fake_ind.size() != cfg.fake_ind_height.size()) {
     std::cout << "Sizes of fake_ind, fake_ind_dist and fake_ind_height do not match!" << std::endl;
   }
-  // Set interval for control point selection
-  int traj_split = static_cast<int>(target.size()) / cfg.control_points;
+  // Portect against empty control point selection
+  if (cfg.control_points <= 0) {
+    throw std::invalid_argument("control_points must be positive");
+  }
+  int traj_split = std::max(1, static_cast<int>(target.size()) / cfg.control_points);
   std::cout << "\033[33m~~~~~> LiDAR got " << target.size() << " poses!\033[0m" << std::endl;
   std::cout << "\033[33m~~~~~> Every " << traj_split
             << " st/nd/rd/th vertex is selected as control point\033[0m" << std::endl;
