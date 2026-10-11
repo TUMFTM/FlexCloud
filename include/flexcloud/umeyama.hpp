@@ -21,6 +21,7 @@
 #include <Eigen/Dense>
 #include <Eigen/Geometry>
 #include <iostream>
+#include <stdexcept>
 #include <string>
 #include <vector>
 
@@ -107,7 +108,8 @@ void Umeyama::calcTransform()
   const Eigen::MatrixXd src_mat = this->ls2mat(this->src_);
   const Eigen::MatrixXd target_mat = this->ls2mat(target_);
   if (src_mat.cols() != target_mat.cols()) {
-    std::cout << "\033[1;31m!! Trajectories have different sizes !!\033[0m" << std::endl;
+    // Eigen::umeyama would read out of bounds (size asserts are compiled out in Release)
+    throw std::runtime_error("Umeyama: trajectories have different sizes");
   }
 
   // Umeyama Transformation without scaling
