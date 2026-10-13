@@ -18,9 +18,12 @@
 
 #include "georeferencing.hpp"
 
+#include <filesystem>  // NOLINT
 #include <fstream>
 #include <iostream>
+#include <limits>
 #include <memory>
+#include <stdexcept>
 #include <string>
 #include <utility>
 #include <vector>
@@ -65,8 +68,9 @@ void Georeferencing::load_data()
     origin =
       Eigen::Vector3d(this->config_.origin[0], this->config_.origin[1], this->config_.origin[2]);
   }
+  // Keep every line here, even if the standard deviation is high as they are paired
   this->pos_global_ = file_io_->load_positions_file(
-    this->config_.positions_path, this->config_.stddev_threshold, origin);
+    this->config_.positions_path, std::numeric_limits<float>::infinity(), origin);
   std::cout << "\033[1;36m===> Trajectory with " << this->pos_global_.size()
             << " points: Loaded!\033[0m" << std::endl;
 
@@ -74,6 +78,12 @@ void Georeferencing::load_data()
   this->poses_ = file_io_->load_poses(this->config_.poses_path);
   std::cout << "\033[1;36m===> Poses with " << this->poses_.size() << " points: Loaded!\033[0m"
             << std::endl;
+
+  if (this->pos_global_.empty() || this->pos_global_.size() != this->poses_.size()) {
+    throw std::runtime_error(
+      "Reference positions (" + std::to_string(this->pos_global_.size()) + ") and SLAM poses (" +
+      std::to_string(this->poses_.size()) + ") must be non-empty and paired line by line");
+  }
 
   // PCD map (preserves all input fields via PCLPointCloud2)
   if (!this->config_.pcd_path.empty()) {
@@ -109,8 +119,14 @@ void Georeferencing::align_traj()
  */
 void Georeferencing::visualize_traj()
 {
-  // Spawn a rerun stream
-  this->rec_.spawn().exit_on_failure();
+  // Spawn a rerun stream; without a viewer the georeferencing still runs to completion
+  const rerun::Error spawned = this->rec_.spawn();
+  if (spawned.is_err()) {
+    std::cout << "\033[33m!! Could not spawn Rerun viewer, skipping visualization: "
+              << spawned.description << " !!\033[0m" << std::endl;
+    return;
+  }
+  this->viewer_connected_ = true;
 
   // // Trajectory
   viz_->linestring2rerun(this->pos_global_, this->rec_, "WEBGreen", "Trajectory");
@@ -148,6 +164,9 @@ void Georeferencing::rubber_sheeting()
  */
 void Georeferencing::visualize_rs()
 {
+  if (!this->viewer_connected_) {
+    return;
+  }
   this->viz_->rs2rerun(this->control_points_, this->triag_, this->rec_, "Blue");
   this->viz_->linestring2rerun(this->poses_rs_, this->rec_, "Orange", "Trajectory_RS");
 
@@ -163,9 +182,14 @@ void Georeferencing::save_map()
   if (this->config_.pcd_path.empty()) {
     return;
   }
-  const std::string dir = this->config_.pcd_path.substr(0, this->config_.pcd_path.find_last_of("\\/"));
-  const std::string path = dir + "/georef_" +
-    this->config_.pcd_path.substr(this->config_.pcd_path.find_last_of("/\\") + 1);
+  if (!this->pcd_map_) {
+    std::cout << "!! No point cloud map loaded, nothing to write !!" << std::endl;
+    return;
+  }
+  // Write next to the input pcd; parent_path() is empty for a bare file name
+  const std::filesystem::path pcd_path(this->config_.pcd_path);
+  const std::filesystem::path dir = pcd_path.parent_path();
+  const std::string path = (dir / ("georef_" + pcd_path.filename().string())).string();
 
   const bool saved_successfully = file_io_->save_pcd(path, this->pcd_map_);
 
@@ -187,11 +211,15 @@ void Georeferencing::save_map()
   out["fake_ind"] = this->config_.fake_ind;
   out["fake_ind_dist"] = this->config_.fake_ind_dist;
   out["fake_ind_height"] = this->config_.fake_ind_height;
-  const std::string yaml_path = dir + "/georeferencing.yaml";
+  const std::string yaml_path = (dir / "georeferencing.yaml").string();
   std::ofstream fout(yaml_path);
   fout << out;
   fout.close();
-  std::cout << "\033[1;36mEffective config written to " << yaml_path << "!\033[0m" << std::endl;
+  if (fout) {
+    std::cout << "\033[1;36mEffective config written to " << yaml_path << "!\033[0m" << std::endl;
+  } else {
+    std::cout << "!! Error during config writing to " << yaml_path << " !!" << std::endl;
+  }
 }
 /**
  * @brief compute deviation statistics, print them to the terminal, and add
@@ -212,10 +240,12 @@ void Georeferencing::evaluation()
   this->analysis_->print_statistics(
     this->analysis_->compute_stats(diff_al), this->analysis_->compute_stats(diff_rs));
 
-  this->viz_->linestring2rerun_colored(
-    this->poses_align_, diff_al, this->rec_, "Trajectory_align_deviation");
-  this->viz_->linestring2rerun_colored(
-    this->poses_rs_, diff_rs, this->rec_, "Trajectory_RS_deviation");
+  if (this->viewer_connected_) {
+    this->viz_->linestring2rerun_colored(
+      this->poses_align_, diff_al, this->rec_, "Trajectory_align_deviation");
+    this->viz_->linestring2rerun_colored(
+      this->poses_rs_, diff_rs, this->rec_, "Trajectory_RS_deviation");
+  }
 }
 }  // namespace flexcloud
 /**
@@ -238,7 +268,7 @@ int main(int argc, char * argv[])
     "  ros2 run flexcloud georeferencing positions_interpolated.txt poses_keyframes.txt\n\n"
     "  # GPS reference, custom origin, transform a point cloud as well\n"
     "  ros2 run flexcloud georeferencing reference.txt poses_keyframes.txt \\\n"
-    "      --pcd map.pcd"
+    "      --pcd map.pcd \\\n"
     "      --origin 48.262 11.667 0.0\n\n"
     "  # supply index-based fine-tuning arrays via YAML\n"
     "  ros2 run flexcloud georeferencing reference.txt poses_keyframes.txt \\\n"
@@ -246,9 +276,14 @@ int main(int argc, char * argv[])
 
   CLI11_PARSE(app, argc, argv);
 
-  // Overlay optional YAML for index-based fine-tuning arrays.
-  cfg.load_yaml_overlay();
+  try {
+    // Overlay optional YAML for index-based fine-tuning arrays.
+    cfg.load_yaml_overlay();
 
-  flexcloud::Georeferencing georef(std::move(cfg));
+    flexcloud::Georeferencing georef(std::move(cfg));
+  } catch (const std::exception & e) {
+    std::cerr << "\033[1;31m!! " << e.what() << " !!\033[0m" << std::endl;
+    return EXIT_FAILURE;
+  }
   return 0;
 }

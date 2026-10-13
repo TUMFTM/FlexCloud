@@ -20,7 +20,9 @@
 //
 #include <Eigen/Dense>
 #include <Eigen/Geometry>
+#include <cmath>
 #include <iostream>
+#include <stdexcept>
 #include <string>
 #include <vector>
 
@@ -107,7 +109,8 @@ void Umeyama::calcTransform()
   const Eigen::MatrixXd src_mat = this->ls2mat(this->src_);
   const Eigen::MatrixXd target_mat = this->ls2mat(target_);
   if (src_mat.cols() != target_mat.cols()) {
-    std::cout << "\033[1;31m!! Trajectories have different sizes !!\033[0m" << std::endl;
+    // Eigen::umeyama would read out of bounds (size asserts are compiled out in Release)
+    throw std::runtime_error("Umeyama: trajectories have different sizes");
   }
 
   // Umeyama Transformation without scaling
@@ -118,8 +121,8 @@ void Umeyama::calcTransform()
   const Eigen::MatrixXd trans_scaling = Eigen::umeyama(src_mat, target_mat);
   const double scale = trans_scaling(0, 0) / trans(0, 0);
 
-  if (scale < 0.95) {
-    std::cout << "\033[1;31m!! High scaling factor between poses and GPS data. "
+  if (std::abs(scale - 1.0) > 0.05) {
+    std::cout << "\033[1;31m!! High scaling factor " << scale << " between poses and GPS data. "
               << "Are you sure they belong together? !!\033[0m" << std::endl;
   }
   this->trans_ = trans.inverse();

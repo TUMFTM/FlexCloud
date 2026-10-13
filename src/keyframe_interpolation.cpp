@@ -21,6 +21,7 @@
 
 #include <algorithm>
 #include <filesystem>  // NOLINT
+#include <fstream>
 #include <iostream>
 #include <memory>
 #include <optional>
@@ -74,7 +75,9 @@ KeyframeInterpolation::KeyframeInterpolation(const config::KeyframeInterpolation
   select_keyframes(cli_cfg);
 
   // Save keyframes
-  save(cli_cfg.out_dir);
+  if (!save(cli_cfg)) {
+    throw std::runtime_error("Could not write the keyframes to '" + cli_cfg.out_dir + "'");
+  }
 }
 /**
  * @brief Load frames based on CLI configuration.
@@ -92,10 +95,12 @@ void KeyframeInterpolation::load(const config::KeyframeInterpolationConfig & cli
     case PositionsKind::TXT_FILE:
       this->positions_ =
         file_io_->load_positions_file(cli_cfg.positions_path, cli_cfg.stddev_threshold, origin);
+      this->origin_ = origin;
       break;
     case PositionsKind::TXT_DIR:
       this->positions_ =
         file_io_->load_positions_dir(cli_cfg.positions_path, cli_cfg.stddev_threshold, origin);
+      this->origin_ = origin;
       break;
     case PositionsKind::BAG: {
       if (cli_cfg.pos_topic.empty()) {
@@ -105,6 +110,7 @@ void KeyframeInterpolation::load(const config::KeyframeInterpolationConfig & cli
         cli_cfg.positions_path, cli_cfg.pos_topic, cli_cfg.target_frame, cli_cfg.stddev_threshold,
         origin);
       this->positions_ = io.run();
+      this->origin_ = io.origin();
       break;
     }
   }
@@ -118,11 +124,12 @@ void KeyframeInterpolation::load(const config::KeyframeInterpolationConfig & cli
 /**
  * @brief Save everything to directory
  */
-bool KeyframeInterpolation::save(const std::string & dst_directory) const
+bool KeyframeInterpolation::save(const config::KeyframeInterpolationConfig & cli_cfg) const
 {
   if (this->key_poses_.empty()) {
     return false;
   }
+  const std::string & dst_directory = cli_cfg.out_dir;
 
   // Create directory
   if (!boost::filesystem::is_directory(dst_directory)) {
@@ -137,6 +144,29 @@ bool KeyframeInterpolation::save(const std::string & dst_directory) const
         dst_directory + "/positions_interpolated.txt", this->key_positions_)) {
     return false;
   }
+
+  // Dump the effective config; the origin of the ENU frame is needed to place the map globally,
+  // also when it was taken from the first fix
+  YAML::Node out;
+  out["pos_topic"] = cli_cfg.pos_topic;
+  out["target_frame"] = cli_cfg.target_frame;
+  out["origin"] = this->origin_ ? std::vector<double>{this->origin_->x(), this->origin_->y(),
+                                                      this->origin_->z()}
+                                : std::vector<double>{};
+  out["stddev_threshold"] = cli_cfg.stddev_threshold;
+  out["keyframe_delta_x"] = cli_cfg.keyframe_delta_x;
+  out["keyframe_delta_angle"] = cli_cfg.keyframe_delta_angle;
+  out["interpolate"] = cli_cfg.interpolate;
+  out["interp_pos_delta_xyz"] = cli_cfg.interp_pos_delta_xyz;
+  out["max_time_diff"] = cli_cfg.max_time_diff;
+  const std::string yaml_path = dst_directory + "/keyframe_interpolation.yaml";
+  std::ofstream fout(yaml_path);
+  fout << out;
+  fout.close();
+  if (!fout) {
+    return false;
+  }
+  std::cout << "Effective config written to " << yaml_path << std::endl;
   return true;
 }
 /**
@@ -144,44 +174,52 @@ bool KeyframeInterpolation::save(const std::string & dst_directory) const
  */
 void KeyframeInterpolation::select_keyframes(const config::KeyframeInterpolationConfig & cli_cfg)
 {
-  if (this->positions_.empty() || this->poses_.empty()) {
-    return;
+  if (this->positions_.empty()) {
+    throw std::runtime_error("No reference positions to match the keyframes with");
+  }
+  if (this->poses_.empty()) {
+    throw std::runtime_error("No SLAM poses loaded from '" + cli_cfg.poses_path + "'");
   }
 
   this->key_poses_.clear();
   this->key_positions_.clear();
+  std::size_t skipped = 0;
 
-  // Handle first frame
-  this->key_poses_.push_back(this->poses_.front());
-  if (cli_cfg.interpolate) {
-    // Interpolate position of frame
-    this->key_positions_.push_back(
-      interpolate_pos(this->poses_.front(), cli_cfg.interp_pos_delta_xyz));
-  } else {
-    // Search GPS frame for first frame
-    this->key_positions_.push_back(search_closest(this->poses_.front()));
-  }
-
-  // Set keyframes
+  // Set keyframes; the selection only depends on the SLAM motion, so it compares against the
+  // last selected keyframe, whether a reference position was found for it or not
+  const PoseStamped * last_keyframe = nullptr;
   for (const auto & frame : this->poses_) {
-    const auto & last_keyframe_pose = this->key_poses_.back().pose;
-    const auto & current_frame_pose = frame.pose.pose;
-
-    Eigen::Isometry3d delta = last_keyframe_pose.pose.inverse() * current_frame_pose;
-    double delta_x = delta.translation().norm();
-    double delta_angle = Eigen::AngleAxisd(delta.linear()).angle();
-
-    if (delta_x > cli_cfg.keyframe_delta_x || delta_angle > cli_cfg.keyframe_delta_angle) {
-      this->key_poses_.push_back(frame);
-
-      if (cli_cfg.interpolate) {
-        // Interpolate position of frame
-        this->key_positions_.push_back(interpolate_pos(frame, cli_cfg.interp_pos_delta_xyz));
-      } else {
-        // search for corresponding pos file that is closest (time) to frame
-        this->key_positions_.push_back(search_closest(frame));
+    if (last_keyframe != nullptr) {
+      const Eigen::Isometry3d delta = last_keyframe->pose.pose.inverse() * frame.pose.pose;
+      const double delta_x = delta.translation().norm();
+      const double delta_angle = Eigen::AngleAxisd(delta.linear()).angle();
+      if (delta_x <= cli_cfg.keyframe_delta_x && delta_angle <= cli_cfg.keyframe_delta_angle) {
+        continue;
       }
     }
+    last_keyframe = &frame;
+
+    // Keyframes outside the reference recording or inside a gap of it get no position
+    const std::optional<PointStdDevStamped> position =
+      cli_cfg.interpolate
+        ? interpolate_pos(frame, cli_cfg.interp_pos_delta_xyz, cli_cfg.max_time_diff)
+        : search_closest(frame, cli_cfg.max_time_diff);
+    if (!position) {
+      ++skipped;
+      continue;
+    }
+    this->key_poses_.push_back(frame);
+    this->key_positions_.push_back(*position);
+  }
+
+  if (skipped > 0) {
+    std::cout << "\033[33m!! Skipped " << skipped << " keyframes without reference positions "
+              << "within " << cli_cfg.max_time_diff << " s !!\033[0m" << std::endl;
+  }
+  if (this->key_poses_.empty()) {
+    throw std::runtime_error(
+      "No keyframe has reference positions within --max-time-diff; do the SLAM poses and the "
+      "reference positions cover the same time span?");
   }
 
   if (!cli_cfg.interpolate) {
@@ -196,10 +234,13 @@ void KeyframeInterpolation::select_keyframes(const config::KeyframeInterpolation
  *
  * @param[in] pose               - PoseStamped:
  *                                frame to search for
- * @return PointStdDevStamped    - PointStdDevStamped:
- *                                 closest PointStdDevStamped
+ * @param[in] max_time_diff      - double:
+ *                                maximum time difference [s] to the closest position
+ * @return                       - std::optional<PointStdDevStamped>:
+ *                                 closest position, std::nullopt if none within max_time_diff
  */
-PointStdDevStamped KeyframeInterpolation::search_closest(const PoseStamped & pose)
+std::optional<PointStdDevStamped> KeyframeInterpolation::search_closest(
+  const PoseStamped & pose, const double max_time_diff)
 {
   auto closest_it = std::min_element(
     positions_.begin(), positions_.end(),
@@ -208,6 +249,9 @@ PointStdDevStamped KeyframeInterpolation::search_closest(const PoseStamped & pos
     });
 
   std::int64_t minDiff = std::abs(pose.stamp - closest_it->stamp);
+  if (minDiff > static_cast<std::int64_t>(max_time_diff * 1.0e9)) {
+    return std::nullopt;
+  }
 
   if (minDiff > this->max_time_diff_) {
     this->max_time_diff_ = minDiff;
@@ -220,13 +264,17 @@ PointStdDevStamped KeyframeInterpolation::search_closest(const PoseStamped & pos
  *
  * @param[in] pose                - PoseStamped:
  *                                frame to interpolate for
- * @return PointStdDevStamped     - PointStdDevStamped:
- *                                 interpolated PointStdDevStamped
+ * @param[in] max_time_diff       - double:
+ *                                maximum time [s] to the nearest position before and after it
+ * @return                        - std::optional<PointStdDevStamped>:
+ *                                 interpolated position, std::nullopt if the frame is not
+ *                                 covered by the reference positions
  */
-PointStdDevStamped KeyframeInterpolation::interpolate_pos(
-  const PoseStamped & pose, const double pos_delta_xyz)
+std::optional<PointStdDevStamped> KeyframeInterpolation::interpolate_pos(
+  const PoseStamped & pose, const double pos_delta_xyz, const double max_time_diff)
 {
   const int numFrames = 2;
+  const auto max_dt = static_cast<std::int64_t>(max_time_diff * 1.0e9);
 
   // search closest pos timestamp smaller than keyframe timestamp
   auto lowerBound = std::lower_bound(
@@ -234,15 +282,17 @@ PointStdDevStamped KeyframeInterpolation::interpolate_pos(
     [](const PointStdDevStamped & position, const PoseStamped & current_pose) {
       return position.stamp < current_pose.stamp;
     });
-  size_t lowerIndex = (lowerBound == this->positions_.begin())
-                        ? 0
-                        : std::distance(this->positions_.begin(), lowerBound - 1);
+  // Positions are needed close in time on both sides, otherwise the frame lies outside the
+  // reference recording or inside a gap of it
+  if (
+    lowerBound == this->positions_.begin() || lowerBound == this->positions_.end() ||
+    pose.stamp - std::prev(lowerBound)->stamp > max_dt || lowerBound->stamp - pose.stamp > max_dt) {
+    return std::nullopt;
+  }
+  size_t lowerIndex = std::distance(this->positions_.begin(), lowerBound - 1);
 
-  if (lowerIndex < (numFrames - 1) || this->positions_[lowerIndex].stamp > pose.stamp) {
-    std::cout << std::fixed << std::setprecision(6);
-    std::cout << "\033[31mNot enough Pos frames provided for smallest LiDAR frame with timestamp "
-              << static_cast<double>(pose.stamp) / 1000000000 << "\033[0m" << std::endl;
-    exit(EXIT_FAILURE);
+  if (lowerIndex < (numFrames - 1)) {
+    return std::nullopt;
   }
 
   std::vector<int> selectedIndicesLow = {static_cast<int>(lowerIndex)};
@@ -268,14 +318,8 @@ PointStdDevStamped KeyframeInterpolation::interpolate_pos(
   }
 
   // Sanity check to check if enough pos frames found for interpolation
-  if (selectedIndicesLow.size() < numFrames) {
-    std::cout << "\033[31mNot enough Pos frames provided before the LiDAR frame with timestamp "
-              << static_cast<double>(pose.stamp) / 1000000000 << "\033[0m" << std::endl;
-    exit(EXIT_FAILURE);
-  } else if (selectedIndicesHigh.size() < (numFrames + 1)) {
-    std::cout << "\033[31mNot enough Pos frames provided after the LiDAR frame with timestamp "
-              << static_cast<double>(pose.stamp) / 1000000000 << "\033[0m" << std::endl;
-    exit(EXIT_FAILURE);
+  if (selectedIndicesLow.size() < numFrames || selectedIndicesHigh.size() < (numFrames + 1)) {
+    return std::nullopt;
   }
 
   // Create set to delete double element
@@ -320,8 +364,13 @@ PointStdDevStamped KeyframeInterpolation::interpolate_pos(
 }
 void KeyframeInterpolation::visualize()
 {
-  // Spawn a rerun stream
-  this->rec_.spawn().exit_on_failure();
+  // Spawn a rerun stream; the outputs are already written, so a missing viewer is not an error
+  const rerun::Error spawned = this->rec_.spawn();
+  if (spawned.is_err()) {
+    std::cout << "\033[33m!! Could not spawn Rerun viewer, skipping visualization: "
+              << spawned.description << " !!\033[0m" << std::endl;
+    return;
+  }
 
   // Visualize PosFrames
   viz_->pos2rerun(this->positions_, this->rec_, "Orange", "positions");
@@ -350,17 +399,26 @@ int main(int argc, char * argv[])
   app.footer(
     "\nExamples (positions-path auto-detected):\n"
     "  # single txt file with one position per line\n"
-    "  flexcloud-keyframe-interpolation positions.txt poses_kitti.txt\n\n"
+    "  flexcloud-keyframe-interpolation positions.txt poses_GLIM.txt\n\n"
     "  # directory of per-position txt files\n"
-    "  flexcloud-keyframe-interpolation /path/to/positions/ poses_kitti.txt\n\n"
+    "  flexcloud-keyframe-interpolation /path/to/positions/ poses_GLIM.txt\n\n"
     "  # ROS 2 bag with NavSatFix on /sensor/gnss/fix\n"
-    "  flexcloud-keyframe-interpolation /path/to/bag.mcap poses_kitti.txt /path/to/out \\\n"
-    "      --pos-topic /sensor/gnss/fix --target-frame base_link\n");
+    "  flexcloud-keyframe-interpolation /path/to/bag.mcap poses_GLIM.txt /path/to/out \\\n"
+    "      --pos-topic /sensor/gnss/fix --origin 48.262 11.667 0.0 --target-frame base_link\n\n"
+    "  # ROS 2 bag with Odometry, moved into the SLAM pose frame via TF\n"
+    "  flexcloud-keyframe-interpolation /path/to/bag.mcap poses_GLIM.txt /path/to/out \\\n"
+    "      --pos-topic /odom --target-frame base_link\n");
 
   CLI11_PARSE(app, argc, argv);
 
-  flexcloud::KeyframeInterpolation set_frames(cfg);
-  set_frames.visualize();
+  try {
+    flexcloud::KeyframeInterpolation set_frames(cfg);
+    set_frames.visualize();
+  } catch (const std::exception & e) {
+    std::cerr << "\033[1;31m!! " << e.what() << " !!\033[0m" << std::endl;
+    rclcpp::shutdown();
+    return EXIT_FAILURE;
+  }
 
   rclcpp::shutdown();
   return 0;

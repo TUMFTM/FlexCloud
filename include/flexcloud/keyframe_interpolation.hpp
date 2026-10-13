@@ -23,9 +23,9 @@
 
 #include <Eigen/Geometry>
 #include <eigen3/unsupported/Eigen/Splines>
-#include <iomanip>
 #include <iostream>
 #include <memory>
+#include <optional>
 #include <set>
 #include <string>
 #include <vector>
@@ -49,12 +49,13 @@ private:
    */
   void load(const config::KeyframeInterpolationConfig & cli_cfg);
   /**
-   * @brief Save everything to directory
+   * @brief Save keyframes, interpolated positions and the effective config to the output
+   *        directory of the configuration
    *
-   * @param[in] dst_directory       - std::string:
-   *                                  absolute path to directory
+   * @param[in] cli_cfg             - config::KeyframeInterpolationConfig:
+   *                                  configuration (out_dir and the parameters to dump)
    */
-  bool save(const std::string & dst_directory) const;
+  bool save(const config::KeyframeInterpolationConfig & cli_cfg) const;
   /**
    * @brief Select keyframes
    */
@@ -64,19 +65,26 @@ private:
    *
    * @param[in] frame              - PoseStamped:
    *                                 frame to search for
-   * @return PointStdDevStamped    - PointStdDevStamped:
-   *                                 closest PointStdDevStamped
+   * @param[in] max_time_diff      - double:
+   *                                 maximum time difference [s] to the closest position
+   * @return                       - std::optional<PointStdDevStamped>:
+   *                                 closest position, std::nullopt if none within max_time_diff
    */
-  PointStdDevStamped search_closest(const PoseStamped & frame);
+  std::optional<PointStdDevStamped> search_closest(
+    const PoseStamped & frame, const double max_time_diff);
   /**
    * @brief Interpolate PointStdDevStamped for a given frame
    *
    * @param[in] frame              - PoseStamped:
    *                                 frame to interpolate
-   * @return PointStdDevStamped     - PointStdDevStamped:
-   *                                 interpolated PointStdDevStamped
+   * @param[in] max_time_diff      - double:
+   *                                 maximum time [s] to the nearest position before and after it
+   * @return                       - std::optional<PointStdDevStamped>:
+   *                                 interpolated position, std::nullopt if the frame is not
+   *                                 covered by the reference positions
    */
-  PointStdDevStamped interpolate_pos(const PoseStamped & frame, const double pos_delta_xyz);
+  std::optional<PointStdDevStamped> interpolate_pos(
+    const PoseStamped & frame, const double pos_delta_xyz, const double max_time_diff);
 
 private:
   // File IO
@@ -88,6 +96,8 @@ private:
   std::vector<PoseStamped> key_poses_;
   std::vector<PointStdDevStamped> key_positions_;
   std::int64_t max_time_diff_{};
+  // Origin [lat, lon, alt above mean sea level] of the ENU frame, if positions were projected
+  std::optional<Eigen::Vector3d> origin_;
 
 
   // Visualization

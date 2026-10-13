@@ -27,7 +27,6 @@ find_package(rosbag2_cpp REQUIRED)
 find_package(rosbag2_storage REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(tf2 REQUIRED)
-find_package(tf2_eigen REQUIRED)
 find_package(tf2_geometry_msgs REQUIRED)
 find_package(tf2_msgs REQUIRED)
 find_package(tf2_ros REQUIRED)
@@ -104,7 +103,6 @@ ament_target_dependencies(rosbag_io
   nav_msgs
   sensor_msgs
   tf2
-  tf2_eigen
   tf2_geometry_msgs
   tf2_msgs
   tf2_ros)
@@ -178,7 +176,8 @@ target_link_libraries(keyframe_interpolation
   CLI11::CLI11
   file_io
   rosbag_io
-  visualization)
+  visualization
+  yaml-cpp::yaml-cpp)
 
 ament_target_dependencies(keyframe_interpolation
   rclcpp)

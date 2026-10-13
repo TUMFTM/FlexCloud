@@ -46,17 +46,29 @@ public:
       GeographicLib::NormalGravity::WGS84().Flattening())
   {
   }
+  /**
+   * @brief Set the origin [lat, lon, alt] of the local ENU frame, with alt as height above
+   *        mean sea level (EGM2008).
+   */
   void set_origin(const Eigen::Vector3d & origin)
   {
-    geoid_ = std::make_unique<GeographicLib::Geoid>("egm2008-2_5");
-    geoid_height_ = (*geoid_)(origin.x(), origin.y());
+    geoid_height_ = geoid_height_at(origin.x(), origin.y());
     proj_.emplace(origin.x(), origin.y(), origin.z(), ellipsoid_);
+  }
+  /// EGM2008 geoid height at (lat, lon), i.e. ellipsoidal minus mean-sea-level height
+  double geoid_height_at(double lat, double lon)
+  {
+    if (!geoid_) {
+      geoid_ = std::make_unique<GeographicLib::Geoid>("egm2008-2_5");
+    }
+    return (*geoid_)(lat, lon);
   }
   bool initialized() const { return proj_.has_value(); }
   double geoid_height() const { return geoid_height_; }
   /**
-   * @brief Project (lat, lon, alt) into local ENU. The geoid height at the
-   *        origin is subtracted from alt before the projection.
+   * @brief Project (lat, lon, alt) into local ENU, with alt as ellipsoidal height (as in
+   *        NavSatFix). The geoid height at the origin is subtracted from alt before the
+   *        projection, so z is the height above mean sea level relative to the origin.
    */
   Eigen::Vector3d forward(double lat, double lon, double alt) const
   {

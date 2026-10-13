@@ -205,10 +205,12 @@ std::vector<PoseStamped> file_io::load_poses(const std::string & file_path)
   float qx, qy, qz, qw;
 
   while (std::getline(input_file, line)) {
+    if (line.empty()) continue;
     std::istringstream iss(line);
 
     if (!(iss >> stamp >> x >> y >> z >> qx >> qy >> qz >> qw)) {
-      std::cerr << "Error during extraction of odometry pose" << std::endl;
+      std::cerr << "Skipping malformed pose line: " << line << std::endl;
+      continue;
     }
     Pose pose(x, y, z, qx, qy, qz, qw);
     poses.push_back(PoseStamped(pose, stamp));
@@ -283,12 +285,16 @@ bool file_io::save_poses(const std::string & filename, const std::vector<PoseSta
   if (!ofs) {
     return false;
   }
+  // Increase writer precision
+  ofs << std::fixed << std::setprecision(9);
   for (size_t i = 0; i < poses.size(); i++) {
     const Eigen::Quaterniond rotation(poses[i].pose.pose.rotation());
     const Eigen::Vector3d translation = poses[i].pose.pose.translation();
-    ofs << poses[i].stamp << " " << translation.x() << " " << translation.y() << " "
-        << translation.z() << " " << rotation.x() << " " << rotation.y() << " " << rotation.z()
-        << " " << rotation.w() << std::endl;
+    // Stamp in seconds compatible with GLIM
+    ofs << poses[i].stamp / 1000000000 << "." << std::setfill('0') << std::setw(9)
+        << poses[i].stamp % 1000000000 << std::setfill(' ') << " " << translation.x() << " "
+        << translation.y() << " " << translation.z() << " " << rotation.x() << " " << rotation.y()
+        << " " << rotation.z() << " " << rotation.w() << std::endl;
   }
   ofs.close();
 
@@ -304,6 +310,9 @@ bool file_io::save_poses(const std::string & filename, const std::vector<PoseSta
  */
 bool file_io::save_pcd(const std::string & pcd_out_path, const pcl::PCLPointCloud2::Ptr & pcd_map)
 {
+  if (!pcd_map) {
+    return false;
+  }
   pcl::PCDWriter writer;
   // Compressed binary preserves arbitrary fields without loss.
   return writer.writeBinaryCompressed(pcd_out_path, *pcd_map) == 0;
