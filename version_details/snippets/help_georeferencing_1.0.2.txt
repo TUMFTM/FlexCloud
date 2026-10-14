@@ -1,0 +1,47 @@
+Georeference a SLAM trajectory and (optionally) a corresponding point cloud map by aligning it to a GNSS / reference trajectory using Umeyama and rubber-sheeting.
+Usage: georeferencing [OPTIONS] positions-path poses-path
+
+Positionals:
+  positions-path TEXT:FILE REQUIRED
+                              Path to GNSS / reference trajectory
+  poses-path TEXT:FILE REQUIRED
+                              Path to SLAM trajectory in GLIM format
+
+Options:
+  -h,--help                   Print this help message and exit
+
+
+Inputs:
+  --pcd TEXT                  Optional point cloud map to transform alongside the trajectory
+  --config-file TEXT:FILE     Optional YAML file with index-based fine-tuning arrays (exclude_ind, shift_ind, shift_ind_dist, fake_ind, fake_ind_dist, fake_ind_height)
+
+
+Trajectory matching:
+  --control-points INT [10]   Number of control points for rubber-sheeting
+  --stddev-threshold FLOAT [0.25] 
+                              Maximum stddev of reference points for automatic control-point selection
+  --square-size FLOAT FLOAT FLOAT [[0.1,0.1,10]]  x 3
+                              Padding of enclosing square around trajectories [x y z] (fractions)
+
+
+Origin:
+  --origin FLOAT FLOAT FLOAT [{}]  x 3
+                              Custom ENU zero point [lat lon alt]
+
+
+Evaluation:
+  --evaluation                Print trajectory-matching statistics (RMSE, mean, median, stddev of GNSS-vs-aligned and GNSS-vs-rubber-sheeted deviations) to the terminal and log per-segment, deviation-colored linestrings to the rerun viewer.
+
+
+Examples:
+  # cartesian reference, no point cloud, default parameters
+  ros2 run flexcloud georeferencing positions_interpolated.txt poses_keyframes.txt
+
+  # GPS reference, custom origin, transform a point cloud as well
+  ros2 run flexcloud georeferencing reference.txt poses_keyframes.txt \
+      --pcd map.pcd      --origin 48.262 11.667 0.0
+
+  # supply index-based fine-tuning arrays via YAML
+  ros2 run flexcloud georeferencing reference.txt poses_keyframes.txt \
+      --config-file georeferencing.yaml
+

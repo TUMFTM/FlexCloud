@@ -1,0 +1,54 @@
+Select keyframes from a SLAM trajectory and interpolate the corresponding reference positions, either from per-position txt files or from a ROS 2 bag (NavSatFix or Odometry messages).
+Usage: keyframe_interpolation [OPTIONS] positions-path poses-path [out-dir]
+
+Positionals:
+  positions-path TEXT REQUIRED
+                              Reference-data source. Auto-detected: a single .txt file is read line-by-line ("stamp x y z x_stddev y_stddev z_stddev"); a directory of per-position .txt files (filename = "<sec>_<nanosec>.txt") is read as such; a .mcap / .db3 / .sqlite3 file or a ROS 2 bag directory is read as a bag.
+  poses-path TEXT:FILE REQUIRED
+                              Path to SLAM trajectory in GLIM format
+  out-dir TEXT [.]            Output directory for poses_keyframes.txt, positions_interpolated.txt and keyframe_interpolation.yaml (effective config including the ENU origin)
+
+Options:
+  -h,--help                   Print this help message and exit
+
+
+Bag input:
+  --pos-topic TEXT            Topic name (NavSatFix or Odometry) — required when positions-path is a bag
+  -t,--target-frame TEXT      Frame of the SLAM poses (e.g. base_link). Reference positions are moved into this frame with the vehicle orientation and lever arm from /tf and /tf_static of the bag (full TF chain required; for NavSatFix the TF root must be ENU-aligned and connected through a moving /tf transform)
+
+
+Origin:
+  --origin FLOAT FLOAT FLOAT x 3
+                              Origin of the local ENU frame [lat lon alt], alt above mean sea level. NavSatFix defaults to the first accepted fix; txt input is read as lat lon ellipsoidal-alt if given, as Cartesian coordinates otherwise
+
+
+Algorithm:
+  --stddev-threshold FLOAT [0.25] 
+                              Reject reference frames whose horizontal stddev exceeds this value
+  --keyframe-delta-x FLOAT [2] 
+                              Minimum translational distance between keyframes [m]
+  --keyframe-delta-angle FLOAT [0.5] 
+                              Minimum rotational distance between keyframes [rad]
+  --interpolate,--no-interpolate{false}
+                              Spline-interpolate the reference position at each keyframe timestamp (otherwise use closest-neighbor selection)
+  --interp-pos-delta-xyz FLOAT [0.25] 
+                              Minimum euclidean distance between consecutive spline support points [m]
+  --max-time-diff FLOAT:POSITIVE [0.5] 
+                              Maximum time [s] between a keyframe and the nearest reference position (on both sides when interpolating); other keyframes are skipped. The reference data needs a rate of at least 1 / max-time-diff
+
+
+Examples (positions-path auto-detected):
+  # single txt file with one position per line
+  flexcloud-keyframe-interpolation positions.txt poses_GLIM.txt
+
+  # directory of per-position txt files
+  flexcloud-keyframe-interpolation /path/to/positions/ poses_GLIM.txt
+
+  # ROS 2 bag with NavSatFix on /sensor/gnss/fix
+  flexcloud-keyframe-interpolation /path/to/bag.mcap poses_GLIM.txt /path/to/out \
+      --pos-topic /sensor/gnss/fix --origin 48.262 11.667 0.0 --target-frame base_link
+
+  # ROS 2 bag with Odometry, moved into the SLAM pose frame via TF
+  flexcloud-keyframe-interpolation /path/to/bag.mcap poses_GLIM.txt /path/to/out \
+      --pos-topic /odom --target-frame base_link
+

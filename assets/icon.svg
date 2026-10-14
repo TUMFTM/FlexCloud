@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="FlexCloud">
+  <title>FlexCloud</title>
+  <rect x="2" y="2" width="60" height="60" rx="12" ry="12" fill="#3f51b5"/>
+  <g fill="none" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+    <!-- Outer round outline -->
+    <circle cx="32" cy="32" r="26"/>
+    <!-- Irregular triangulation mesh (5 perimeter points + 1 interior) -->
+    <!-- Perimeter chords -->
+    <line x1="32" y1="8"  x2="54" y2="22"/>
+    <line x1="54" y1="22" x2="50" y2="50"/>
+    <line x1="50" y1="50" x2="14" y2="52"/>
+    <line x1="14" y1="52" x2="10" y2="26"/>
+    <line x1="10" y1="26" x2="32" y2="8"/>
+    <!-- Spokes to interior point -->
+    <line x1="30" y1="30" x2="32" y2="8"/>
+    <line x1="30" y1="30" x2="54" y2="22"/>
+    <line x1="30" y1="30" x2="50" y2="50"/>
+    <line x1="30" y1="30" x2="14" y2="52"/>
+    <line x1="30" y1="30" x2="10" y2="26"/>
+  </g>
+</svg>
